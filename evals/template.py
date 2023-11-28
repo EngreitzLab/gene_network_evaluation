@@ -1,21 +1,32 @@
 import os
 import argparse
 
-def main(adata, optional=None, inplace=True):
+# Rename function to compute_{eval_measure}
+def main(mudata, optional=None, 
+	 prog_key='prog', rna_key='rna', atac_key='atac', 
+	 inplace=True):
+    
+    #TODO: Don't copy entire mudata only relevant Dataframe
+    mudata = mudata.copy() if not inplace else mudata
   
-  adata = adata.copy() if inplace else adata
-  
-  # Update adata with eval measure
-  adata.var['eval_measure'] = None
+    # Compute & update mudata with eval measure
+    mudata[prog_key].var['eval_measure'] = None
 
-  if inplace: return adata.var['eval_measure']
+    if not inplace: return mudata[prog_key].var['eval_measure']
 	
 if __name__=='__main__':
-  parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
 
-	parser.add_argument('anndataObj')
-	parser.add_argument('-o', '--optional') 
+        parser.add_argument('mudataObj')
+        parser.add_argument('-o', '--optional') 
+        parser.add_argument('-pk', '--prog_key', default='prog', typ=str) 
+        parser.add_argument('-rk', '--rna_key', default='rna', typ=str) 
+        parser.add_argument('-ak', '--atac_key', default='atac', typ=str) 
+        parser.add_argument('--output', action='store_false') 
 
-	args = parser.parse_args()
+        args = parser.parse_args()
     
-	main(args.anndataObj, optional=args.optional)
+        main(args.mudataObj, optional=args.optional,
+	     prog_key=args.prog_key, rna_key=args.rna_key, atac_key=args.atac_key, 
+	     inplace=args.output)
+
