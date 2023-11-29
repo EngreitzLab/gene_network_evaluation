@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gene_program_benchmarking"
+dynamic = ["version"]
+description = "Evaluation framework for gene program inferred from single-cell omics data"
+readme = "README.md"
+requires-python = ">=3.8"
+#license = {file = "LICENSE"}
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: POSIX :: Linux",
+    "Typing :: Typed",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+keywords = [
+    "single-cell",
+    "bio-informatics",
+    "gene-programs",
+    "benchmarking"
+]
+authors = [
+    {name = "Revant Gupta"},
+]
+maintainers = [
+    {name = "Revant Gupta", email = "revant.gupta.93@gmail.com"}
+]
+
+
+dependencies = [
+    "mudata",
+    "joblib",
+    "tqdm",
+    "scipy",
+    "seaborn",
+    
+]
