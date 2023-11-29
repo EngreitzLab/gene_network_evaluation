@@ -5,6 +5,7 @@ from scipy import stats, sparse
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
+# Perform non-parametric test (~one way ANOVA) to compare prog scores across batches
 def perform_kruskall_wallis(adata, prog_nam=None, batch_key=None):
     
     samples = []
@@ -19,6 +20,7 @@ def perform_kruskall_wallis(adata, prog_nam=None, batch_key=None):
     mudata[prog_key].var.loc[prog_nam, 'kruskall_wallis_stat'] = stat
     mudata[prog_key].var.loc[prog_nam, 'kruskall_wallis_pval'] = pval
 
+# TODO: Add one way ANOVA, MANOVA, multi-variate KW
 def compute_batch_association(mudata, batch_key=None, n_jobs=1,
 	                          prog_key='prog', inplace=True):
     
@@ -28,6 +30,7 @@ def compute_batch_association(mudata, batch_key=None, n_jobs=1,
     mudata[prog_key].var['kruskall_wallis_stat'] = None
     mudata[prog_key].var['kruskall_wallis_pval'] = None
     
+    # Run in parallel (max n_jobs=num_progs)
     Parallel(n_jobs=n_jobs)(delayed(perform_kruskall_wallis)(mudata[prog_key], 
                                                              prog_nam=prog_nam, 
                                                              batch_key=batch_key) \

@@ -1,1 +1,1 @@
-
+from batch_association import compute_batch_association
