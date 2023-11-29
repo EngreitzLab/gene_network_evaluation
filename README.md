@@ -4,12 +4,12 @@
 * single-cell omics data and program scores are supplied jointly in the mudata format (see [mudata documentation](https://mudata.readthedocs.io/en/latest/)).
   
 ## Roadmap
-* Reimplement cNMF pipeline benchmarks
+1. Reimplement cNMF pipeline benchmarks
     * Variance explained
     * ~~Batch association~~
     * GO Term/gene-set/motif enrichment (GSEA, ORA...)
     * Perturbation significance (V2G2P paper)
-* Implement benchmark ideas from sub-group
+2. Implement benchmark ideas from sub-group
     * Cell-type specifcity
     * Cross-modality prediction
     * Indirect perturbation effect sensitivity
