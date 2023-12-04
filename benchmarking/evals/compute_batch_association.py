@@ -17,8 +17,8 @@ def perform_kruskall_wallis(adata, prog_nam=None, batch_key=None):
     
     stat, pval = stats.kruskall(*samples, nan_policy='propagate')
     
-    mudata[prog_key].var.loc[prog_nam, 'kruskall_wallis_stat'] = stat
-    mudata[prog_key].var.loc[prog_nam, 'kruskall_wallis_pval'] = pval
+    adata.var.loc[prog_nam, 'kruskall_wallis_stat'] = stat
+    adata.var.loc[prog_nam, 'kruskall_wallis_pval'] = pval
 
 # TODO: Add one way ANOVA, MANOVA, multi-variate KW
 def compute_batch_association(mudata, batch_key=None, n_jobs=1,
