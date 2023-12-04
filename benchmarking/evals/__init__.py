@@ -1,2 +1,2 @@
-from compute_batch_association import compute_batch_association
-from compute_r2_score import compute_r2_score
+from .compute_batch_association import compute_batch_association
+from .compute_explained_variance_ratio import compute_explained_variance_ratio
