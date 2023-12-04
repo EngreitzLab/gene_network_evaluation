@@ -7,7 +7,7 @@
   
 ## Roadmap
 1. Reimplement cNMF pipeline benchmarks
-    * Variance explained
+    * ~~Variance explained~~
     * ~~Batch association~~
     * GO Term/gene-set/motif enrichment (GSEA, ORA...)
     * Perturbation significance (V2G2P paper)
