@@ -11,7 +11,7 @@
     * ~~Batch association~~
     * GO Term/gene-set/motif enrichment (GSEA, ORA...)
     * Perturbation significance (V2G2P paper)
-2. Implement benchmark ideas from sub-group
+2. Implement benchmark [ideas from sub-group](https://docs.google.com/spreadsheets/d/15a9xLCvqBuh5mUtXj8hq6JD55qPCIf5b6cgCYZKZDUI/edit#gid=1041024840)
     * Cell-type specifcity
     * Cross-modality prediction
     * Indirect perturbation effect sensitivity
