@@ -1,1 +1,2 @@
-from batch_association import compute_batch_association
+from compute_batch_association import compute_batch_association
+from compute_r2_score import compute_r2_score
