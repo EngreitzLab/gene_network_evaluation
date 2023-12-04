@@ -1,1 +1,1 @@
-from plot_volcano import plot_volcano
+from .plot_volcano import plot_volcano

@@ -1,3 +1,6 @@
+import numpy as np
+import pandas as pd 
+
 import seaborn as sns
 from matplotlib import pyplot as plt
 
@@ -21,7 +24,7 @@ def plot_volcano(pvals, scores, labels=None, title=None, alpha=.05,
     
     if ax is None: fig, ax = plt.subplots(figsize=figsize)
     
-    sns.scatterplot(x="log2fc", y="log10p", hue="is_sig", 
+    sns.scatterplot(x="scores", y="log10p", hue="is_sig", 
                     data=plot_df, ax=ax, linewidth=0 , 
                     legend=False, palette=["lightgrey", "black"], )
     
