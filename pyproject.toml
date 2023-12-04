@@ -42,6 +42,9 @@ dependencies = [
     "joblib",
     "tqdm",
     "scipy",
+    "numpy",
+    "pandas",
+    "scikit-learn",
     "seaborn",
     
 ]
