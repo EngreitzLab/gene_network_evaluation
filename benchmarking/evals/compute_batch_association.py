@@ -27,8 +27,8 @@ def perform_kruskall_wallis(mdata, prog_key='prog',
     mdata[prog_key].var.loc[prog_nam, 'kruskall_wallis_stat'] = stat
     mdata[prog_key].var.loc[prog_nam, 'kruskall_wallis_pval'] = pval
 
-# Perfom connover's posthoc test
-def perform_conover_iman(mdata, prog_key='prog', 
+# Perfom posthoc test and compute batch-program score
+def perform_posthoc(mdata, prog_key='prog', 
                          prog_nam=None, batch_key='batch'):
     
     prog_df = pd.DataFrame(mdata[prog_key][:, prog_nam].X, columns=[prog_nam])
@@ -67,7 +67,7 @@ def compute_batch_association(mdata, batch_key='batch', n_jobs=1,
     mdata[prog_key].varm['batch_association_pval'] = np.ones((mdata[prog_key].shape[1],
                                                               mdata[prog_key].obs[batch_key].unique().shape[0]))
     
-    Parallel(n_jobs=n_jobs, backend="threading")(delayed(perform_conover_iman)(mdata, 
+    Parallel(n_jobs=n_jobs, backend="threading")(delayed(perform_posthoc)(mdata, 
                                                                                prog_key=prog_key,
                                                                                prog_nam=prog_nam, 
                                                                                batch_key=batch_key) \
