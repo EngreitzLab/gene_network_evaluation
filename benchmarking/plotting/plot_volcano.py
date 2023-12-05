@@ -26,7 +26,12 @@ def plot_volcano(pvals, scores, labels=None, title=None, alpha=.05,
     
     sns.scatterplot(x="scores", y="log10p", hue="is_sig", 
                     data=plot_df, ax=ax, linewidth=0 , 
-                    legend=False, palette=["lightgrey", "black"], )
+                    legend=False, palette=["lightgray", "white"])
+    if 'label' in plot_df.columns:
+        for idx in plot_df.index.values:
+            ax.annotate(plot_df.loc[idx, 'label'], 
+                        (plot_df.loc[idx, 'scores'],
+                         plot_df.loc[idx, 'log10p']))
     
     
     ax.axhline(-np.log10(alpha), c="tomato", linestyle="--")
