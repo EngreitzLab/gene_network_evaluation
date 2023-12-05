@@ -45,6 +45,7 @@ dependencies = [
     "numpy",
     "pandas",
     "scikit-learn",
+    "scikit-posthocs",
     "seaborn",
     
 ]
