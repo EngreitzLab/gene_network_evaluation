@@ -44,8 +44,10 @@ dependencies = [
     "scipy",
     "numpy",
     "pandas",
-    "scikit-learn",
-    "scikit-posthocs",
+    "scikit-learn", # Optional
+    "scikit-posthocs", # Optional
     "seaborn",
+    "gseapy", # Optional
+    "lxml" # Optional
     
 ]
