@@ -59,11 +59,16 @@ def create_test_data(num_batches=None, num_obs=None,
     mdata = MuData({'rna': exp_data, 'prog': prog_data})
 
     return mdata
-        
+
+# Functional test        
 def test_explained_variance_ratio(mdata):
+    compute_explained_variance_ratio(mdata)
     assert round(mdata['prog'].var['explained_variance_ratio'].sum(),3)==1
 
 # def test_batch_association(mdata):
+#     assert
+
+# def test_gene_enrichment(mdata):
 #     assert
 
 if __name__=='__main__':
