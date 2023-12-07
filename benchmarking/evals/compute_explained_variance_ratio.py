@@ -9,13 +9,15 @@ from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
 def _compute_explained_variance_ratio(mdata, prog_nam=None,
-                      prog_key=None, data_key=None):
+                                      prog_key=None, data_key=None,
+                                      **kwargs):
 
     recons = np.dot(mdata[prog_key][:,prog_nam].X, 
                     mdata[prog_key][:,prog_nam].varm['loadings'])
 
-    mdata[prog_key].var.loc[prog_nam, 'explained_variance_ratio'] = explained_variance_score(mdata[data_key].X, 
-                                                                             recons)
+    mdata[prog_key].var.loc[prog_nam, 'explained_variance_ratio'] = \
+                  explained_variance_score(mdata[data_key].X, recons,
+                                           **kwargs)
 
 # For explained variance vs r2_score see
 # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html
@@ -26,6 +28,7 @@ def compute_explained_variance_ratio(mdata, n_jobs=1,
     #TODO: Don't copy entire mudata only relevant Dataframe
     mdata = mdata.copy() if not inplace else mdata
 
+    # FIXME: This is a memory hog -> not sustainable for large data
     if sparse.issparse(mdata[data_key].X):
         mdata[data_key].X = mdata[data_key].X.toarray()
   
@@ -53,5 +56,6 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
-    compute_explained_variance_ratio(args.mudataObj, prog_key=args.prog_key, 
-                        data_key=args.data_key, inplace=args.output)
+    compute_explained_variance_ratio(args.mudataObj, n_jobs=args.n_jobs, 
+                                     prog_key=args.prog_key, data_key=args.data_key, 
+                                     inplace=args.output)
