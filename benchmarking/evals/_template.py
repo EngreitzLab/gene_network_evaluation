@@ -2,17 +2,17 @@ import os
 import argparse
 
 # Rename function to compute_{eval_measure}
-def main(mudata, optional=None, 
+def main(mdata, optional=None, 
 	 prog_key='prog', rna_key='rna', atac_key='atac', 
 	 inplace=True):
     
     #TODO: Don't copy entire mudata only relevant Dataframe
-    mudata = mudata.copy() if not inplace else mudata
+    mdata = mdata.copy() if not inplace else mdata
   
     # Compute & update mudata with eval measure
-    mudata[prog_key].var['eval_measure'] = None
+    mdata[prog_key].var['eval_measure'] = None
 
-    if not inplace: return mudata[prog_key].var['eval_measure']
+    if not inplace: return mdata[prog_key].var['eval_measure']
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
