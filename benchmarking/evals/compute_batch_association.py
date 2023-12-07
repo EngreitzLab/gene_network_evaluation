@@ -11,8 +11,8 @@ from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
 # Perform non-parametric test (~one way ANOVA) to compare prog scores across batches
-def perform_kruskall_wallis(mdata, prog_key='prog', 
-                            prog_nam=None, batch_key='batch'):
+def perform_kruskall_wallis(mdata, prog_nam=None, 
+                            prog_key='prog', batch_key='batch'):
     
     samples = []
     for batch in mdata[prog_key].obs[batch_key].astype(str).unique():
@@ -28,8 +28,8 @@ def perform_kruskall_wallis(mdata, prog_key='prog',
     mdata[prog_key].var.loc[prog_nam, 'kruskall_wallis_pval'] = pval
 
 # Perfom posthoc test and compute batch-program score
-def perform_posthoc(mdata, prog_key='prog', 
-                         prog_nam=None, batch_key='batch'):
+def perform_posthoc(mdata, prog_nam=None,
+                    prog_key='prog', batch_key='batch'):
     
     prog_df = pd.DataFrame(mdata[prog_key][:, prog_nam].X, columns=[prog_nam])
     prog_df[batch_key] = mdata[prog_key].obs[batch_key].astype(str).values
