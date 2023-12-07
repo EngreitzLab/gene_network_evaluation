@@ -1,2 +1,3 @@
 from .compute_batch_association import compute_batch_association
 from .compute_explained_variance_ratio import compute_explained_variance_ratio
+from .compute_geneset_enrichment import compute_geneset_enrichment
