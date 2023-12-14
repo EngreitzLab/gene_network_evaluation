@@ -3,8 +3,8 @@
 * Cell x program scores are expected in the anndata format with metadata stored according to specification. 
 * single-cell omics data and program scores are supplied jointly in the mudata format (see [mudata documentation](https://mudata.readthedocs.io/en/latest/)).
 
-![image](https://github.com/EngreitzLab/gene_program_benchmarking/assets/25486108/6d194ca5-ceba-40e2-89db-f67115120c01)
-  
+![image](https://github.com/EngreitzLab/gene_program_evaluation/assets/25486108/946dd101-97de-485c-9eab-baffb0f7fd8a)
+
 ## Roadmap
 1. Reimplement cNMF pipeline evaluations
     * ~~Variance explained~~
