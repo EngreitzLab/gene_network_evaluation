@@ -158,7 +158,7 @@ if __name__=='__main__':
     parser.add_argument('-dk', '--data_key', default='rna', typ=str)
     parser.add_argument('-og', '--organism', default='Human', choices={'human', 'mouse'}) 
     parser.add_argument('-gs', '--library', default='Reactome_2022', typ=str) 
-    parser.add_argument('-gs', '--database', default='msigdb', choices={'msigdb', 'enrichr'}) 
+    parser.add_argument('-gs', '--database', default='enrichr', choices={'msigdb', 'enrichr'}) 
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
