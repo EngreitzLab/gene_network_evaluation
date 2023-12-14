@@ -3,7 +3,7 @@ requires = ["setuptools>=61", "setuptools-scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gene_program_benchmarking"
+name = "gene_program_evaluation"
 dynamic = ["version"]
 description = "Evaluation framework for gene program inferred from single-cell omics data"
 readme = "README.md"
@@ -27,7 +27,7 @@ keywords = [
     "single-cell",
     "bio-informatics",
     "gene-programs",
-    "benchmarking"
+    "evaluation"
 ]
 authors = [
     {name = "Revant Gupta"},
