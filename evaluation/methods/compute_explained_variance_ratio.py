@@ -35,7 +35,7 @@ def compute_explained_variance_ratio(mdata, n_jobs=1,
     mdata[prog_key].var['explained_variance_ratio'] = None
 
     # Run in parallel (max n_jobs=num_progs)
-    Parallel(n_jobs=n_jobs, backend="threading")(delayed(_compute_explained_variance_ratio)(mdata, 
+    Parallel(n_jobs=n_jobs, backend='threading')(delayed(_compute_explained_variance_ratio)(mdata, 
                                                        prog_nam=prog_nam, 
                                                        prog_key=prog_key,
                                                        data_key=data_key

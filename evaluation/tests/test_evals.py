@@ -5,13 +5,14 @@ import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from ..evals import *
+from ..methods import *
 
 import logging
 logging.basicConfig(level = logging.INFO)
 from tqdm.auto import tqdm
 
 # Generate multi-sample test dataset
+# TODO: Add gene=names to test GSEA
 def create_test_data(num_batches=None, num_obs=None, 
                      num_vars=None, means=None, cov=None):
 

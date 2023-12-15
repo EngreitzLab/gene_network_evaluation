@@ -38,9 +38,9 @@ def get_geneset(organism='human',
     if database=='msigdb':
         msig = Msigdb()
         if organism=='human':
-            gmt = msig.get_gmt(category=library, dbver="2023.2.Hs")
+            gmt = msig.get_gmt(category=library, dbver='2023.2.Hs')
         elif organism=='mouse':
-            gmt = msig.get_gmt(category=library, dbver="2023.1.Mm")
+            gmt = msig.get_gmt(category=library, dbver='2023.1.Mm')
 
         if gmt is None:
             raise ValueError('Library does not exist')

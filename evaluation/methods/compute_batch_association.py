@@ -55,7 +55,7 @@ def compute_batch_association(mdata, batch_key='batch', n_jobs=1,
     mdata[prog_key].var['kruskall_wallis_pval'] = None
     
     # Run in parallel (max n_jobs=num_progs)
-    Parallel(n_jobs=n_jobs, backend="threading")(delayed(perform_kruskall_wallis)(mdata, 
+    Parallel(n_jobs=n_jobs, backend='threading')(delayed(perform_kruskall_wallis)(mdata, 
                                                              prog_key=prog_key,
                                                              prog_nam=prog_nam, 
                                                              batch_key=batch_key) \
@@ -67,7 +67,7 @@ def compute_batch_association(mdata, batch_key='batch', n_jobs=1,
     mdata[prog_key].varm['batch_association_pval'] = np.ones((mdata[prog_key].shape[1],
                                                               mdata[prog_key].obs[batch_key].unique().shape[0]))
     
-    Parallel(n_jobs=n_jobs, backend="threading")(delayed(perform_posthoc)(mdata, 
+    Parallel(n_jobs=n_jobs, backend='threading')(delayed(perform_posthoc)(mdata, 
                                                                                prog_key=prog_key,
                                                                                prog_nam=prog_nam, 
                                                                                batch_key=batch_key) \
