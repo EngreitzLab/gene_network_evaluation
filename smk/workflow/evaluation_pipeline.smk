@@ -5,7 +5,7 @@ workdir: config['workdir']
 
 # One rule to ring them all
 rule all:
-    input: done = '1_run_technical_evaluations.done'
+    input: 'resources/hocomoco.meme'
 
 # Load data in .h5mu format
 # https://mudata.readthedocs.io/en/latest/
@@ -28,6 +28,7 @@ rule run_technical_evaluations:
 # Run gene-set enrichment
 
 # Run motif enrichment
+include: 'rules/3_run_motif_enrichment.smk'
 
 
 

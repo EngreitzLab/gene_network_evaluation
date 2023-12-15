@@ -59,7 +59,7 @@ def check_mdata(mdata, config):
 
 
 # Function to load mudata input
-def load_mdata(config):
+def load_mdata(config, output):
 
     input_loc = config['input_loc']
 
@@ -84,14 +84,19 @@ def load_mdata(config):
     else:
         raise ValueError('Provide input as a .h5mu file.')
 
+    # Check if all inputs are present
     check_mdata(mdata, config)
 
-    return mdata
+    # Write to working directory
+    if output in os.listdir():
+        logging.warn('mudata with same name present!')
+    mdata.write(output)
 
 # Execution (assumes Snakemake)
-with open(snakemake.log[0], "a") as f:
-    f.write("\nstderr:\n")
+with open(snakemake.log[0], 'a') as f:
+    f.write('\nstderr:\n')
     sys.stderr = sys.stdout = f
 
-    mdata = load_mdata(snakemake.config)
-    logging.info('Successfully loaded mudata.')
+    if __name__=='__main__':
+        load_mdata(snakemake.config, snakemake.output[0])
+        logging.info('Successfully loaded mudata.')

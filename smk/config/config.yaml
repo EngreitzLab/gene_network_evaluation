@@ -8,7 +8,8 @@ atac_key: # Leave empty if no atac data
 organism: human # human or mouse
 database: enrichr # enrichr or msigdb for gene sets
 library: Reactome_2022 # library of gene sets
-workdir:  path/to/working/directory/ # Created if doesn't exist.
+hocomoco: https://hocomoco12.autosome.org/final_bundle/hocomoco12/H12CORE/formatted_motifs/H12CORE_meme_format.meme # Link
+workdir: path/to/working/directory/ # Created if doesn't exist.
 repodir: path/to/repo/ 
 
 
