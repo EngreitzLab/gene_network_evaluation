@@ -9,7 +9,6 @@ import gseapy as gp
 from gseapy import Msigdb
 from gseapy import Biomart
 
-from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
 # Convert everything to human format (upper-case)
@@ -147,7 +146,7 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
     # TODO: Run ssGSEA using loadings
     # Conceptually programs represent reduced sample dimensionality
 
-    if not inplace: return mdata[prog_key].uns['gsea']
+    if not inplace: return mdata[prog_key].uns['gsea_varmap'].keys(), mdata[prog_key].uns['gsea']
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
