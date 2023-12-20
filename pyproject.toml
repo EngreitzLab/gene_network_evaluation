@@ -49,5 +49,6 @@ dependencies = [
     'seaborn',
     'gseapy', # Optional
     'lxml' # Optional
+    'pymemesuite', # Optional
     
 ]

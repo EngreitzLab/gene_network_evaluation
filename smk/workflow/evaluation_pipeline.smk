@@ -5,7 +5,7 @@ workdir: config['workdir']
 
 # One rule to ring them all
 rule all:
-    input: 'resources/hocomoco.meme'
+    input: 'resources/hocomoco_meme.meme'
 
 # Load data in .h5mu format
 # https://mudata.readthedocs.io/en/latest/
