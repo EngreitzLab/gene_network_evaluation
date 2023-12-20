@@ -14,10 +14,6 @@ rule load_data:
     log: 'logs/0_load_data.log'
     script: 'scripts/0_load_data.py'
 
-# TODO: only output files and plots
-# Each rule is a process -> unless sequential mdata will be messed up
-# If sequential then inefficient
-
 # Run technical evaluations
 rule run_technical_evaluations:
     input: 'evaluation_mdata.h5mu'
