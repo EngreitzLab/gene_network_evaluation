@@ -18,8 +18,7 @@ from tqdm.auto import tqdm
 def compute_background_freq(selected_sequences):
 
     background = Background.from_sequences(Alphabet.dna(), 
-                                               *selected_sequences)
-
+                                           *selected_sequences)
     return background
 
 # Read motif database 
@@ -91,7 +90,8 @@ def get_sequences(sequences_record, coords):
 
 # Score motif matches
 def perform_motif_match(sequences_record, motifs_record, coords,
-                        motif_match_dict, motif_idx, gene_name):
+                        motif_match_dict, output_loc, motif_idx, 
+                        gene_name):
 
     # Subselect coords to gene
     coords_ = coords.loc[coords['gene_name']==gene_name]
@@ -108,8 +108,22 @@ def perform_motif_match(sequences_record, motifs_record, coords,
     pattern_matches = {}
     fimo = FIMO(both_strands=True)
     pattern = fimo.score_motif(motif, gene_assoc_sequences, background)
+    
+    # Store in dataframe
+    motif_match_data_ = [[m.source.accession.decode(), m.start, m.stop, m.strand,
+                          m.score, m.pvalue, m.qvalue] for m in pattern.matched_elements]
 
-    motif_match_dict[(gene_name, motif.accession.decode())] = pattern
+    motif_match_df_ = pd.DataFrame(data=motif_match_data_, 
+                                   columns=['seq_name', 'start', 'end', 
+                                            'strand', 'score', 'pvalue', 'qvalue'])
+
+    motif_match_dict[(gene_name, motif.accession.decode())] = motif_match_df_
+
+    if output_loc is not None:
+        motif_match_df_.to_csv(os.path.join(output_loc, '_'.join((gene_name, 
+                                                                 motif.accession.decode(),
+                                                                 '.txt'))), sep='\t',
+                                                                 index=False)
 
 def compute_motif_enrichment_(mdata, motif_match_df, prog_key='prog'):
     motif_enrich_df=None
@@ -117,11 +131,16 @@ def compute_motif_enrichment_(mdata, motif_match_df, prog_key='prog'):
 
 # Compute motif enrichment in enhancers or promoters associated with a gene
 def compute_motif_enrichment(mdata, motif_file=None, seq_file=None, coords_file=None, 
-                             n_jobs=1, prog_key='prog', data_key='rna', inplace=True, 
-                             **kwargs):
+                             n_jobs=1, prog_key='prog', data_key='rna', output_loc=None,
+                             inplace=True, **kwargs):
     
     #TODO: Don't copy entire mudata only relevant Dataframe
     mdata = mdata.copy() if not inplace else mdata
+
+    # Check if output loc exists
+    if output_loc is not None:
+        try: os.makedirs(output_loc, exist_ok=True)
+        except: raise ValueError('Output location does not exist.')
 
     # Set kwargs
     if 'sequence_kwargs' not in kwargs.keys():
@@ -159,10 +178,13 @@ def compute_motif_enrichment(mdata, motif_file=None, seq_file=None, coords_file=
              backend='threading')(delayed(perform_motif_match)(sequences_record, 
                                                                motifs_record, 
                                                                coords,
-                                                               motif_match_dict, 
+                                                               motif_match_dict,
+                                                               output_loc,
                                                                motif_idx, 
                                                                gene_name) \
-                                                               for motif_idx in range(len(motifs_record)) \
+                                                               for motif_idx in tqdm(range(len(motifs_record)),
+                                                                                     desc='Matching motifs to sequences',
+                                                                                     unit='motifs'     ) \
                                                                for gene_name in tqdm(matching_gene_names,
                                                                                      desc='Motif scanning',
                                                                                      unit='genes'))
@@ -191,6 +213,7 @@ if __name__=='__main__':
     parser.add_argument('-mf', '--motif_file', default=None, typ=str, required=True) 
     parser.add_argument('-sf', '--seq_file',  default=None, typ=str, required=True) 
     parser.add_argument('-cf', '--coords_file', default=None, typ=str, required=True) 
+    parser.add_argument('-o', '--output', default=None, typ=str)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
@@ -198,7 +221,8 @@ if __name__=='__main__':
     compute_motif_enrichment(args.mudataObj, motif_file=args.motif_file, 
                              seq_file=arg.seq_file, coords_file=arg.coords_file, 
                              n_jobs=args.n_jobs, prog_key=args.prog_key, 
-                             data_key=args.data_key, inplace=args.output)
+                             data_key=args.data_key, output_loc=args.output,
+                             inplace=args.output)
 
 
 
