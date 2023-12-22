@@ -153,11 +153,11 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj')
-    parser.add_argument('-n', '--n_jobs', default=1, typ=int)
-    parser.add_argument('-pk', '--prog_key', default='prog', typ=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', typ=str)
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str)
     parser.add_argument('-og', '--organism', default='Human', choices={'human', 'mouse'}) 
-    parser.add_argument('-gs', '--library', default='Reactome_2022', typ=str) 
+    parser.add_argument('-gs', '--library', default='Reactome_2022', type=str) 
     parser.add_argument('-db', '--database', default='enrichr', choices={'msigdb', 'enrichr'}) 
     parser.add_argument('--output', action='store_false') 
 

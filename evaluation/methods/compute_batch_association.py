@@ -16,7 +16,7 @@ def perform_kruskall_wallis(mdata, prog_nam=None,
     
     samples = []
     for batch in mdata[prog_key].obs[batch_key].astype(str).unique():
-        sample_ = mdata[prog_key][mdata[prog_key].obs[batch_key]==batch, 
+        sample_ = mdata[prog_key][mdata[prog_key].obs[batch_key].astype(str)==batch, 
                                   prog_nam].X[:,0]
         if sparse.issparse(sample_):
             sample_ = sample_.toarray().flatten()
@@ -84,8 +84,8 @@ if __name__=='__main__':
 
     parser.add_argument('mudataObj')
     parser.add_argument('batch_key') 
-    parser.add_argument('-n', '--n_jobs', default=1, typ=int)
-    parser.add_argument('-pk', '--prog_key', default='prog', typ=str) 
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()

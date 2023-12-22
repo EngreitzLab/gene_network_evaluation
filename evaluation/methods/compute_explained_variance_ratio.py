@@ -22,9 +22,8 @@ def _compute_explained_variance_ratio(mdata, prog_nam=None,
 
 # For explained variance vs r2_score see
 # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html
-def compute_explained_variance_ratio(mdata, n_jobs=1,
-                     prog_key='prog', data_key='rna', 
-	                 inplace=True, **kwargs):
+def compute_explained_variance_ratio(mdata, n_jobs=1, prog_key='prog', 
+                                     data_key='rna', inplace=True, **kwargs):
     
     #TODO: Don't copy entire mudata only relevant Dataframe
     mdata = mdata.copy() if not inplace else mdata
@@ -51,9 +50,9 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj')
-    parser.add_argument('-n', '--n_jobs', default=1, typ=int)
-    parser.add_argument('-pk', '--prog_key', default='prog', typ=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str) 
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
