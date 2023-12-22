@@ -5,8 +5,30 @@ rule download_HOCOMOCO:
     params: link = config['hocomoco']
     shell: "wget -c {params.link} -O resources/hocomoco_meme.meme"
 
-# Convert coordinate to seq
+# Perform enhancer motif matching and enrichment
+rule run_enhancer_motif_enrichment:
+    input: 
+        'evaluation_mdata.h5mu',
+        'resources/hocomoco_meme.meme'
+    output: 
+        touch('touch/3_1_run_enhancer_motif_enrichment.done')
+    params:
+        seq_class = 'enhancer',
+        sig = 0.05,
+        output_loc = 'enhancer_motif_matches/'
+    log: 'logs/3_1_run_enhancer_motif_enrichment.log'
+    script: '../scripts/3_run_motif_enrichment.py'
 
-# Run FIMO
-
-# Run enrichment
+# Perform promoter motif matching and enrichment
+rule run_promoter_motif_enrichment:
+    input: 
+        'evaluation_mdata.h5mu',
+        'resources/hocomoco_meme.meme'
+    output: 
+        touch('touch/3_2_run_promoter_motif_enrichment.done')
+    params:
+        seq_class = 'promoter',
+        sig = 0.05,
+        output_loc = 'promoter_motif_matches/'
+    log: 'logs/3_2_run_promoter_motif_enrichment.log'
+    script: '../scripts/3_run_motif_enrichment.py'
