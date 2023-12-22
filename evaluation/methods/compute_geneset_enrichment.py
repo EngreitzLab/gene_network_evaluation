@@ -119,13 +119,14 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
     X_[:] = np.nan
                                   
     mdata[prog_key].uns['gsea_varmap'] = {'ES':'ES',
-                                        'NES':'NES',
-                                        'p_values':'NOM p-val',
-                                        'FDR':'FDR q-val',
-                                        'FWER':'FWER p-val',
-                                        'tag_before':'Tag %',
-                                        'tag_after':'Tag %',
-                                        'percent_gene':'Gene %'}
+                                          'NES':'NES',
+                                          'p_values':'NOM p-val',
+                                          'FDR':'FDR q-val',
+                                          'FWER':'FWER p-val',
+                                          'tag_before':'Tag %',
+                                          'tag_after':'Tag %',
+                                          'percent_gene':'Gene %'
+                                          }
     for key in mdata[prog_key].uns['gsea_varmap'].keys():
         mdata[prog_key].varm[key] = X_.copy()
 
@@ -157,7 +158,7 @@ if __name__=='__main__':
     parser.add_argument('-dk', '--data_key', default='rna', typ=str)
     parser.add_argument('-og', '--organism', default='Human', choices={'human', 'mouse'}) 
     parser.add_argument('-gs', '--library', default='Reactome_2022', typ=str) 
-    parser.add_argument('-gs', '--database', default='enrichr', choices={'msigdb', 'enrichr'}) 
+    parser.add_argument('-db', '--database', default='enrichr', choices={'msigdb', 'enrichr'}) 
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
