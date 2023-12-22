@@ -6,13 +6,29 @@ import pandas as pd
 from sklearn.decomposition import PCA
 
 from ..methods import *
+from ..methods.compute_motif_enrichment import read_motif_file, read_coords_file, read_sequence_file
 
 import logging
 logging.basicConfig(level = logging.INFO)
 from tqdm.auto import tqdm
 
+from pathlib import Path
+
+def load_motif_names():
+    path = (Path(__file__).parent / './test_data/motif_list.txt').resolve()
+    with open(path, 'r') as fil:
+        motif_names = fil.readlines()
+        motif_names = [nam.strip() for nam in motif_names]
+    return motif_names
+
+def load_gene_names():
+    path = (Path(__file__).parent / './test_data/gene_list.txt').resolve()
+    with open(path, 'r') as fil:
+        gene_names = fil.readlines()
+        gene_names = [nam.strip() for nam in gene_names]
+    return gene_names
+
 # Generate multi-sample test dataset
-# TODO: Add gene=names to test GSEA
 def create_test_data(num_batches=None, num_obs=None, 
                      num_vars=None, means=None, cov=None):
 
@@ -49,8 +65,9 @@ def create_test_data(num_batches=None, num_obs=None,
 
     data = np.concatenate(data)
     obs = pd.concat(obs).reset_index(drop=True)
+    var = pd.DataFrame(index=load_gene_names()[:num_vars])
     obs['batch'] = obs['batch'].astype(str)
-    exp_data = AnnData(X=data, obs=obs)
+    exp_data = AnnData(X=data, obs=obs, var=var)
 
     pca = PCA(n_components=num_vars)
     pca_data = pca.fit_transform(data)
@@ -61,16 +78,36 @@ def create_test_data(num_batches=None, num_obs=None,
 
     return mdata
 
-# Functional test        
+# Functional tests        
 def test_explained_variance_ratio(mdata):
-    compute_explained_variance_ratio(mdata)
-    assert round(mdata['prog'].var['explained_variance_ratio'].sum(),3)==1
+    try: compute_explained_variance_ratio(mdata)
+    except: raise RuntimeError('Explained variance')
+    
+    try: assert round(mdata['prog'].var['explained_variance_ratio'].sum(),3)==1
+    except: raise AssertionError('Explained variance')
 
 # def test_batch_association(mdata):
-#     assert
+#    assert
 
-# def test_gene_enrichment(mdata):
-#     assert
+def test_gene_enrichment(mdata):
+    try: compute_geneset_enrichment(mdata)
+    except: raise RuntimeError('Gene set enrichment')
+
+def test_motif_enrichment(mdata, coords_file_loc, seq_file_loc):
+    
+    try: motif_file = read_motif_file((Path(__file__).parent /\
+                                       '../../smk/resources/hocomoco_meme.meme').resolve())[:3]
+    except: raise RuntimeError('Reading motif file')
+
+    try: coords_file = read_coords_file(coords_file_loc)
+    except: raise RuntimeError('Reading coordinate file')
+
+    try: seq_file = read_sequence_file(seq_file_loc)
+    except: raise RuntimeError('Reading sequence file')
+
+    try: compute_motif_enrichment(mdata, motif_file, seq_file,
+                                  coords_file, output_loc=None)
+    except: raise RuntimeError('Motif enrichment')
 
 if __name__=='__main__':
 
@@ -78,3 +115,5 @@ if __name__=='__main__':
 
     test_explained_variance_ratio(mdata)
     # test_batch_association(mdata)
+    test_gene_enrichment(mdata)
+    # test_motif_enrichment(mdata, coords_file, seq_file_loc)
