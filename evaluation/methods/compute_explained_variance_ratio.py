@@ -12,11 +12,12 @@ def _compute_explained_variance_ratio(mdata, prog_nam=None,
                                       prog_key=None, data_key=None,
                                       **kwargs):
 
-    recons = np.dot(mdata[prog_key][:,prog_nam].X, 
-                    mdata[prog_key][:,prog_nam].varm['loadings'])
+    # FIXME: This takes a lot of memory (200G single core on TeloHAEC)
+    recons = mdata[prog_key][:,prog_nam].X.dot(\
+             sparse.csr_matrix(mdata[prog_key][:,prog_nam].varm['loadings']))
 
     mdata[prog_key].var.loc[prog_nam, 'explained_variance_ratio'] = \
-                  explained_variance_score(mdata[data_key].X, recons,
+                  explained_variance_score(mdata[data_key].X.toarray(), recons.toarray(),
                                            **kwargs)
 
 # For explained variance vs r2_score see
@@ -28,9 +29,10 @@ def compute_explained_variance_ratio(mdata, n_jobs=1,
     #TODO: Don't copy entire mudata only relevant Dataframe
     mdata = mdata.copy() if not inplace else mdata
 
-    # FIXME: This is a memory hog -> not sustainable for large data
-    if sparse.issparse(mdata[data_key].X):
-        mdata[data_key].X = mdata[data_key].X.toarray()
+    if not sparse.issparse(mdata[data_key].X):
+        mdata[data_key].X = sparse.csr_matrix(mdata[data_key].X)
+    if not sparse.issparse(mdata[prog_key].X):
+        mdata[prog_key].X = sparse.csr_matrix(mdata[prog_key].X)
   
     mdata[prog_key].var['explained_variance_ratio'] = None
 
