@@ -28,7 +28,7 @@ The goal is to develop evaluation criteria covering various technical and biolog
 # Structure of the evaluation pipeline
 * Cell x program scores are expected in the anndata format with metadata stored according to specification. 
 * single-cell omics data and program scores are supplied jointly in the mudata format (see [mudata documentation](https://mudata.readthedocs.io/en/latest/)).
-* 
+  
 ## Roadmap
 #### 1. Reimplement cNMF pipeline evaluations
 * ~~Variance explained~~
