@@ -13,6 +13,7 @@ enhancer_coordinates: path/to/enhancer/gene/links/e2g.txt # Check format in reso
 promoter_coordinates: path/to/promoter/gene/links/p2g.txt # Check format in resources
 hocomoco: https://hocomoco12.autosome.org/final_bundle/hocomoco12/H12CORE/formatted_motifs/H12CORE_meme_format.meme # Link
 workdir: path/to/working/directory/ # Created if doesn't exist.
+scratchdir: path/to/scratch/dir # Should exist
 repodir: path/to/repo/ 
 
 
