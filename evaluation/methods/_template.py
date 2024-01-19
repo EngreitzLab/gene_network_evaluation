@@ -17,16 +17,19 @@ def main(mdata, optional=None,
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
-        parser.add_argument('mudataObj')
-        parser.add_argument('-o', '--optional') 
-        parser.add_argument('-pk', '--prog_key', default='prog', typ=str) 
-        parser.add_argument('-rk', '--rna_key', default='rna', typ=str) 
-        parser.add_argument('-ak', '--atac_key', default='atac', typ=str) 
-        parser.add_argument('--output', action='store_false') 
+    parser.add_argument('mudataObj_path')
+    parser.add_argument('-o', '--optional') 
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-rk', '--rna_key', default='rna', type=str) 
+    parser.add_argument('-ak', '--atac_key', default='atac', type=str) 
+    parser.add_argument('--output', action='store_false') 
 
-        args = parser.parse_args()
-    
-        main(args.mudataObj, optional=args.optional,
-	     prog_key=args.prog_key, rna_key=args.rna_key, atac_key=args.atac_key, 
-	     inplace=args.output)
+    args = parser.parse_args()
+
+    import mudata
+    mdata = mudata.read(args.mudataObj_path)
+
+    main(mdata, optional=args.optional,
+         prog_key=args.prog_key, rna_key=args.rna_key, 
+         atac_key=args.atac_key, inplace=args.output)
 

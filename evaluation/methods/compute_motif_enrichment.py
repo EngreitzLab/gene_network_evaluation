@@ -308,7 +308,7 @@ def compute_motif_enrichment(mdata, motif_file=None, seq_file=None, coords_file=
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('mudataObj')
+    parser.add_argument('mudataObj_path')
     parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
     parser.add_argument('-dk', '--data_key', default='rna', type=str)
@@ -322,11 +322,14 @@ if __name__=='__main__':
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
+
+    import mudata
+    mdata = mudata.read(args.mudataObj_path)
     
-    compute_motif_enrichment(args.mudataObj, motif_file=args.motif_file, 
+    compute_motif_enrichment(mdata, motif_file=args.motif_file, 
                              seq_file=arg.seq_file, coords_file=arg.coords_file, 
                              n_jobs=args.n_jobs, prog_key=args.prog_key, 
-                             data_key=args.data_key, output_loc=args.output,
+                             data_key=args.data_key, output_loc=args.store_files,
                              sig=args.significance, num_genes=args.num_genes, 
                              inplace=args.output)
 

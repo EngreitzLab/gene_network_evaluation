@@ -82,7 +82,7 @@ def compute_batch_association(mdata, batch_key='batch', n_jobs=1,
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('mudataObj')
+    parser.add_argument('mudataObj_path')
     parser.add_argument('batch_key') 
     parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
@@ -90,7 +90,10 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
-    compute_batch_association(args.mudataObj, batch_key=args.batch_key, n_jobs=args.n_jobs,
+    import mudata
+    mdata = mudata.read(args.mudataObj_path)
+
+    compute_batch_association(mdata, batch_key=args.batch_key, n_jobs=args.n_jobs,
                               prog_key=args.prog_key, inplace=args.output)
 
 

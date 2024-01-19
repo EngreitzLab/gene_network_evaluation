@@ -152,7 +152,7 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('mudataObj')
+    parser.add_argument('mudataObj_path')
     parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
     parser.add_argument('-dk', '--data_key', default='rna', type=str)
@@ -163,7 +163,10 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
-    compute_geneset_enrichment(args.mudataObj, organism=args.organism, library=args.library,
+    import mudata
+    mdata = mudata.read(args.mudataObj_path)
+
+    compute_geneset_enrichment(mdata, organism=args.organism, library=args.library,
                                database=arg.database, n_jobs=args.n_jobs, prog_key=args.prog_key, 
                                data_key=args.data_key, inplace=args.output)
 
