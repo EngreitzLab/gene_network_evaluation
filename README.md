@@ -7,12 +7,12 @@ where $\textbf{P} \in \mathbb{R}^{c \times k}$ and $\textbf{W} \in \mathbb{R}^{k
 
 A few examples of such models are [cNMF](https://github.com/dylkot/cNMF), [LDVAE](https://docs.scvi-tools.org/en/stable/user_guide/models/linearscvi.html), [f-scLVM](https://github.com/scfurl/f-scLVM). More advanced models consider additional inputs or work on multi-omic data such as [Spectra](https://github.com/dpeerlab/spectra/), [muVI](https://github.com/MLO-lab/MuVI). 
 
-### <ins>Wrap methods of choice with inference/methods/_template.py and create a pull request</ins> 
+### <ins>Wrap methods of choice with src/inference/methods/_template.py and create a pull request</ins> 
 
 # Evaluating the biological basis of learnt programs
 The goal is to develop evaluation criteria covering various technical and biological facets. This process includes both coming up with a concept and then an implementation. Following is a list of implemented or planned criteria. 
 
-### <ins>Implement evaluations using evaluations/methods/_template.py and create a pull request.</ins>
+### <ins>Implement evaluations with src/evaluations/methods/_template.py and create a pull request.</ins>
 
 | Criterion    | Implementation | External resource | Interpretation | Caveats |
 | -------- | ------- | -------- | ------- | ------- |
