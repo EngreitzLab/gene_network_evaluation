@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from ..methods import *
-from ..methods.compute_motif_enrichment import read_motif_file, read_coords_file, read_sequence_file
+from .. import *
+from ..compute_motif_enrichment import read_motif_file, read_coords_file, read_sequence_file
 
 import logging
 logging.basicConfig(level = logging.INFO)
