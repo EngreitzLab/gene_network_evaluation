@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, snakemake.config['repodir'])
-from evaluation import compute_motif_enrichment
+from src.evaluation import compute_motif_enrichment
 
 import logging
 logging.basicConfig(filename=snakemake.log[0],

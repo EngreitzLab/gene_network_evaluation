@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, snakemake.config['repodir'])
-from evaluation import compute_explained_variance_ratio, compute_batch_association
+from src.evaluation import compute_explained_variance_ratio, compute_batch_association
 
 import logging
 logging.basicConfig(filename=snakemake.log[0],
