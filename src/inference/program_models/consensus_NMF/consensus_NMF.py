@@ -3,8 +3,6 @@ import gin
 import argparse
 
 import anndata
-
-from cnmf import cNMF
 from tqdm.auto import tqdm
 
 # consensus NMF described -> https://github.com/dylkot/cNMF
@@ -14,6 +12,8 @@ def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
                        total_workers=-1, density_thresholds=[0.01, 2],
                        num_highvar_genes=2000, beta_loss='frobenius'):
   
+    from cnmf import cNMF
+
     # Compute cNMF and create prog anndata
     cnmf_obj = cNMF(output_dir=output_dir, name=name)
     cnmf_obj.prepare(counts_fn=counts_fn, components=components, 

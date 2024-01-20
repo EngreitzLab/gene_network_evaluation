@@ -26,6 +26,10 @@ def run_program_inference_method_(anndata, layer='X',
     # You can write additional functions in this script
     # Or create more complex scripts in the scripts folder
     # and import the functions 
+
+    # Place any imports that will only be present
+    # in the method env (_template_env.yml) inside
+    # this function
     
     return cell_program_scores, program_feature_scores
 

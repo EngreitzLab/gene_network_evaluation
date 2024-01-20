@@ -1,1 +1,1 @@
-from .consensus_NMF import run_consensus_NMF, run_consensus_NMF_
+from .consensus_NMF import *
