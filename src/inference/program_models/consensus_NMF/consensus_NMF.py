@@ -103,7 +103,7 @@ if __name__=='__main__':
     parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
     parser.add_argument('--layer', default='X', type=str)
     parser.add_argument('--work_dir', default='./', type=str)
-    parser.add_argument('--config_path', default='./config_consensus_NMF.gin', type=str)
+    parser.add_argument('--config_path', default='./consensus_NMF_config.gin', type=str)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
