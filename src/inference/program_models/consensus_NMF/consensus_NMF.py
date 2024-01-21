@@ -10,7 +10,8 @@ from tqdm.auto import tqdm
 def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
                        components=[7,8,9,10], n_iter=100, seed=14,
                        total_workers=-1, density_thresholds=[0.01, 2],
-                       num_highvar_genes=2000, beta_loss='frobenius'):
+                       num_highvar_genes=2000, beta_loss='frobenius',
+                       output_all_k=True, output_all_thresh=True):
   
     from cnmf import cNMF
 
@@ -27,7 +28,7 @@ def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
         for thresh in density_thresholds:
             cnmf_obj.consensus(k=k, density_threshold=thresh, show_clustering=True)
     
-    return cnmf_obj, K, components, density_thresholds
+    return cnmf_obj, K, components, density_thresholds, output_all_k, output_all_thresh
 
 def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1, 
                       prog_key='consensus_NMF', data_key='rna', layer='X', 
@@ -51,24 +52,28 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1,
 
     # Create temp anndata 
     if layer=='X':
-        counts_path = os.path.join(work_dir, data_key+'{}_temp.h5ad'.format(data_key))
-        mdata[data_key].write(counts_path)
+        counts_path = os.path.join(scratch_dir, '{}_temp.h5ad'.format(data_key))
+        temp_data = mdata[data_key].copy()
+        temp_data.var_names_make_unique()
+        temp_data.write(counts_path)
     else:
         temp_data = anndata.AnnData(data=mdata[data_key].layers[layer], 
                                     obs=mdata[data_key].obs,
                                     var=mdata[data_key].var)
-        counts_path = os.path.join(work_dir, '{}_{}_temp.h5ad'.format(data_key, layer))
+        counts_path = os.path.join(scratch_dir, '{}_{}_temp.h5ad'.format(data_key, layer))
+        temp_data.var_names_make_unique()
         temp_data.write(counts_path)
   
     # Compute cNMF and create prog anndata
-    cnmf_object, K, components, density_thresholds = \
+    cnmf_object, K, components, density_thresholds, \
+    output_all_k, output_all_thresh = \
     run_consensus_NMF_(output_dir=work_dir, 
                        counts_fn=counts_path,
                        total_workers=n_jobs)
 
     # Create new anndata object
     usage, spectra_scores, spectra_tpm, top_genes = \
-    cnmf_obj.load_results(K=K, density_threshold=min(thresh))
+    cnmf_obj.load_results(K=K, density_threshold=min(density_thresholds))
 
     mdata[prog_key] = anndata.AnnData(data=usage, 
                                       obs=mdata[data_key].obs)
@@ -77,6 +82,11 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1,
     mdata[prog_key].uns['loadings_genes'] = top_genes
 
     # Store outputs in mdata
+    if not output_all_k:
+        components = [K]
+    if not output_all_thresh:
+        density_thresholds = [min(density_thresholds), 
+                              max(density_thresholds)]
     for k in tqdm(components, desc='Storing output'):
         for thresh in density_thresholds:
             usage, spectra_scores, spectra_tpm, top_genes = \
