@@ -5,7 +5,7 @@ build-backend = 'setuptools.build_meta'
 [project]
 name = 'gene_program_evaluation'
 dynamic = ['version']
-description = 'Evaluation framework for gene program inferred from single-cell omics data'
+description = 'Evaluation framework for gene programs inferred from single-cell omics data'
 readme = 'README.md'
 requires-python = '>=3.8'
 #license = {file = 'LICENSE'}
@@ -15,7 +15,6 @@ classifiers = [
     'Intended Audience :: Science/Research',
     'Natural Language :: English',
     'Operating System :: POSIX :: Linux',
-    'Typing :: Typed',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
