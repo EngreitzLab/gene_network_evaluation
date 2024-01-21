@@ -4,6 +4,9 @@ import argparse
 
 import anndata
 
+# NOTE: _template_env.yml contains the essential pacakges that must be present
+# in your conda env. Add more packages as neccessary.
+
 # Write a function to run your method
 
 # Most parameters of this function will be supplied by the user 
