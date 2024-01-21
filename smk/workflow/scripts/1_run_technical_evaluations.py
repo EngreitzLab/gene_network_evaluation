@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, snakemake.config['repodir'])
-from src.evaluation import compute_explained_variance_ratio, compute_batch_association
+from src.evaluation import compute_explained_variance_ratio, compute_categorical_association
 
 import logging
 logging.basicConfig(filename=snakemake.log[0],
@@ -18,10 +18,12 @@ def run_technical_evaluations(config, input_):
     #                                  data_key=config['data_key'], inplace=True)
 
     # Compute batch association
-    compute_batch_association(mdata, n_jobs=mdata[config['prog_key']].shape[1],
-                              batch_key=config['batch_key'], 
-                              prog_key=config['prog_key'],
-                              inplace=True)
+    for key in config['categorical_keys']:
+        compute_categorical_association(mdata, 
+                                        n_jobs=mdata[config['prog_key']].shape[1],
+                                        categorical_key=key, 
+                                        prog_key=config['prog_key'],
+                                        inplace=True)
 
 # Execution (assumes Snakemake)
 with open(snakemake.log[0], 'a') as f:

@@ -32,20 +32,19 @@ def check_mdata(mdata, config):
     # Check if index of data and prog match
     assert (mdata[config['prog_key']].obs.index==mdata[config['data_key']].obs.index).all()
 
-    # Check if batch key exists in data and prog
-    if config['batch_key'] is not None:
-        bk = config['batch_key']
-
-        for key in [('prog_key', 'data_key'), 
-                    ('data_key', 'prog_key')]:
-            key_a, key_b = key[0], key[1]
-            if bk in mdata[config[key[0]]].obs.columns:
-                if bk in mdata[config[key[1]]].obs.columns:
-                    assert (mdata[config[key[0]]].obs[bk]==mdata[config[key[1]]].obs[bk]).all()
+    # Check if categorical key exists in data and prog
+    if config['categorical_keys'] is not None:
+        for key in config['categorical_keys']:
+            for key_ in [('prog_key', 'data_key'), 
+                        ('data_key', 'prog_key')]:
+                key_a, key_b = key_[0], key_[1]
+                if key in mdata[config[key_[0]]].obs.columns:
+                    if key in mdata[config[key_[1]]].obs.columns:
+                        assert (mdata[config[key_[0]]].obs[key]==mdata[config[key_[1]]].obs[key]).all()
+                    else:
+                        mdata[config[key_[1]]].obs[key]=mdata[config[key_[0]]].obs[key]
                 else:
-                    mdata[config[key[1]]].obs[bk]=mdata[config[key[0]]].obs[bk]
-            else:
-                raise ValueError('Batch annotations not found')
+                    raise ValueError('{} annotations not found'.format(key))
 
     # Check if gene names match organism
     if config['organism'] is not None:
