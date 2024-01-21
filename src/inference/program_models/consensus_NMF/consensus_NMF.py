@@ -2,6 +2,7 @@ import os
 import gin
 import argparse
 
+import mudata
 import anndata
 from tqdm.auto import tqdm
 
@@ -75,8 +76,8 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1,
     usage, spectra_scores, spectra_tpm, top_genes = \
     cnmf_obj.load_results(K=K, density_threshold=min(density_thresholds))
 
-    mdata[prog_key] = anndata.AnnData(data=usage, 
-                                      obs=mdata[data_key].obs)
+    adata = anndata.AnnData(X=usage, obs=mdata[data_key].obs)
+    mdata = mudata.MuData({data_key: mdata[data_key], prog_key: adata})
     mdata[prog_key].varm['loadings'] = spectra_tpm
     mdata[prog_key].varm['loadings_zscore'] = spectra_scores
     mdata[prog_key].uns['loadings_genes'] = top_genes
@@ -87,20 +88,23 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1,
     if not output_all_thresh:
         density_thresholds = [min(density_thresholds), 
                               max(density_thresholds)]
+    adatas = {}
     for k in tqdm(components, desc='Storing output'):
         for thresh in density_thresholds:
             usage, spectra_scores, spectra_tpm, top_genes = \
             cnmf_obj.load_results(K=k, density_threshold=thresh)
 
-            mdata[prog_key+'_{}_{}'.format(k, thresh)] = \
-            anndata.AnnData(data=usage, obs=mdata[data_key].obs)
+            adata_ = anndata.AnnData(data=usage, obs=mdata[data_key].obs)
+            adata_.varm['loadings'] = spectra_tpm
+            adata_.varm['loadings_zscore'] = spectra_scores
+            adata_.uns['loadings_genes'] = top_genes
 
-            mdata[prog_key+'_{}_{}'.format(k, thresh)].varm['loadings'] = \
-            spectra_tpm
-            mdata[prog_key+'_{}_{}'.format(k, thresh)].varm['loadings_zscore'] = \
-            spectra_scores
-            mdata[prog_key+'_{}_{}'.format(k, thresh)].uns['loadings_genes'] = \
-            top_genes
+            adatas[prog_key+'_{}_{}'.format(k, thresh)] = adata_
+    
+    adatas[data_key] = mdata[data_key]
+    adatas[prog_key] = mdata[prog_key]
+
+    mdata = mudata.MuData(adatas)
 
     if not inplace: return mdata[prog_key]
 
