@@ -55,12 +55,17 @@ def perform_ssGSEA():
     raise NotImplementedError()
 
 # pre-ranked GSEA using loadings
-def perform_prerank(mdata, prog_nam=None, geneset=None,
+def perform_prerank(mdata, prog_nam=None, geneset=None, library=None,
                     n_jobs=1, prog_key='prog', data_key='rna', 
                     **kwargs):
 
     # Gene names in human (upper case) format
-    gene_names = get_idconversion(mdata[data_key].var_names)
+    if 'var_names' in mdata[prog_key].uns.keys():
+        gene_names = get_idconversion(mdata[prog_key].uns['var_names'])
+    else:
+        try: assert mdata[prog_key].varm['loadings'].shape[1]==mdata[data_key].var.shape[0]
+        except: raise ValueError('Different number of genes present in data and program loadings')
+        gene_names = get_idconversion(mdata[data_key].var_names)
 
     # Gene scores for each program
     loadings = pd.DataFrame(data=mdata[prog_key][:, 
@@ -84,16 +89,16 @@ def perform_prerank(mdata, prog_nam=None, geneset=None,
 
     # Store reports
     prog_idx = mdata[prog_key].var.index.get_loc(prog_nam)
-    set_idxs = [mdata[prog_key].uns['genesets'].index(idx) \
+    set_idxs = [mdata[prog_key].uns['genesets_{}'.format(library)].index(idx) \
                 for idx in pre_res.index.values]
-    for key, value in mdata[prog_key].uns['gsea_varmap'].items():
+    for key, value in mdata[prog_key].uns['gsea_varmap_{}'.format(library)].items():
         if value == 'Tag %':
-            if key=='tag_before':
+            if key=='tag_before_{}'.format(library):
                 mdata[prog_key].varm[key][prog_idx, set_idxs] = \
                 pre_res[value].apply(lambda x: x.split('/')[0])\
                 .astype(int).values.reshape(1,-1)
 
-            elif key=='tag_after':
+            elif key=='tag_after_{}'.format(library):
                 mdata[prog_key].varm[key][prog_idx, set_idxs] = \
                 pre_res[value].apply(lambda x: x.split('/')[-1])\
                 .astype(int).values.reshape(1,-1)
@@ -111,23 +116,22 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
 
     # Get geneset
     geneset = get_geneset(organism, library, database)
-    mdata[prog_key].uns['genesets'] = list(geneset.keys())
+    mdata[prog_key].uns['genesets_{}'.format(library)] = list(geneset.keys())
 
     # Store results in a new anndata
     X_ = np.zeros((mdata[prog_key].shape[1], 
                   len(geneset.keys())))
     X_[:] = np.nan
                                   
-    mdata[prog_key].uns['gsea_varmap'] = {'ES':'ES',
-                                          'NES':'NES',
-                                          'p_values':'NOM p-val',
-                                          'FDR':'FDR q-val',
-                                          'FWER':'FWER p-val',
-                                          'tag_before':'Tag %',
-                                          'tag_after':'Tag %',
-                                          'percent_gene':'Gene %'
-                                          }
-    for key in mdata[prog_key].uns['gsea_varmap'].keys():
+    mdata[prog_key].uns['gsea_varmap_{}'.format(library)] = {'ES_{}'.format(library):'ES',
+                                                             'NES_{}'.format(library):'NES',
+                                                             'p_values_{}'.format(library):'NOM p-val',
+                                                             'FDR_{}'.format(library):'FDR q-val',
+                                                             'FWER_{}'.format(library):'FWER p-val',
+                                                             'tag_before_{}'.format(library):'Tag %',
+                                                             'tag_after_{}'.format(library):'Tag %',
+                                                             'percent_gene_{}'.format(library):'Gene %'}
+    for key in mdata[prog_key].uns['gsea_varmap_{}'.format(library)].keys():
         mdata[prog_key].varm[key] = X_.copy()
 
     if 'prerank_kwargs' not in kwargs.keys():
@@ -138,6 +142,7 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
         perform_prerank(mdata, 
                         prog_nam=prog_nam, 
                         geneset=geneset,
+                        library=library,
                         n_jobs=n_jobs,
                         prog_key=prog_key,
                         data_key=data_key,
@@ -147,7 +152,9 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
     # TODO: Run ssGSEA using loadings
     # Conceptually programs represent reduced sample dimensionality
 
-    if not inplace: return mdata[prog_key].uns['gsea_varmap'].keys(), mdata[prog_key].uns['gsea']
+    if not inplace: return (mdata[prog_key].uns['gsea_varmap_{}'.format(library)].keys(), 
+                            mdata[prog_key].varm,
+                            mdata[prog_key].uns['gsea_{}'.format(library)])
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
