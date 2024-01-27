@@ -1,4 +1,4 @@
-name: LDVAE_env
+name: linear_SCVI_env
 channels:
   - conda-forge
 dependencies:

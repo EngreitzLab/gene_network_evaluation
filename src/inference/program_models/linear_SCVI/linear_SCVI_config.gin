@@ -1,3 +1,3 @@
-run_LDVAE_:
+run_linear_SCVI_:
     n_latent=10 
     max_epochs=250

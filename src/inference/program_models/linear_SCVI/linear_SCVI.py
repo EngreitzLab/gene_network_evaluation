@@ -11,8 +11,8 @@ logging.basicConfig(level = logging.INFO)
 
 # https://docs.scvi-tools.org/en/stable/user_guide/models/linearscvi.html
 @gin.configurable
-def run_LDVAE_(adata, layer='X', batch_key=None, label_key=None, 
-               devices=-1, n_latent=10, max_epochs=250):
+def run_linear_SCVI_(adata, layer='X', batch_key=None, label_key=None, 
+                     devices=-1, n_latent=10, max_epochs=250):
   
     import scvi
 
@@ -45,9 +45,9 @@ def run_LDVAE_(adata, layer='X', batch_key=None, label_key=None,
 
     return model, ax, Z_hat, loadings
 
-def run_LDVAE(mdata, n_jobs=-1, prog_key='LDVAE', data_key='rna',  
-              batch_key=None, label_key=None, layer='X', config_path=None, 
-              inplace=True):
+def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',  
+                    batch_key=None, label_key=None, layer='X', config_path=None, 
+                    inplace=True):
     
     # Load method specific parameters
     try: gin.parse_config_file(config_path)
@@ -65,9 +65,9 @@ def run_LDVAE(mdata, n_jobs=-1, prog_key='LDVAE', data_key='rna',
     # FIXME: Multi-processing crashes on HPC
     if n_jobs==-1:
         n_jobs=os.cpu_count()
-    model, ax, Z_hat, loadings = run_LDVAE_(mdata[data_key], layer=layer_,
-                                            batch_key=batch_key, label_key=label_key,
-                                            devices=n_jobs)
+    model, ax, Z_hat, loadings = run_linear_SCVI_(mdata[data_key], layer=layer_,
+                                                  batch_key=batch_key, label_key=label_key,
+                                                  devices=n_jobs)
 
     # Create new anndata object
     adata = anndata.AnnData(X=Z_hat, obs=mdata[data_key].obs)
@@ -89,12 +89,12 @@ if __name__=='__main__':
 
     parser.add_argument('mudataObj_path')
     parser.add_argument('-n', '--n_jobs', default=1, type=int)
-    parser.add_argument('-pk', '--prog_key', default='LDVAE', typ=str) 
+    parser.add_argument('-pk', '--prog_key', default='linear_SCVI', typ=str) 
     parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
     parser.add_argument('-bk', '--batch_key', default=None, typ=str) 
     parser.add_argument('-lk', '--label_key', default=None, typ=str) 
     parser.add_argument('--layer', default='X', type=str)
-    parser.add_argument('--config_path', default='./LDVAE_config.gin', type=str)
+    parser.add_argument('--config_path', default='./linear_SCVI_config.gin', type=str)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
@@ -102,6 +102,6 @@ if __name__=='__main__':
     import mudata
     mdata = mudata.read(args.mudataObj_path)
 
-    run_LDVAE(mdata, n_jobs=args.n_jobs, layer=args.layer, prog_key=args.prog_key, 
-              data_key=args.data_key, batch_key=args.batch_key, label_key=args.label_key, 
-              inplace=args.output, config_path=args.config_path)
+    run_linear_SCVI(mdata, n_jobs=args.n_jobs, layer=args.layer, prog_key=args.prog_key, 
+                    data_key=args.data_key, batch_key=args.batch_key, label_key=args.label_key, 
+                    inplace=args.output, config_path=args.config_path)
