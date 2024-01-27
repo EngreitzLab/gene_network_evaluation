@@ -1,0 +1,3 @@
+run_LDVAE_:
+    n_latent=10 
+    max_epochs=250
