@@ -62,8 +62,8 @@ def run_program_inference_method(mdata, n_jobs=-1,
                                   n_jobs=n_jobs)
 
     # Store cell x program and program x feature matrices
-    mdata[prog_key] = anndata.AnnData(data=cell_program_scores, 
-                                      obs=mdata[data_key].obs)
+    mdata.mod[prog_key] = anndata.AnnData(data=cell_program_scores, 
+                                          obs=mdata[data_key].obs)
     mdata[prog_key].varm['loadings'] = program_feature_scores
 
     # Store additional outputs in

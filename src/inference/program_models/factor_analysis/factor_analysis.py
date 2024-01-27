@@ -48,8 +48,7 @@ def run_factor_analysis(mdata, prog_key='factor_analysis',
     fa, decomp = run_factor_analysis_(exp_data)
 
     # Create new anndata object
-    adata = anndata.AnnData(X=decomp, obs=mdata[data_key].obs)
-    mdata = mudata.MuData({data_key: mdata[data_key], prog_key: adata})
+    mdata.mod[prog_key]  = anndata.AnnData(X=decomp, obs=mdata[data_key].obs)
     mdata[prog_key].varm['loadings'] = fa.components_
     mdata[prog_key].uns['loadings_genes'] = mdata[data_key].var_names.tolist()
 

@@ -6,6 +6,8 @@ import mudata
 import anndata
 from tqdm.auto import tqdm
 
+import numpy as np
+
 # consensus NMF described -> https://github.com/dylkot/cNMF
 def init_cnmf_obj(output_dir=None, name=None):
     
@@ -106,8 +108,7 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1,
     usage, spectra_scores, spectra_tpm, top_genes = \
     cnmf_obj.load_results(K=K, density_threshold=min(density_thresholds))
 
-    adata = anndata.AnnData(X=usage, obs=mdata[data_key].obs)
-    mdata = mudata.MuData({data_key: mdata[data_key], prog_key: adata})
+    mdata.mod[prog_key] = anndata.AnnData(X=usage, obs=mdata[data_key].obs)
     mdata[prog_key].varm['loadings'] = spectra_tpm
     mdata[prog_key].varm['loadings_zscore'] = spectra_scores
     mdata[prog_key].uns['loadings_genes'] = top_genes

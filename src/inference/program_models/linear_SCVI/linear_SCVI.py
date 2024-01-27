@@ -70,8 +70,7 @@ def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',
                                                   devices=n_jobs)
 
     # Create new anndata object
-    adata = anndata.AnnData(X=Z_hat, obs=mdata[data_key].obs)
-    mdata = mudata.MuData({data_key: mdata[data_key], prog_key: adata})
+    mdata.mod[prog_key]  = anndata.AnnData(X=Z_hat, obs=mdata[data_key].obs)
     mdata[prog_key].varm['loadings'] = loadings.values.T
     mdata[prog_key].uns['loadings_genes'] = loadings.index.values
 
