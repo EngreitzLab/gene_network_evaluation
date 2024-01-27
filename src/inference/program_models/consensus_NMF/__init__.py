@@ -1,1 +1,1 @@
-from .consensus_NMF import run_consensus_NMF, run_consensus_NMF_
+from .consensus_NMF import run_consensus_NMF, run_consensus_NMF_, run_cnmf_factorization, run_cnmf_consensus, init_cnmf_obj

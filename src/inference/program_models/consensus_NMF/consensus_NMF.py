@@ -7,27 +7,57 @@ import anndata
 from tqdm.auto import tqdm
 
 # consensus NMF described -> https://github.com/dylkot/cNMF
-@gin.configurable
-def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
-                       components=[7,8,9,10], n_iter=100, seed=14,
-                       total_workers=-1, density_thresholds=[0.01, 2],
-                       num_highvar_genes=2000, beta_loss='frobenius',
-                       output_all_k=True, output_all_thresh=True):
-  
+def init_cnmf_obj(output_dir=None, name=None):
+    
     from cnmf import cNMF
 
     # Compute cNMF and create prog anndata
     cnmf_obj = cNMF(output_dir=output_dir, name=name)
-    cnmf_obj.prepare(counts_fn=counts_fn, components=components, 
-                     n_iter=n_iter, seed=seed, num_highvar_genes=num_highvar_genes)
+
+    return cnmf_obj
+
+def run_cnmf_factorization(output_dir=None, name=None, counts_fn=None,
+                           components=[7,8,9,10], n_iter=10, seed=14,
+                           total_workers=-1,num_highvar_genes=2000, 
+                           beta_loss='frobenius'):
+
+    # Compute cNMF and create prog anndata
+    cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
+    cnmf_obj.prepare(counts_fn=counts_fn, components=components, n_iter=n_iter, 
+                     seed=seed, num_highvar_genes=num_highvar_genes, beta_loss=beta_loss)
     cnmf_obj.factorize(total_workers=total_workers)
-    cnmf_obj.combine()
-    cnmf_obj.k_selection_plot()
-    
-    # Plot & store for many 
+
+    return cnmf_obj
+
+def run_cnmf_consensus(cnmf_obj=None, output_dir=None, name=None, 
+                       components=[7,8,9,10], 
+                       density_thresholds=[0.01,2.0]):
+
+    if cnmf_obj is None:
+        cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
+
     for k in tqdm(components, desc='Running cNMF'):
         for thresh in density_thresholds:
             cnmf_obj.consensus(k=k, density_threshold=thresh, show_clustering=True)
+
+@gin.configurable
+def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
+                       components=[7,8,9,10], n_iter=10, seed=14,
+                       total_workers=-1, density_thresholds=[0.01, 2.0],
+                       num_highvar_genes=2000, beta_loss='frobenius',
+                       output_all_k=True, output_all_thresh=True):
+
+    cnmf_obj = run_cnmf_factorization(output_dir=output_dir, name=name, counts_fn=counts_fn,
+                                      components=components, n_iter=n_iter, seed=seed,
+                                      total_workers=total_workers, num_highvar_genes=num_highvar_genes, 
+                                      beta_loss=beta_loss)
+    cnmf_obj.combine()
+    cnmf_obj.k_selection_plot()
+
+    # Plot & store for many 
+    run_cnmf_consensus(cnmf_obj=cnmf_obj, 
+                       components=components, 
+                       density_thresholds=density_thresholds)
     
     return cnmf_obj, K, components, density_thresholds, output_all_k, output_all_thresh
 
