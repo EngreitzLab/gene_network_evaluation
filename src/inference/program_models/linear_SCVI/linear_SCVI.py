@@ -11,21 +11,23 @@ logging.basicConfig(level = logging.INFO)
 
 # https://docs.scvi-tools.org/en/stable/user_guide/models/linearscvi.html
 @gin.configurable
-def run_linear_SCVI_(adata, layer='X', batch_key=None, label_key=None, 
+def run_linear_SCVI_(adata, layer='X', batch_key=None, labels_key=None, 
                      devices=-1, n_latent=10, max_epochs=250):
   
     import scvi
 
-    if batch_key is not None and label_key is not None:
+    if batch_key is not None and labels_key is not None:
         scvi.model.LinearSCVI.setup_anndata(adata, layer=layer,
                                             batch_key=batch_key,
-                                            label_key=label_key)
+                                            labels_key=labels_key)
     elif batch_key is not None:
         scvi.model.LinearSCVI.setup_anndata(adata, layer=layer,
                                             batch_key=batch_key)
-    elif label_key is not None:
+    elif labels_key is not None:
         scvi.model.LinearSCVI.setup_anndata(adata, layer=layer,
-                                            label_key=label_key)
+                                            labels_key=labels_key)
+    else:
+        scvi.model.LinearSCVI.setup_anndata(adata, layer=layer)
                         
     model = scvi.model.LinearSCVI(adata, n_latent=n_latent)
 
@@ -46,7 +48,7 @@ def run_linear_SCVI_(adata, layer='X', batch_key=None, label_key=None,
     return model, ax, Z_hat, loadings
 
 def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',  
-                    batch_key=None, label_key=None, layer='X', config_path=None, 
+                    batch_key=None, labels_key=None, layer='X', config_path=None, 
                     inplace=True):
     
     # Load method specific parameters
@@ -66,7 +68,7 @@ def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',
     if n_jobs==-1:
         n_jobs=os.cpu_count()
     model, ax, Z_hat, loadings = run_linear_SCVI_(mdata[data_key], layer=layer_,
-                                                  batch_key=batch_key, label_key=label_key,
+                                                  batch_key=batch_key, labels_key=labels_key,
                                                   devices=n_jobs)
 
     # Create new anndata object
@@ -91,7 +93,7 @@ if __name__=='__main__':
     parser.add_argument('-pk', '--prog_key', default='linear_SCVI', typ=str) 
     parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
     parser.add_argument('-bk', '--batch_key', default=None, typ=str) 
-    parser.add_argument('-lk', '--label_key', default=None, typ=str) 
+    parser.add_argument('-lk', '--labels_key', default=None, typ=str) 
     parser.add_argument('--layer', default='X', type=str)
     parser.add_argument('--config_path', default='./linear_SCVI_config.gin', type=str)
     parser.add_argument('--output', action='store_false') 
@@ -102,5 +104,5 @@ if __name__=='__main__':
     mdata = mudata.read(args.mudataObj_path)
 
     run_linear_SCVI(mdata, n_jobs=args.n_jobs, layer=args.layer, prog_key=args.prog_key, 
-                    data_key=args.data_key, batch_key=args.batch_key, label_key=args.label_key, 
+                    data_key=args.data_key, batch_key=args.batch_key, labels_key=args.labels_key, 
                     inplace=args.output, config_path=args.config_path)
