@@ -9,6 +9,17 @@ from tqdm.auto import tqdm
 import logging
 logging.basicConfig(level = logging.INFO)
 
+def plot_training(model, ax):
+
+    train_elbo = model.history["elbo_train"][1:]
+    test_elbo = model.history["elbo_validation"]
+
+    if ax is not None:
+        train_elbo.plot(ax=ax)
+    else:
+        ax = train_elbo.plot()
+    test_elbo.plot(ax=ax)
+
 # https://docs.scvi-tools.org/en/stable/user_guide/models/linearscvi.html
 @gin.configurable
 def run_linear_SCVI_(adata, layer='X', batch_key=None, labels_key=None, 
@@ -36,16 +47,10 @@ def run_linear_SCVI_(adata, layer='X', batch_key=None, labels_key=None,
                 plan_kwargs={"lr": 5e-3}, 
                 check_val_every_n_epoch=10)
 
-    train_elbo = model.history["elbo_train"][1:]
-    test_elbo = model.history["elbo_validation"]
-
-    ax = train_elbo.plot()
-    test_elbo.plot(ax=ax)
-
     Z_hat = model.get_latent_representation()
     loadings = model.get_loadings()
 
-    return model, ax, Z_hat, loadings
+    return model, Z_hat, loadings
 
 def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',  
                     batch_key=None, labels_key=None, layer='X', config_path=None, 
@@ -67,7 +72,7 @@ def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',
     # FIXME: Multi-processing crashes on HPC
     if n_jobs==-1:
         n_jobs=os.cpu_count()
-    model, ax, Z_hat, loadings = run_linear_SCVI_(mdata[data_key], layer=layer_,
+    model, Z_hat, loadings = run_linear_SCVI_(mdata[data_key], layer=layer_,
                                                   batch_key=batch_key, labels_key=labels_key,
                                                   devices=n_jobs)
 
