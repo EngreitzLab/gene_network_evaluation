@@ -11,6 +11,10 @@ This tutorial presents two workflows to evaluate gene programs using enhancer-ge
 A gene program refers to a set of genes identfied analytically and which are putatively co-expressed or co-regulated thanks to their belonging to a similar biological program such as a pathway.
 Here were are using enhancer-gene linkage identified analytically to compute the number of genes directly connected (or reachable) through the linkage. Alternatively, the enhancers linked to the genes of a given program can be used to identify the transcription factor motifs significantly enriched within that program.
 
+Processed linkage and motif files related to the Miami hackathon dataset (GCM1) are available here:
+
+https://figshare.com/articles/dataset/Hackathon_Miami_2024_MorPhiC_data/25106024
+
 The enhancer-promoter linkages are identified using [[https://enhlinktools.readthedocs.io/][Enhlink]] a new computational method inferring linkage from single-cell ATAC-seq and multi-omics datasets.
 
 #+html: <p align="center"><img src="./workflow_presentation.readme.png" /></p>
