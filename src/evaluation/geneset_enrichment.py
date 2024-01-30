@@ -166,7 +166,7 @@ if __name__=='__main__':
     parser.add_argument('-og', '--organism', default='Human', choices={'human', 'mouse'})
     parser.add_argument('-gs', '--library', default='Reactome_2022', type=str)
     parser.add_argument('-db', '--database', default='enrichr', choices={'msigdb', 'enrichr'})
-    parser.add_argument('--output', action='store_false')
+    parser.add_argument('--output', action='store_true')
 
     args = parser.parse_args()
 
@@ -174,7 +174,7 @@ if __name__=='__main__':
     mdata = mudata.read(args.mudataObj_path)
 
     compute_geneset_enrichment(mdata, organism=args.organism, library=args.library,
-                               database=arg.database, n_jobs=args.n_jobs, prog_key=args.prog_key,
+                               database=args.database, n_jobs=args.n_jobs, prog_key=args.prog_key,
                                data_key=args.data_key, inplace=args.output)
 
     mdata.write(args.save_output_path)
