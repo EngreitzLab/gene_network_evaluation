@@ -133,6 +133,9 @@ def load_gene_sets(gene_input):
         if not isinstance(gene_input, list):
             gene_input = [gene_input]
 
+            if len(gene_input) == 1:
+                raise(Exception("File not found: {0}".format(gene_input[0])))
+
         gene_dict["group_0"] = gene_input
 
     return gene_dict
@@ -281,7 +284,7 @@ def connectivity_analysis(linkage, genes, baseline, trials=200):
     graph, nodes = create_linkage_graph(linkage)
     results = defaultdict(list)
 
-    for group, gene_set in genes.items():
+    for group, gene_set in sorted(genes.items()):
         stdout.write("\rProcessing group: {0}...".format(group))
         stdout.flush()
         subgraph, gene_set = get_subgraph(gene_set, nodes, graph)
@@ -305,11 +308,11 @@ def connectivity_analysis(linkage, genes, baseline, trials=200):
             scores = np.asarray(scores)
             pval = 1.0 - scores.argsort()[-1] / trials
 
-            results["group"].append(group)
-            results["p-value"].append(pval)
-            results["score"].append(score)
-            results["score_adj"].append(score_adj)
-            results["linked_genes"].append(linked_genes)
+        results["group"].append(group)
+        results["p-value"].append(pval)
+        results["score"].append(score)
+        results["score_adj"].append(score_adj)
+        results["linked_genes"].append(linked_genes)
 
     results = pd.DataFrame(results)
     results = results.sort_values(by="score_adj", ascending=False)
