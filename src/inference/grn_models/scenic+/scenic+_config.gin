@@ -1,0 +1,11 @@
+scenic+:
+    name: 'scenic+'
+    n_topics: '2;4;8;16;32;48'
+    n_iter: 150
+    alpha: 50
+    alpha_by_topic: TRUE
+    eta: 0.1
+    eta_by_topic: FALSE
+    ntop: 3000
+    scale_factor_impute: 1000000
+    scale_factor_normalize: 10000
