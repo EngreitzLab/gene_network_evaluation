@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 from scipy import stats, sparse
-from scikit_posthocs import posthoc_dscf
+from scikit_posthocs import posthoc_dscf, posthoc_conover, posthoc_dunn
 
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
@@ -34,13 +34,20 @@ def perform_kruskall_wallis(mdata, prog_nam=None,
 # Perfom posthoc test and compute categorical-program score
 def perform_posthoc(mdata, prog_nam=None,
                     prog_key='prog', 
-                    categorical_key='batch'):
+                    categorical_key='batch',
+                    test='dunn'):
     
     prog_df = pd.DataFrame(mdata[prog_key][:, prog_nam].X, columns=[prog_nam])
     prog_df[categorical_key] = mdata[prog_key].obs[categorical_key].astype(str).values
 
     # Create combined statistic with p-vals for each categorical level
-    p_vals = posthoc_dscf(prog_df, val_col=prog_nam, group_col=categorical_key)
+    if test=='dunn':
+        p_vals = posthoc_dunn(prog_df, val_col=prog_nam, group_col=categorical_key)
+    elif test=='conover':
+        p_vals = posthoc_conover(prog_df, val_col=prog_nam, group_col=categorical_key)
+    elif test=='dscf':
+        p_vals = posthoc_dscf(prog_df, val_col=prog_nam, group_col=categorical_key)
+
     for i, category in enumerate(mdata[prog_key].obs[categorical_key].astype(str).unique()):
         min_pval = np.min(p_vals.loc[p_vals.index!=category, category])
         mean_pval = np.mean(p_vals.loc[p_vals.index!=category, category])
@@ -53,7 +60,7 @@ def perform_posthoc(mdata, prog_nam=None,
 
 # TODO: Add one way ANOVA, MANOVA, multi-variate KW
 def compute_categorical_association(mdata, categorical_key='batch', n_jobs=1,
-	                                prog_key='prog', inplace=True):
+	                                prog_key='prog', inplace=True, **kwargs):
     
     #TODO: Don't copy entire mudata only relevant Dataframe
     mdata = mdata.copy() if not inplace else mdata
@@ -79,7 +86,8 @@ def compute_categorical_association(mdata, categorical_key='batch', n_jobs=1,
     Parallel(n_jobs=n_jobs, backend='threading')(delayed(perform_posthoc)(mdata, 
                                                                           prog_key=prog_key,
                                                                           prog_nam=prog_nam, 
-                                                                          categorical_key=categorical_key) \
+                                                                          categorical_key=categorical_key,
+                                                                          **kwargs) \
                                                              for prog_nam in tqdm(mdata[prog_key].var_names,
                                                              desc='Identifying differential {}'.format(categorical_key), 
                                                              unit='programs'))
