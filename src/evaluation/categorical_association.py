@@ -1,6 +1,7 @@
 import os
 import argparse
 
+import mudata
 import numpy as np
 import pandas as pd
 
@@ -10,112 +11,259 @@ from scikit_posthocs import posthoc_dscf, posthoc_conover, posthoc_dunn
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
+import logging
+logging.basicConfig(level = logging.INFO)
+
 # Perform non-parametric test (~one way ANOVA) to compare prog scores across categorical levels
-def perform_kruskall_wallis(mdata, prog_nam=None, 
-                            prog_key='prog', 
-                            categorical_key='batch'):
+def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,  
+                            categorical_key='batch', pseudobulk_key='sample'):
+    """
+    Performs non-parametric one-way ANOVA using specified categorical levels.
+    If pseudobulk key is provided then data is averaged over those levels.
+    Mudata object is updated in place with KW test results.
+
+    ARGS
+        mdata : MuData
+            mudata object containing anndata of program scores and cell-level metadata.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        prog_nam: str
+            index of the feature (mdata[prog_key][:, prog_nam]) which is the response variable.
+        categorical_key: str
+            index of the categorical levels (mdata[prog_key].obs[categorical_key]) being tested.
+        pseudobulk_key: str (optional)
+            index of the feature summarisation (mean) levels (mdata[prog_key].obs[pseudobulk_key]).
     
+    UPDATES
+        if pseudobulk_key is None:
+            store_key = categorical_key
+        else:
+            store_key = '_'.join(categorical_key, pseudobulk_key)
+        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
+        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
+        mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]
+
+    """
     samples = []
-    for category in mdata[prog_key].obs[categorical_key].astype(str).unique():
-        sample_ = mdata[prog_key][mdata[prog_key].obs[categorical_key].astype(str)==category, 
-                                  prog_nam].X[:,0]
-        if sparse.issparse(sample_):
-            sample_ = sample_.toarray().flatten()
-        samples.append(sample_)
+    if pseudobulk_key is None:
+        # Run with single-cells are individual data points
+        for category in mdata[prog_key].obs[categorical_key].astype(str).unique():
+            sample_ = mdata[prog_key][mdata[prog_key].obs[categorical_key].astype(str)==category, 
+                                        prog_nam].X[:,0]
+            if sparse.issparse(sample_):
+                sample_ = sample_.toarray().flatten()
+            samples.append(sample_)
+    else:
+        # Pseudobulk the data before performing KW test (ideally these are biological replicates)
+        if sparse.issparse(mdata[prog_key][:, prog_nam].X[:,0]):
+            prog_data = mdata[prog_key][:, prog_nam].X[:,0].toarray()
+        else:
+            prog_data = mdata[prog_key][:, prog_nam].X[:,0]
+        prog_data = pd.DataFrame(prog_data, columns=[prog_nam], index=mdata[prog_key].obs.index)
+        prog_data[categorical_key] = mdata[prog_key].obs[categorical_key]
+        prog_data[pseudobulk_key] = mdata[prog_key].obs[pseudobulk_key]
+        prog_data = prog_data.groupby([pseudobulk_key, categorical_key]).mean().dropna().reset_index()
+
+        for category in mdata[prog_key].obs[categorical_key].astype(str).unique():
+            if len(prog_data.loc[prog_data[categorical_key]==category, pseudobulk_key].unique()) < 3:
+                raise ValueError('Cannot use less than 3 replicates per categorical level')
+            sample_ = prog_data.loc[prog_data[categorical_key].astype(str)==category, prog_nam].values.flatten()
+            samples.append(sample_)
 
     stat, pval = stats.kruskal(*samples, nan_policy='propagate')
 
-    mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(categorical_key)] = stat
-    mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(categorical_key)] = pval
+    # Store results
+    if pseudobulk_key is None:
+        store_key = categorical_key
+    else:
+        store_key = '_'.join((categorical_key, pseudobulk_key))
+
+    mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)] = stat
+    mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] = pval
 
     mdata[prog_key].uns['{}_association_categories'.format(categorical_key)] = \
     mdata[prog_key].obs[categorical_key].astype(str).unique()
 
 # Perfom posthoc test and compute categorical-program score
-def perform_posthoc(mdata, prog_nam=None,
-                    prog_key='prog', 
-                    categorical_key='batch',
+def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
+                    categorical_key='batch', pseudobulk_key='sample',
                     test='dunn'):
-    
-    prog_df = pd.DataFrame(mdata[prog_key][:, prog_nam].X, columns=[prog_nam])
-    prog_df[categorical_key] = mdata[prog_key].obs[categorical_key].astype(str).values
 
-    # Create combined statistic with p-vals for each categorical level
+    """
+    Performs post-hoc tests for Kruskall-Wallis test and 
+    pairwise p-vals b/w categorical levels are reduced via mean and min.
+    If pseudobulk key is provided then data is averaged over those levels.
+    Mudata object is updated in place with KW test results. 
+
+    ARGS
+        mdata : MuData
+            mudata object containing anndata of program scores and cell-level metadata.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        prog_nam: str
+            index of the feature (mdata[prog_key][:, prog_nam]) which is the response variable.
+        categorical_key: str
+            index of the categorical levels (mdata[prog_key].obs[categorical_key]) being tested.
+        pseudobulk_key: str (optional)
+            index of the feature summarisation (mean) levels (mdata[prog_key].obs[pseudobulk_key]).
+        test: {'conover','dunn', 'dscf'}
+            posthoc test to use to test categorical levels.
+    
+    UPDATES
+        if pseudobulk_key is None:
+            store_key = categorical_key
+        else:
+            store_key = '_'.join(categorical_key, pseudobulk_key)
+        mdata[prog_key].varm['{}_association_min_pval'.format(store_key)]
+        mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] 
+        mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
+
+    """
+    
+    store_key = categorical_key
+    prog_df = pd.DataFrame(mdata[prog_key][:, prog_nam].X, 
+                           columns=[prog_nam], 
+                           index=mdata[prog_key].obs.index)
+    prog_df[categorical_key] = mdata[prog_key].obs[categorical_key].astype(str).values
+    if pseudobulk_key is not None:
+        store_key = '_'.join((categorical_key, pseudobulk_key))
+        prog_df[pseudobulk_key] = pseudobulk_key
+        prog_df = prog_df.groupby([pseudobulk_key, categorical_key]).mean().reset_index()
+
+    # Peform post hoc tests
     if test=='dunn':
         p_vals = posthoc_dunn(prog_df, val_col=prog_nam, group_col=categorical_key)
     elif test=='conover':
         p_vals = posthoc_conover(prog_df, val_col=prog_nam, group_col=categorical_key)
     elif test=='dscf':
         p_vals = posthoc_dscf(prog_df, val_col=prog_nam, group_col=categorical_key)
-
+    
+    # Create combined statistic with p-vals for each categorical level
     for i, category in enumerate(mdata[prog_key].obs[categorical_key].astype(str).unique()):
         min_pval = np.min(p_vals.loc[p_vals.index!=category, category])
         mean_pval = np.mean(p_vals.loc[p_vals.index!=category, category])
 
         prog_idx = mdata[prog_key].var.index.get_loc(prog_nam)
-        mdata[prog_key].varm['{}_association_min_pval'.format(categorical_key)][prog_idx,i] = min_pval
-        mdata[prog_key].varm['{}_association_mean_pval'.format(categorical_key)][prog_idx,i] = mean_pval
 
-    mdata[prog_key].uns['{}_association_pvals'.format(categorical_key)][prog_nam] = p_vals
+        # Store results
+        mdata[prog_key].varm['{}_association_min_pval'.format(store_key)][prog_idx,i] = min_pval
+        mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)][prog_idx,i] = mean_pval
+         
+    mdata[prog_key].uns['{}_association_pvals'.format(store_key)][prog_nam] = p_vals      
 
-# TODO: Add one way ANOVA, MANOVA, multi-variate KW
-def compute_categorical_association(mdata, categorical_key='batch', n_jobs=1,
-	                                prog_key='prog', inplace=True, **kwargs):
+# TODO: Add one way ANOVA, MANOVA, multi-variate KW, logistic-regression
+def compute_categorical_association(mdata, prog_key='prog', categorical_key='batch', 
+                                    pseudobulk_key=None, n_jobs=1, inplace=True, 
+                                    **kwargs):
+
+    """
+    Compute association of continous features with categorical levels.
+    Currently only the Kruskall-Wallis test is implemented to determine if
+    any categorical level has a significant association and posthoc tests
+    determine which categorical levels have significant associations.
+
+    ARGS
+        mdata : MuData
+            mudata object containing anndata of program scores and cell-level metadata.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        categorical_key: str
+            index of the categorical levels (mdata[prog_key].obs[categorical_key]) being tested.
+        pseudobulk_key: str (optional)
+            index of the feature summarisation (mean) levels (mdata[prog_key].obs[pseudobulk_key]).
+        n_jobs: int (default: 1)
+            number of threads to run processes on.
+        inplace: Bool (default: True)
+            update the mudata object inplace or return a copy
     
-    #TODO: Don't copy entire mudata only relevant Dataframe
-    mdata = mdata.copy() if not inplace else mdata
+    CREATES
+        if pseudobulk_key is None:
+            store_key = categorical_key
+        else:
+            store_key = '_'.join(categorical_key, pseudobulk_key)
+        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
+        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
+        mdata[prog_key].varm['{}_association_min_pval'.format(store_key)]
+        mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] 
+        mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
+        mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]
     
-    mdata[prog_key].var['{}_kruskall_wallis_stat'.format(categorical_key)] = None
-    mdata[prog_key].var['{}_kruskall_wallis_pval'.format(categorical_key)] = None
+    RETURNS 
+        if not inplace:
+            mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
+            mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
+            mdata[prog_key].varm['{}_association_min_pval'.format(store_key)]
+            mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] 
+            mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
+            mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]           
+
+    """
+    if not inplace:
+        mdata = mudata.MuData({prog_key: mdata[prog_key].copy()})
     
-    # Run in parallel (max n_jobs=num_progs)
-    Parallel(n_jobs=n_jobs, backend='threading')(delayed(perform_kruskall_wallis)(mdata, 
-                                                             prog_key=prog_key,
-                                                             prog_nam=prog_nam, 
-                                                             categorical_key=categorical_key) \
-                                                             for prog_nam in tqdm(mdata[prog_key].var_names,
-                                                             desc='Testing {} association'.format(categorical_key), 
-                                                             unit='programs'))
+    if pseudobulk_key is None:
+        logging.info('Performing tests at single-cell level. Significance will likely be inflated')
+        store_key = categorical_key
+    else:
+        logging.info('Perform testing by averaging over {}'.format(pseudobulk_key))
+        store_key = '_'.join((categorical_key, pseudobulk_key))
+
+    mdata[prog_key].var['{}_kruskall_wallis_stat'.format(store_key)] = None
+    mdata[prog_key].var['{}_kruskall_wallis_pval'.format(store_key)] = None
     
-    mdata[prog_key].varm['{}_association_min_pval'.format(categorical_key)] = np.zeros((mdata[prog_key].shape[1],
-                                                               mdata[prog_key].obs[categorical_key].unique().shape[0]))
-    mdata[prog_key].varm['{}_association_mean_pval'.format(categorical_key)] = np.ones((mdata[prog_key].shape[1],
-                                                              mdata[prog_key].obs[categorical_key].unique().shape[0]))
-    mdata[prog_key].uns['{}_association_pvals'.format(categorical_key)] = {}
+    # Run KW test
+    Parallel(n_jobs=n_jobs, 
+             backend='threading')(delayed(perform_kruskall_wallis)(mdata, 
+                                                                   prog_key=prog_key,
+                                                                   prog_nam=prog_nam, 
+                                                                   categorical_key=categorical_key,
+                                                                   pseudobulk_key=pseudobulk_key) \
+                                                            for prog_nam in tqdm(mdata[prog_key].var_names,
+                                                            desc='Testing {} association'.format(categorical_key), 
+                                                            unit='programs'))
     
-    Parallel(n_jobs=n_jobs, backend='threading')(delayed(perform_posthoc)(mdata, 
-                                                                          prog_key=prog_key,
-                                                                          prog_nam=prog_nam, 
-                                                                          categorical_key=categorical_key,
-                                                                          **kwargs) \
-                                                             for prog_nam in tqdm(mdata[prog_key].var_names,
-                                                             desc='Identifying differential {}'.format(categorical_key), 
-                                                             unit='programs'))
+    mdata[prog_key].varm['{}_association_min_pval'.format(store_key)] = \
+    np.zeros((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
+    mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] = \
+    np.ones((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
+    mdata[prog_key].uns['{}_association_pvals'.format(store_key)] = {}
     
-    if not inplace: return (mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(categorical_key), 
-                                                        '{}_kruskall_wallis_pval'.format(categorical_key)]],
-                           mdata[prog_key].uns['{}_association_categories'.format(categorical_key)],
-                           mdata[prog_key].varm['{}_association_stat'.format(categorical_key)], 
-                           mdata[prog_key].varm['{}_association_pval'.format(categorical_key)],
-                           mdata[prog_key].uns['{}_association_pvals'.format(categorical_key)]
+    # Run posthoc-tests
+    Parallel(n_jobs=n_jobs, 
+             backend='threading')(delayed(perform_posthoc)(mdata, 
+                                                           prog_key=prog_key,
+                                                           prog_nam=prog_nam, 
+                                                           categorical_key=categorical_key,
+                                                           pseudobulk_key=pseudobulk_key,
+                                                           **kwargs) \
+                                                        for prog_nam in tqdm(mdata[prog_key].var_names,
+                                                        desc='Identifying differential {}'.format(categorical_key), 
+                                                        unit='programs'))
+    
+    # Returning test results only
+    if not inplace: return (mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(store_key), 
+                                                        '{}_kruskall_wallis_pval'.format(store_key)]],
+                           mdata[prog_key].uns['{}_association_categories'.format(store_key)],
+                           mdata[prog_key].varm['{}_association_min_pval'.format(store_key)], 
+                           mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)],
+                           mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
                            )
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('categorical_key') 
-    parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('categorical_key', type=str)
+    parser.add_argument('--pseudobulk_key', default=None, type=str) 
     parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
 
-    import mudata
     mdata = mudata.read(args.mudataObj_path)
-
-    compute_categorical_association(mdata, categorical_key=args.categorical_key, n_jobs=args.n_jobs,
-                                    prog_key=args.prog_key, inplace=args.output)
+    compute_categorical_association(mdata, prog_key=args.prog_key, categorical_key=args.categorical_key,
+                                    pseudobulk_key=args.pseudobulk_key, n_jobs=args.n_jobs, inplace=args.output)
 
 
 
