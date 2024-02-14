@@ -14,18 +14,18 @@ def run_motif_enrichment(config, input_, coord_file_loc,
     # Read mudata
     mdata = mu.read(input_)
 
-    # Compute explained variance ratio
+    # Compute motif enrichment
     if config['{}_coordinates'.format(seq_class)] is not None:
         compute_motif_enrichment(mdata, 
                                 motif_file=coord_file_loc, 
                                 seq_file=config['genome_fasta'], 
                                 coords_file=config['{}_coordinates'.format(seq_class)], 
-                                n_jobs=-1, 
                                 prog_key=config['prog_key'],
                                 data_key=config['data_key'],
                                 output_loc=output_loc,
                                 sig=sig, 
                                 num_genes=None, 
+                                n_jobs=-1, 
                                 inplace=True)
     else:
         logging.info('No coordinate file was provided.')
