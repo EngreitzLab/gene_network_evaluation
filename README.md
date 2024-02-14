@@ -1,4 +1,10 @@
-# Modelling gene programs as latent variables
+## Assessing the biological relevance of data-driven gene networks
+
+Gene networks inferred from single-cell genomic data (scRNASeq., scATACseq., multi-omics and Perturb-seq.) are useful in discovering contextual biological mechanisms. These networks can be viewed as data-driven hypotheses of gene interactions. We aim to implement a flexible framework to evaluate the plausibility of networks inferred by computational methods. The assessment is broken down into themes such as goodness if fit (ability to explain the data), co-regulation, mechanistic interactions etc. Under each theme, multiple evaluation tasks are conceptualised and implemented using appropriate statistical tests.
+
+Gene network inference methods are further classified as gene program inference, gene regulatory network (GRN) inference and enchancer-gene (E2G) linking methods. An overview of each method class is given below.
+
+### Modelling gene programs as latent variables
 Gene program inference methods are "factor analysis" style latent variable models that decompose single-cell data into a $cell \times program$ and a $program \times feature$ matrices. The models can generally be described with the following expression. For single-cell data $\textbf{X} \in \mathbb{R}^{c \times f}$ with $c$ cells and $f$ features,
 
 $$\Large \textbf{X} = P \cdot W + \epsilon$$
@@ -7,14 +13,22 @@ where $\textbf{P} \in \mathbb{R}^{c \times k}$ and $\textbf{W} \in \mathbb{R}^{k
 
 A few examples of such models are [cNMF](https://github.com/dylkot/cNMF), [LDVAE](https://docs.scvi-tools.org/en/stable/user_guide/models/linearscvi.html), [f-scLVM](https://github.com/scfurl/f-scLVM). More advanced models consider additional inputs or work on multi-omic data such as [Spectra](https://github.com/dpeerlab/spectra/), [muVI](https://github.com/MLO-lab/MuVI). 
 
-# Evaluating the biological basis of learnt programs
-The goal is to develop evaluation criteria covering various technical and biological facets for programs inferred from these models. This process includes both coming up with a concept and then an implementation. A list of implemented or planned criteria can be found below.
+### Gene regulatory network inference
 
-# Structure of the evaluation pipeline
-* Single-cell omics data and program scores are stored in the mudata format (see [mudata documentation](https://mudata.readthedocs.io/en/latest/)).
-* <ins>Templates for implementing methods or evaluations can be found in **src/evaluation/** or **src/inference/program_methods/**
+Gene regulatory networks are tri-partite graphs connecting transcription factors (TFs) - candidate regulatory elements (CREs) - genes. Such methods aim to model the regulatory process governing gene expression and are typically trained using expression and genomic data together. Examples of such methods are [SCENIC+](https://doi.org/10.1038/s41592-023-01938-4).
+
+### Enhancer-gene linking
+
+Enhancer-gene linking methods aim to identify and link enhancer sequences to genes. The methods require genomic data such as ATACseq. but may integrate expression data as well. The methods aim to quantify the regulatory impact of enhancer sequences on downstream genes (and gene expression). Examples of such methods are [scE2G](https://github.com/EngreitzLab/sc-E2G), [ABC](https://www.nature.com/articles/s41588-019-0538-0) and [Enhlink](https://www.biorxiv.org/content/10.1101/2023.05.11.540453v1).
+
+## Structure of the evaluation pipeline
+* Single-cell omics data and outputs from computational inference are stored in the mudata format (see [mudata documentation](https://mudata.readthedocs.io/en/latest/)).
+* Templates for implementing evaluations or method-wrappers can be found in ```src/evaluation/``` and ```src/inference/``` respectively.
+* Evaluations and methods implemented under ```src/``` are stitched together in an evaluation pipeline ```smk/```
   
 ![image](https://github.com/EngreitzLab/gene_program_evaluation/assets/25486108/eb14e159-de07-47bd-87d4-12d5b94102fa)
+
+### Evaluating the biological basis of inferred gene programs
 
 | Criterion    | Implementation | External resource | Interpretation | Caveats |
 | -------- | ------- | -------- | ------- | ------- |
