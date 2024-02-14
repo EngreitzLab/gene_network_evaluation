@@ -45,12 +45,15 @@ def create_test_data(num_batches=None, num_obs=None,
     obs = []   
     for batch in tqdm(range(num_batches), desc='Generating batch', unit='batches'):
 
+        # Randomly sample means
         means = np.random.uniform(1, 10, num_vars)
     
+        # Generate Poisson distributed data
         poisson_data_ = []
         for mean in means:
             poisson_data_.append(np.random.poisson(mean, size=num_obs))
         
+        # Introduce correlation by taking random combinations of sampled Poissons
         poisson_data = []
         for i in range(len(poisson_data_)):
             rand_idx = np.random.randint(10, size=3)
@@ -68,6 +71,7 @@ def create_test_data(num_batches=None, num_obs=None,
     obs['batch'] = obs['batch'].astype(str)
     exp_data = AnnData(X=data, obs=obs, var=var)
 
+    # Use factor analysis to simulate gene programs
     fa = FactorAnalysis(n_components=num_vars)
     fa_data = fa.fit_transform(data)
     prog_data = AnnData(X=fa_data, obs=obs)
