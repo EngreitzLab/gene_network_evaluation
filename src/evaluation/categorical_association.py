@@ -84,6 +84,34 @@ def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,
     mdata[prog_key].uns['{}_association_categories'.format(categorical_key)] = \
     mdata[prog_key].obs[categorical_key].astype(str).unique()
 
+# Perform post-hoc analysis with correlation tests
+def perform_correlation(prog_df, val_col=None, group_col=None, 
+                        correlation='pearsonr', mode='one_vs_one'):
+
+    categories = prog_df[group_col].unique().tolist()
+    
+    if mode=='one_vs_all':
+        raise NotImplementedError()
+    elif mode=='one_vs_one':
+        pvals = pd.DataFrame(index=categories, columns=categories)
+
+        for idx in pvals.index.values:
+            for col in pvals.columns.values:
+                if idx==col:
+                    continue
+                else:
+                    test_df = prog_df.loc[prog_df[group_col].isin([idx, col])]
+                    if correlation=='pearsonr':
+                        stat, pval = stats.pearsonr(test_df[val_col], 
+                                                    test_df[group_col].astype('category').cat.codes)
+                        pvals.loc[idx, col] = pval
+                    elif correlation=='kendalltau':
+                        stat, pval = stats.kendalltau(test_df[val_col], 
+                                                      test_df[group_col].astype('category').cat.codes)
+                        pvals.loc[idx, col] = pval
+
+    return pvals
+
 # Perfom posthoc test and compute categorical-program score
 def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
                     categorical_key='batch', pseudobulk_key='sample',
@@ -106,7 +134,7 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
             index of the categorical levels (mdata[prog_key].obs[categorical_key]) being tested.
         pseudobulk_key: str (optional)
             index of the feature summarisation (mean) levels (mdata[prog_key].obs[pseudobulk_key]).
-        test: {'conover','dunn', 'dscf'}
+        test: {'conover','dunn', 'dscf', 'pearsonr', 'kendalltau'}
             posthoc test to use to test categorical levels.
     
     UPDATES
@@ -114,9 +142,9 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
             store_key = categorical_key
         else:
             store_key = '_'.join(categorical_key, pseudobulk_key)
-        mdata[prog_key].varm['{}_association_min_pval'.format(store_key)]
-        mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] 
-        mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
+        mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)]
+        mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)] 
+        mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
 
     """
     
@@ -137,7 +165,13 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
         p_vals = posthoc_conover(prog_df, val_col=prog_nam, group_col=categorical_key)
     elif test=='dscf':
         p_vals = posthoc_dscf(prog_df, val_col=prog_nam, group_col=categorical_key)
-    
+    elif test=='pearsonr':
+        p_vals = perform_correlation(prog_df, val_col=prog_nam, group_col=categorical_key,
+                                     correlation='pearsonr')
+    elif test=='kendalltau':
+        p_vals = perform_correlation(prog_df, val_col=prog_nam, group_col=categorical_key,
+                                     correlation='kendalltau')
+
     # Create combined statistic with p-vals for each categorical level
     for i, category in enumerate(mdata[prog_key].obs[categorical_key].astype(str).unique()):
         min_pval = np.min(p_vals.loc[p_vals.index!=category, category])
@@ -146,14 +180,14 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
         prog_idx = mdata[prog_key].var.index.get_loc(prog_nam)
 
         # Store results
-        mdata[prog_key].varm['{}_association_min_pval'.format(store_key)][prog_idx,i] = min_pval
-        mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)][prog_idx,i] = mean_pval
+        mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)][prog_idx,i] = min_pval
+        mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)][prog_idx,i] = mean_pval
          
-    mdata[prog_key].uns['{}_association_pvals'.format(store_key)][prog_nam] = p_vals      
+    mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)][prog_nam] = p_vals      
 
 # TODO: Add one way ANOVA, MANOVA, multi-variate KW, logistic-regression
 def compute_categorical_association(mdata, prog_key='prog', categorical_key='batch', 
-                                    pseudobulk_key=None, n_jobs=1, inplace=True, 
+                                    pseudobulk_key=None, test='dunn', n_jobs=1, inplace=True, 
                                     **kwargs):
 
     """
@@ -171,6 +205,8 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
             index of the categorical levels (mdata[prog_key].obs[categorical_key]) being tested.
         pseudobulk_key: str (optional)
             index of the feature summarisation (mean) levels (mdata[prog_key].obs[pseudobulk_key]).
+        test: {'conover','dunn', 'dscf', 'pearsonr', 'kendalltau'}
+            posthoc test to use to test categorical levels.
         n_jobs: int (default: 1)
             number of threads to run processes on.
         inplace: Bool (default: True)
@@ -180,9 +216,9 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
         if not inplace:
             mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
             mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
-            mdata[prog_key].varm['{}_association_min_pval'.format(store_key)]
-            mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] 
-            mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
+            mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)]
+            mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)] 
+            mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
             mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]           
 
     """
@@ -210,11 +246,11 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
                                                             desc='Testing {} association'.format(categorical_key), 
                                                             unit='programs'))
     
-    mdata[prog_key].varm['{}_association_min_pval'.format(store_key)] = \
+    mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)] = \
     np.zeros((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
-    mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] = \
+    mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)] = \
     np.ones((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
-    mdata[prog_key].uns['{}_association_pvals'.format(store_key)] = {}
+    mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)] = {}
     
     # Run posthoc-tests
     Parallel(n_jobs=n_jobs, 
@@ -223,7 +259,7 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
                                                            prog_nam=prog_nam, 
                                                            categorical_key=categorical_key,
                                                            pseudobulk_key=pseudobulk_key,
-                                                           **kwargs) \
+                                                           test=test) \
                                                         for prog_nam in tqdm(mdata[prog_key].var_names,
                                                         desc='Identifying differential {}'.format(categorical_key), 
                                                         unit='programs'))
@@ -232,9 +268,9 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
     if not inplace: return (mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(store_key), 
                                                         '{}_kruskall_wallis_pval'.format(store_key)]],
                            mdata[prog_key].uns['{}_association_categories'.format(store_key)],
-                           mdata[prog_key].varm['{}_association_min_pval'.format(store_key)], 
-                           mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)],
-                           mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
+                           mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)], 
+                           mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)],
+                           mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
                            )
 	
 if __name__=='__main__':
@@ -243,6 +279,7 @@ if __name__=='__main__':
     parser.add_argument('mudataObj_path')
     parser.add_argument('categorical_key', type=str)
     parser.add_argument('--pseudobulk_key', default=None, type=str) 
+    parser.add_argument('--test', default='dunn', type=str) 
     parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
     parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('--output', action='store_false') 
@@ -251,7 +288,8 @@ if __name__=='__main__':
 
     mdata = mudata.read(args.mudataObj_path)
     compute_categorical_association(mdata, prog_key=args.prog_key, categorical_key=args.categorical_key,
-                                    pseudobulk_key=args.pseudobulk_key, n_jobs=args.n_jobs, inplace=args.output)
+                                    pseudobulk_key=args.pseudobulk_key, test=args.test, n_jobs=args.n_jobs, 
+                                    inplace=args.output)
 
 
 
