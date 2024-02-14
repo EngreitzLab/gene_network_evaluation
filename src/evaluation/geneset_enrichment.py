@@ -1,6 +1,7 @@
 import os
 import argparse
 
+import mudata
 import numpy as np
 import pandas as pd
 from anndata import AnnData
@@ -10,6 +11,9 @@ from gseapy import Msigdb
 from gseapy import Biomart
 
 from tqdm.auto import tqdm
+
+import logging
+logging.basicConfig(level = logging.INFO)
 
 # Convert everything to human format (upper-case)
 # Maybe better to shift this to the data loader
@@ -55,9 +59,9 @@ def perform_ssGSEA():
     raise NotImplementedError()
 
 # pre-ranked GSEA using loadings
-def perform_prerank(mdata, prog_nam=None, geneset=None, library=None,
-                    n_jobs=1, prog_key='prog', data_key='rna', 
-                    **kwargs):
+def perform_prerank(mdata, prog_key='prog', data_key='rna',
+                    prog_nam=None, geneset=None, library=None,
+                    n_jobs=1, **kwargs):
 
     # Gene names in human (upper case) format
     if 'var_names' in mdata[prog_key].uns.keys():
@@ -108,11 +112,45 @@ def perform_prerank(mdata, prog_nam=None, geneset=None, library=None,
             pre_res[value].values.reshape(1,-1)
 
 # Compute gene set enrichment analysis using loadings
-def compute_geneset_enrichment(mdata, organism='human', library='h.all', database='msigdb',
-                               n_jobs=1, prog_key='prog', data_key='rna', inplace=True, **kwargs):
+def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', 
+                               organism='human', library='Reactome_2022', 
+                               database='enrichr', n_jobs=1, inplace=True, 
+                               **kwargs):
+
+    """
+    Perform GSEA using loadings are preranked gene lists.
+
+    ARGS
+        mdata : MuData
+            mudata object containing anndata of program scores and cell-level metadata.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        data_key: str
+            index of the genomic data anndata object (mdata[data_key]) in the mudata object.
+        organism: {'human', 'mouse'} (default: 'human')
+            species to which the sequencing data was aligned to.
+        library: str (default: Reactome_2022)
+            gene-set library to use for computing enrichment.
+            MsigDB https://www.gsea-msigdb.org/gsea/msigdb
+            Enrichr https://maayanlab.cloud/Enrichr/#libraries
+        database: {'msigdb', 'enrichr'} (default: 'enrichr')
+            database of gene-set libraries to use.
+        n_jobs: int (default: 1)
+            number of threads to run processes on.
+        inplace: Bool (default: True)
+            update the mudata object inplace or return a copy
+       
+    RETURNS 
+        if not inplace:
+            mdata[prog_key].uns['gsea_varmap_{}'.format(library)].keys(), 
+            mdata[prog_key].varm,
+            mdata[prog_key].uns['genesets_{}'.format(library)]        
+
+    """
     
-    #TODO: Don't copy entire mudata only relevant Dataframe
-    mdata = mdata.copy() if not inplace else mdata
+    if not inplace:
+        mdata = mudata.MuData({prog_key: mdata[prog_key].copy(),
+                               data_key: mdata[data_key].copy()})
 
     # Get geneset
     geneset = get_geneset(organism, library, database)
@@ -122,7 +160,8 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
     X_ = np.zeros((mdata[prog_key].shape[1], 
                   len(geneset.keys())))
     X_[:] = np.nan
-                                  
+
+    logging.info('If genes are tied in rankings there order is arbitrary. Check log for warnings.')                     
     mdata[prog_key].uns['gsea_varmap_{}'.format(library)] = {'ES_{}'.format(library):'ES',
                                                              'NES_{}'.format(library):'NES',
                                                              'p_values_{}'.format(library):'NOM p-val',
@@ -151,29 +190,26 @@ def compute_geneset_enrichment(mdata, organism='human', library='h.all', databas
 
     # TODO: Run ssGSEA using loadings
     # Conceptually programs represent reduced sample dimensionality
-
     if not inplace: return (mdata[prog_key].uns['gsea_varmap_{}'.format(library)].keys(), 
                             mdata[prog_key].varm,
-                            mdata[prog_key].uns['gsea_{}'.format(library)])
+                            mdata[prog_key].uns['genesets_{}'.format(library)])
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('-n', '--n_jobs', default=1, type=int)
-    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', type=str)
     parser.add_argument('-og', '--organism', default='Human', choices={'human', 'mouse'}) 
     parser.add_argument('-gs', '--library', default='Reactome_2022', type=str) 
     parser.add_argument('-db', '--database', default='enrichr', choices={'msigdb', 'enrichr'}) 
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str)
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
 
-    import mudata
     mdata = mudata.read(args.mudataObj_path)
-
-    compute_geneset_enrichment(mdata, organism=args.organism, library=args.library,
-                               database=arg.database, n_jobs=args.n_jobs, prog_key=args.prog_key, 
-                               data_key=args.data_key, inplace=args.output)
+    compute_geneset_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, 
+                               organism=args.organism, library=args.library, database=arg.database, 
+                               n_jobs=args.n_jobs, inplace=args.output)
 

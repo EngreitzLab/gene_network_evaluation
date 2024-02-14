@@ -31,13 +31,38 @@ def run_factor_analysis_(exp_data, n_components=10, random_state=0, **kwargs):
 def run_factor_analysis(mdata, prog_key='factor_analysis', 
                         data_key='rna', layer='X', config_path=None, 
                         inplace=True):
+
+    """
+    Perform gene program inference using factor analysis.
+    
+    https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.FactorAnalysis.html
+
+    ARGS:
+        mdata : MuData
+            mudata object containing anndata of data and cell-level metadata.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        data_key: str
+            index of the genomic data anndata object (mdata[data_key]) in the mudata object.
+        layer: str (default: X)
+            anndata layer (mdata[data_key].layers[layer]) where the data is stored.
+        config_path: str
+            path to gin configurable config file containing method specific parameters.
+        inplace: Bool (default: True)
+            update the mudata object inplace or return a copy
+
+    RETURNS:
+        if not inplace:
+            mdata
+    
+    """
     
     # Load method specific parameters
     try: gin.parse_config_file(config_path)
     except: raise ValueError('gin config file could not be found')
 
-    #TODO: Don't copy entire mudata only relevant Dataframe
-    mdata = mdata.copy() if not inplace else mdata
+    if not inplace:
+        mdata = mudata.MuData({data_key: mdata[data_key].copy()})
 
     if layer=='X':
         exp_data = mdata[data_key].X
@@ -52,7 +77,7 @@ def run_factor_analysis(mdata, prog_key='factor_analysis',
     mdata[prog_key].varm['loadings'] = fa.components_
     mdata[prog_key].uns['loadings_genes'] = mdata[data_key].var_names.tolist()
 
-    if not inplace: return mdata[prog_key]
+    if not inplace: return mdata
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
@@ -66,9 +91,8 @@ if __name__=='__main__':
 
     args = parser.parse_args()
 
-    import mudata
     mdata = mudata.read(args.mudataObj_path)
-
-    run_factor_analysis(mdata, layer=args.layer, prog_key=args.prog_key, 
-                        data_key=args.data_key, inplace=args.output, 
-                        config_path=args.config_path)
+    run_factor_analysis(mdata, prog_key=args.prog_key, 
+                        data_key=args.data_key, layer=args.layer, 
+                        config_path=args.config_path,
+                        inplace=args.output)

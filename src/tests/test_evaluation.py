@@ -14,8 +14,8 @@ def test_explained_variance_ratio(mdata):
     try: assert round(mdata['prog'].var['explained_variance_ratio'].sum(),3)==1
     except: raise AssertionError('Explained variance')
 
-# def test_categorical_association(mdata):
-#    assert
+def test_categorical_association(mdata):
+   raise NotImplementedError()
 
 def test_gene_enrichment(mdata):
     try: compute_geneset_enrichment(mdata)
@@ -42,6 +42,6 @@ if __name__=='__main__':
     mdata = create_test_data()
 
     test_explained_variance_ratio(mdata)
-    # test_batch_association(mdata)
+    # test_categorical_association(mdata)
     test_gene_enrichment(mdata)
     # test_motif_enrichment(mdata, coords_file, seq_file_loc)

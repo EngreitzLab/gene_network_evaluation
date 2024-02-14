@@ -52,16 +52,48 @@ def run_linear_SCVI_(adata, layer='X', batch_key=None, labels_key=None,
 
     return model, Z_hat, loadings
 
-def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',  
-                    batch_key=None, labels_key=None, layer='X', config_path=None, 
+def run_linear_SCVI(mdata, batch_key=None, labels_key=None,
+                    prog_key='linear_SCVI', data_key='rna',  
+                    layer='X', config_path=None, n_jobs=1, 
                     inplace=True):
+
+    """
+    Perform gene program inference using linear SCVI.
+    
+    https://docs.scvi-tools.org/en/stable/user_guide/models/linearscvi.html
+
+    ARGS:
+        mdata : MuData
+            mudata object containing anndata of data and cell-level metadata.
+        batch_key: str
+            cell metadata key (mdata[data_key].obs[batch_key]) under which batch labels are stored.
+        labels_key: str
+            cell metadata key (mdata[data_key].obs[labels_key]) under which celltype labels are stored.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        data_key: str
+            index of the genomic data anndata object (mdata[data_key]) in the mudata object.
+        layer: str (default: X)
+            anndata layer (mdata[data_key].layers[layer]) where the data is stored.
+        config_path: str
+            path to gin configurable config file containing method specific parameters.
+        n_jobs: int (default: 1)
+            number of threads to run processes on.
+        inplace: Bool (default: True)
+            update the mudata object inplace or return a copy
+
+    RETURNS:
+        if not inplace:
+            mdata
+    
+    """
     
     # Load method specific parameters
     try: gin.parse_config_file(config_path)
     except: raise ValueError('gin config file could not be found')
 
-    #TODO: Don't copy entire mudata only relevant Dataframe
-    mdata = mdata.copy() if not inplace else mdata
+    if not inplace:
+        mdata = mudata.MuData({data_key: mdata[data_key].copy()})
 
     if layer=='X':
         layer_=None
@@ -88,26 +120,24 @@ def run_linear_SCVI(mdata, n_jobs=-1, prog_key='linear_SCVI', data_key='rna',
         if '_scvi' in key:
             mdata[prog_key].uns[key] = mdata[data_key].uns[key]
 
-    if not inplace: return mdata[prog_key]
+    if not inplace: return mdata
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('-n', '--n_jobs', default=1, type=int)
-    parser.add_argument('-pk', '--prog_key', default='linear_SCVI', typ=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
     parser.add_argument('-bk', '--batch_key', default=None, typ=str) 
     parser.add_argument('-lk', '--labels_key', default=None, typ=str) 
+    parser.add_argument('-pk', '--prog_key', default='linear_SCVI', typ=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
     parser.add_argument('--layer', default='X', type=str)
     parser.add_argument('--config_path', default='./linear_SCVI_config.gin', type=str)
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
 
-    import mudata
     mdata = mudata.read(args.mudataObj_path)
-
-    run_linear_SCVI(mdata, n_jobs=args.n_jobs, layer=args.layer, prog_key=args.prog_key, 
-                    data_key=args.data_key, batch_key=args.batch_key, labels_key=args.labels_key, 
-                    inplace=args.output, config_path=args.config_path)
+    run_linear_SCVI(mdata, batch_key=args.batch_key, labels_key=args.labels_key, 
+                    prog_key=args.prog_key, data_key=args.data_key, layer=args.layer, 
+                    config_path=args.config_path, n_jobs=args.n_jobs, inplace=args.output)

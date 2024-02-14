@@ -20,20 +20,22 @@ def init_cnmf_obj(output_dir=None, name=None):
 
 def run_cnmf_factorization(output_dir=None, name=None, counts_fn=None,
                            components=[7,8,9,10], n_iter=10, seed=14,
-                           total_workers=-1,num_highvar_genes=2000, 
+                           total_workers=-1, num_highvar_genes=2000, 
                            beta_loss='frobenius'):
 
     # Compute cNMF and create prog anndata
     cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
     cnmf_obj.prepare(counts_fn=counts_fn, components=components, n_iter=n_iter, 
                      seed=seed, num_highvar_genes=num_highvar_genes, beta_loss=beta_loss)
+    # FIXME: Doesn't seem to work in multithreading
     cnmf_obj.factorize(total_workers=total_workers)
 
     return cnmf_obj
 
 def run_cnmf_consensus(cnmf_obj=None, output_dir=None, name=None, 
-                       components=[7,8,9,10], 
-                       density_thresholds=[0.01,2.0]):
+                       components=[7,8,9,10], density_thresholds=[0.01, 0.05, 2.0]):
+    
+    #TODO: Usually this step has to be rerun with a manually chosen density threshold.
 
     if cnmf_obj is None:
         cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
@@ -63,16 +65,48 @@ def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
     
     return cnmf_obj, K, components, density_thresholds, output_all_k, output_all_thresh
 
-def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1, 
-                      prog_key='consensus_NMF', data_key='rna', layer='X', 
-                      config_path=None, inplace=True):
+def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None,  
+                      prog_key='consensus_NMF', data_key='rna', 
+                      layer='X', config_path=None, n_jobs=1, 
+                      inplace=True):
+
+    """
+    Perform gene program inference using consensus NMF.
+
+    https://github.com/dylkot/cNMF
+
+    ARGS:
+        mdata : MuData
+            mudata object containing anndata of data and cell-level metadata.
+        work_dir: str
+            path to directory to store outputs.
+        scratch_dir: str
+            path to directory to store intermediate outputs.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        data_key: str
+            index of the genomic data anndata object (mdata[data_key]) in the mudata object.
+        layer: str (default: X)
+            anndata layer (mdata[data_key].layers[layer]) where the data is stored.
+        config_path: str
+            path to gin configurable config file containing method specific parameters.
+        n_jobs: int (default: 1)
+            number of threads to run processes on.
+        inplace: Bool (default: True)
+            update the mudata object inplace or return a copy
+
+    RETURNS:
+        if not inplace:
+            mdata
     
+    """
+
     # Load method specific parameters
     try: gin.parse_config_file(config_path)
     except: raise ValueError('gin config file could not be found')
 
-    #TODO: Don't copy entire mudata only relevant Dataframe
-    mdata = mdata.copy() if not inplace else mdata
+    if not inplace:
+        mdata = mudata.MuData({data_key: mdata[data_key].copy()})
 
     # Create output directory for cNMF results
     if work_dir is not None:
@@ -137,25 +171,24 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None, n_jobs=-1,
 
     mdata = mudata.MuData(adatas)
 
-    if not inplace: return mdata[prog_key]
+    if not inplace: return mdata
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('--work_dir', default='./', type=str)
+    parser.add_argument('--scratch_dir', default='./', type=str)
     parser.add_argument('-pk', '--prog_key', default='consensus_NMF', typ=str) 
     parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
     parser.add_argument('--layer', default='X', type=str)
-    parser.add_argument('--work_dir', default='./', type=str)
     parser.add_argument('--config_path', default='./consensus_NMF_config.gin', type=str)
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
 
-    import mudata
     mdata = mudata.read(args.mudataObj_path)
-
-    run_consensus_NMF(mdata, work_dir=args.work_dir, n_jobs=args.n_jobs, layer=args.layer,
-                      prog_key=args.prog_key, data_key=args.data_key, inplace=args.output,
-                      config_path=args.config_path)
+    run_consensus_NMF(mdata, work_dir=args.work_dir, scratch_dir=args.scratch_dir, 
+                      prog_key=args.prog_key, data_key=args.data_key, layer=args.layer, 
+                      config_path=args.config_path, n_jobs=args.n_jobs, inplace=args.output)

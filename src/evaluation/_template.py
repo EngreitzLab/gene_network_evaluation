@@ -39,9 +39,6 @@ def compute_eval_measure(mdata, prog_key='prog', data_key='rna',
         inplace: Bool (default: True)
             update the mudata object inplace or return a copy
     
-    CREATES
-        mdata[prog_key].var['eval_measure']
-    
     RETURNS 
         if not inplace:
             mdata[prog_key].var['eval_measure']

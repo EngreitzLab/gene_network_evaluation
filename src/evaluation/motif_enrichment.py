@@ -8,15 +8,14 @@ from Bio.SeqRecord import SeqRecord
 from pymemesuite.common import MotifFile, Sequence, Background, Alphabet
 from pymemesuite.fimo import FIMO
 
+import mudata
 import numpy as np
 import pandas as pd
 
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr, kendalltau
 
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
-
-import warnings
 
 # Compute background freq based on selected sequences
 def compute_background_freq(selected_sequences):
@@ -27,6 +26,11 @@ def compute_background_freq(selected_sequences):
 
 # Read motif database 
 def read_motif_file(motif_file_loc):
+
+    """
+    Read MEME formatted motif file.
+
+    """
 
     # Motifs in meme format
     records = []
@@ -43,14 +47,26 @@ def read_motif_file(motif_file_loc):
 # Read sequence database
 def read_sequence_file(seq_file_loc, format_='fasta'):
 
+    """
+    Read genomic sequence to scan for motifs.
+
+    """
+
     # parse sequence file and turn into dictionary
     records = SeqIO.to_dict(SeqIO.parse(open(seq_file_loc), format_))
 
     return records
 
 # Read coordinates - tab formatted file
-# chr, start, end, seq_name, seq_class {promoter, enhancer}, seq_score, gene_name
 def read_coords_file(coords_file_loc):
+
+    """
+    Read promoter/enhancer to gene links tab 
+    delimited file with the following column headers:
+    chr, start, end, seq_name, seq_class {promoter, enhancer}, 
+    seq_score, gene_name
+
+    """
 
     # Read formatted coords file
     records = pd.read_csv(coords_file_loc, sep='\t')
@@ -71,6 +87,12 @@ def read_coords_file(coords_file_loc):
 # Return relevant sequences
 # TODO: Parallelize
 def get_sequences(sequences_record, coords):
+
+    """
+    Extract sequences from sequence file to be scanned
+    for motifs loaded from the motif file.
+
+    """
 
     # search for short sequences
     selected_sequences = []
@@ -97,6 +119,11 @@ def get_sequences(sequences_record, coords):
 def perform_motif_match(sequences_record, motifs_record, coords,
                         motif_match_dict, gene_seq_num, output_loc, 
                         motif_idx, gene_name):
+    
+    """
+    Use FIMO to identify motif instances in sequences.
+    
+    """
 
     # Subselect coords to gene
     coords_ = coords.loc[coords['gene_name']==gene_name]
@@ -134,6 +161,11 @@ def perform_motif_match(sequences_record, motifs_record, coords,
 # Count up motif occurences per gene
 def compute_motif_instances(mdata, motif_match_df, sig=0.05, gene_names=None):
 
+    """
+    Count motif instances per gene (via enahncer/promoter linking)
+
+    """
+
     # Count up significant occurences of motif
     motif_match_df_ = motif_match_df.loc[motif_match_df.qvalue<=sig]
     motif_match_df_ = motif_match_df.value_counts(subset=['gene_name', 'motif_name']).reset_index()
@@ -146,21 +178,39 @@ def compute_motif_instances(mdata, motif_match_df, sig=0.05, gene_names=None):
 
 # Perform pearson correlation test for motif count enrichment vs gene loadings
 # If loadings are dichotomized then this is equivalent to a point biserial correlation test.
-def perform_pearsonr(motif_count_df, prog_genes, 
-                     motif_enrich_stat_df, motif_enrich_pval_df, 
-                     motif_idx, prog_idx):
+def perform_correlation(motif_count_df, prog_genes, 
+                        motif_enrich_stat_df, 
+                        motif_enrich_pval_df, 
+                        motif_idx, prog_idx,
+                        correlation='pearsonr'):
+    """
+    Compute motif enrichment as correlation b/w gene weights/ranks and motif counts
+    
+    """
 
     loadings = prog_genes.iloc[prog_idx].values.flatten()
     counts = motif_count_df.T.iloc[motif_idx].fillna(0).values.flatten()
     
-    stat, pval = pearsonr(loadings, counts)
+    if correlation=='pearsonr':
+        stat, pval = pearsonr(loadings, counts)
+    elif correlation=='spearmanr':
+        stat, pval = spearmanr(loadings, counts)
+    elif correlation=='kendalltau':
+        stat, pval = kendalltau(loadings, counts)
 
     motif_enrich_stat_df.iloc[prog_idx, motif_idx]  = stat
     motif_enrich_pval_df.iloc[prog_idx, motif_idx]  = pval
 
 # Count up motif ocurrences and perform diff. test
-def compute_motif_enrichment_(mdata, motif_count_df, prog_key='prog', gene_names=None, 
-                              weighted=True, num_genes=None, n_jobs=-1):
+def compute_motif_enrichment_(mdata, motif_count_df, prog_key='prog',  
+                              gene_names=None, weighted=True, num_genes=None, 
+                              correlation='pearsonr', n_jobs=-1):
+    """
+    Perform motif enrichment using gene program loadings and
+    motif counts linked to genes via motif scanning of
+    linked enhancer/promoter sequences.
+    
+    """
 
     # Both weighted and num_genes cannot be set
     if num_genes is not None and weighted:
@@ -191,28 +241,76 @@ def compute_motif_enrichment_(mdata, motif_count_df, prog_key='prog', gene_names
 
     # Perform test in parallel across motifs and programs
     Parallel(n_jobs=n_jobs, 
-             backend='threading')(delayed(perform_pearsonr)(motif_count_df,
-                                                            prog_genes, 
-                                                            motif_enrich_stat_df,
-                                                            motif_enrich_pval_df,
-                                                            motif_idx, 
-                                                            prog_idx) \
+             backend='threading')(delayed(perform_correlation)(motif_count_df,
+                                                               prog_genes, 
+                                                               motif_enrich_stat_df,
+                                                               motif_enrich_pval_df,
+                                                               motif_idx, 
+                                                               prog_idx,
+                                                               correlation=correlation) \
                                                             for motif_idx in tqdm(range(motif_count_df.columns.values.shape[-1]),
                                                                                      desc='Computing motif enrichment',
                                                                                      unit='motifs') \
-                                                            for prog_idx in tqdm(range(mdata[prog_key].var_names.shape[0]),
-                                                                                     desc='per program',
-                                                                                     unit='programs'))
+                                                            for prog_idx in range(mdata[prog_key].var_names.shape[0]))
 
     return motif_enrich_stat_df, motif_enrich_pval_df
 
 # Compute motif enrichment in enhancers or promoters associated with a gene
-def compute_motif_enrichment(mdata, motif_file=None, seq_file=None, coords_file=None, 
-                             n_jobs=1, prog_key='prog', data_key='rna', output_loc=None,
-                             sig=0.05, num_genes=None, inplace=True, **kwargs):
+def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=None, 
+                             seq_file=None, coords_file=None, output_loc=None, sig=0.05, 
+                             num_genes=None, correlation='pearsonr', n_jobs=1, inplace=True, 
+                             **kwargs):
     
-    #TODO: Don't copy entire mudata only relevant Dataframe
-    mdata = mdata.copy() if not inplace else mdata
+    """
+    Perform motif enrichment using gene program loadings and
+    motif counts linked to genes via motif scanning of
+    linked enhancer/promoter sequences.
+
+    ARGS
+        mdata : MuData
+            mudata object containing anndata of program scores and cell-level metadata.
+        prog_key: 
+            index for the anndata object (mdata[prog_key]) in the mudata object.
+        data_key: str
+            index of the genomic data anndata object (mdata[data_key]) in the mudata object.
+        motif_file: str
+            path to motif file formatted in MEME format.
+        seq_file: str
+            path to FASTA formatted genomic sequence.
+        coords_file: str
+            path to enhancer/promoter gene links file with sequence coordinates.
+            Tab delimited file with the following column headers:
+            chr, start, end, seq_name, seq_class {promoter, enhancer}, 
+            seq_score, gene_name.
+        output_loc: str
+            path to directory to store motif - gene counts.
+        sig: (0,1] (default: 0.05)
+            significance level for inferring a motif match.
+        num_genes: int (default: None)
+            number of genes threshold to dichtomize loadings.
+        correlation: {'pearsonr','spearmanr','kendalltau'} (default: 'peasronsr')
+            correlation type to use to compute motif enirchments.
+            Use kendalltau when expecting enrichment/de-enrichment at both ends.
+        n_jobs: int (default: 1)
+            number of threads to run processes on.
+        inplace: Bool (default: True)
+            update the mudata object inplace or return a copy
+       
+    RETURNS 
+        if not inplace:
+           mdata[prog_key].uns['motif_matching'],
+           mdata[prog_key].uns['motif_counts'],
+           mdata[prog_key].uns['motif_names'],
+           mdata[prog_key].varm['motif_enrich_{}_stat'.format(correlation)],
+           mdata[prog_key].varm['motif_enrich_{}_pval'.format(correlation)],
+           mdata[prog_key].uns['motif_names']     
+
+    """
+    
+    if not inplace:
+        mdata = mudata.MuData({prog_key: mdata[prog_key].copy(),
+                               data_key: mdata[data_key].copy()})
+
 
     if 'var_names' in mdata[prog_key].uns.keys():
         gene_names = mdata[prog_key].uns['var_names']
@@ -302,24 +400,21 @@ def compute_motif_enrichment(mdata, motif_file=None, seq_file=None, coords_file=
     mdata[prog_key].uns['motif_counts'] = motif_count_df.loc[gene_names].values
     mdata[prog_key].uns['motif_names'] = motif_count_df.columns.values
 
-    mdata[prog_key].varm['motif_enrich_stat'] = motif_enrich_stat_df.values
-    mdata[prog_key].varm['motif_enrich_pval'] = motif_enrich_pval_df.values
+    mdata[prog_key].varm['motif_enrich_{}_stat'.format(correlation)] = motif_enrich_stat_df.values
+    mdata[prog_key].varm['motif_enrich_{}_pval'.format(correlation)] = motif_enrich_pval_df.values
     mdata[prog_key].uns['motif_names'] = motif_count_df.columns.values
 
     return (mdata[prog_key].uns['motif_matching'],
-           mdata[prog_key].uns['motif_counts'],
-           mdata[prog_key].uns['motif_names'],
-           mdata[prog_key].varm['motif_enrich_stat'],
-           mdata[prog_key].varm['motif_enrich_pval'],
-           mdata[prog_key].uns['motif_names'])
+            mdata[prog_key].uns['motif_counts'],
+            mdata[prog_key].uns['motif_names'],
+            mdata[prog_key].varm['motif_enrich_{}_stat'.format(correlation)],
+            mdata[prog_key].varm['motif_enrich_{}_pval'.format(correlation)],
+            mdata[prog_key].uns['motif_names'])
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('-n', '--n_jobs', default=1, type=int)
-    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', type=str)
     parser.add_argument('-mf', '--motif_file', default=None, type=str, required=True) 
     parser.add_argument('-sf', '--seq_file',  default=None, type=str, required=True) 
     parser.add_argument('-cf', '--coords_file', default=None, type=str, required=True) 
@@ -327,18 +422,20 @@ if __name__=='__main__':
     parser.add_argument('--significance', default=0.05, choices=range(0,1), 
                                           metavar="(0,1)", type=float)
     parser.add_argument('--num_genes', default=None, type=int)
+    parser.add_argument('--correlation', default='pearsonr', type=str)
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str)
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
 
-    import mudata
     mdata = mudata.read(args.mudataObj_path)
-    
-    compute_motif_enrichment(mdata, motif_file=args.motif_file, 
-                             seq_file=arg.seq_file, coords_file=arg.coords_file, 
-                             n_jobs=args.n_jobs, prog_key=args.prog_key, 
-                             data_key=args.data_key, output_loc=args.store_files,
+    compute_motif_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, 
+                             motif_file=args.motif_file, seq_file=arg.seq_file, 
+                             coords_file=arg.coords_file, output_loc=args.store_files, 
                              sig=args.significance, num_genes=args.num_genes, 
+                             n_jobs=args.n_jobs, correlation=args.correlation, 
                              inplace=args.output)
 
 

@@ -175,19 +175,7 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
             number of threads to run processes on.
         inplace: Bool (default: True)
             update the mudata object inplace or return a copy
-    
-    CREATES
-        if pseudobulk_key is None:
-            store_key = categorical_key
-        else:
-            store_key = '_'.join(categorical_key, pseudobulk_key)
-        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
-        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
-        mdata[prog_key].varm['{}_association_min_pval'.format(store_key)]
-        mdata[prog_key].varm['{}_association_mean_pval'.format(store_key)] 
-        mdata[prog_key].uns['{}_association_pvals'.format(store_key)]
-        mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]
-    
+       
     RETURNS 
         if not inplace:
             mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
