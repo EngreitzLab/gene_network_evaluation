@@ -13,8 +13,6 @@ Here were are using enhancer-gene linkage identified analytically to compute the
 
 Processed linkage and motif files related to the Miami hackathon dataset (GCM1) are available here:
 
-https://figshare.com/articles/dataset/Hackathon_Miami_2024_MorPhiC_data/25106024
-
 The enhancer-promoter linkages are identified using [[https://enhlinktools.readthedocs.io/][Enhlink]] a new computational method inferring linkage from single-cell ATAC-seq and multi-omics datasets.
 
 #+html: <p align="center"><img src="./workflow_presentation.readme.png" /></p>
