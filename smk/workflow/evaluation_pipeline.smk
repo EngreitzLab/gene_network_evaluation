@@ -7,6 +7,7 @@ workdir: config['workdir']
 rule all:
     input: 
         'touch/1_run_technical_evaluations.done',
+        'touch/2_run_geneset_enrichment.done',
         'touch/3_1_run_enhancer_motif_enrichment.done',
         'touch/3_2_run_promoter_motif_enrichment.done'
         
@@ -24,12 +25,12 @@ rule run_technical_evaluations:
     log: 'logs/1_run_technical_evaluations.log'
     script: 'scripts/1_run_technical_evaluations.py'
 
-# # Run gene-set enrichment
-# rule run_technical_evaluations:
-#     input: 'evaluation_mdata.h5mu'
-#     output: touch('touch/1_run_technical_evaluations.done')
-#     log: 'logs/1_run_technical_evaluations.log'
-#     script: 'scripts/1_run_technical_evaluations.py'
+# Run gene-set enrichment
+rule run_geneset_enrichment:
+    input: 'evaluation_mdata.h5mu'
+    output: touch('touch/2_run_geneset_enrichment.done')
+    log: 'logs/2_run_geneset_enrichment.log'
+    script: 'scripts/2_run_geneset_enrichment.py'
 
 # Run motif enrichment
 include: 'rules/3_run_motif_enrichment.smk'
