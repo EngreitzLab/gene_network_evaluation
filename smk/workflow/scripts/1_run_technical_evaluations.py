@@ -20,9 +20,10 @@ def run_technical_evaluations(config, input_):
     # Compute batch association
     for key in config['categorical_keys']:
         compute_categorical_association(mdata, 
-                                        n_jobs=mdata[config['prog_key']].shape[1],
+                                        prog_key=config['prog_key'],                                
                                         categorical_key=key, 
-                                        prog_key=config['prog_key'],
+                                        pseudobulk_key=config['pseudobulk_key'],
+                                        n_jobs=mdata[config['prog_key']].shape[1],
                                         inplace=True)
 
 # Execution (assumes Snakemake)

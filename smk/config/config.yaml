@@ -3,6 +3,7 @@ input_loc: path/to/mudata/mudata.h5mu
 prog_key: prog # mudata key for anndata containing cellwise program scores
 data_key: rna # mudata key containing data used to estimate programs
 categorical_keys: ['batch', 'condition'] # obs key containing batch annotation
+pseudobulk_key: # obs key representing replicates (ideally biological)
 rna_key: rna # Typically same as data_key
 atac_key: # Leave empty if no atac data
 organism: human # human or mouse
