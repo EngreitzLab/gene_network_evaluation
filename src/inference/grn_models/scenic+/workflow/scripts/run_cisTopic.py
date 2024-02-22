@@ -19,6 +19,9 @@ parser.add_argument('-e','--eta', required=True)
 parser.add_argument('-y','--eta_by_topic', required=True)
 parser.add_argument('-m','--path_models', required=True)
 parser.add_argument('-c','--path_cistopic_obj', required=True)
+parser.add_argument('-j','--n_cpu', required=True)
+parser.add_argument('-d','--temp_dir', required=True)
+parser.add_argument('-r','--random_state', required=True)
 args = vars(parser.parse_args())
 
 path_input = args['path_input']
@@ -31,6 +34,9 @@ alpha_by_topic = bool(args['alpha_by_topic'])
 eta = float(args['eta'])
 eta_by_topic = bool(args['eta_by_topic'])
 path_models = args['path_models']
+n_cpu = int(args['n_cpu'])
+temp_dir = args['temp_dir']
+random_state = int(args['random_state'])
 
 # Read atac adata
 adata = mu.read(path_input)
@@ -69,15 +75,15 @@ n_topics = [int(n) for n in n_topics]
 models = run_cgs_models(
     cistopic_obj,
     n_topics=n_topics,
-    n_cpu=1,  # TODO: no hardcoding
+    n_cpu=n_cpu,
     n_iter=n_iter,
-    random_state=2017,
+    random_state=random_state,
     alpha=alpha,
     alpha_by_topic=alpha_by_topic,
     eta=eta,
     eta_by_topic=eta_by_topic,
     save_path=None,
-    _temp_dir="/cellar/users/aklie/tmp",  # TODO: no hardcoding
+    _temp_dir=temp_dir
 )
 
 # Save models object

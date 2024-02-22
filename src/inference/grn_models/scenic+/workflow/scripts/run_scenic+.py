@@ -18,6 +18,13 @@ parser.add_argument('-s', '--path_scenicplus_obj', required=True)
 parser.add_argument('-g', '--path_grn', required=True)
 parser.add_argument('-r', '--path_r2g', required=True)
 parser.add_argument('-t', '--path_tri', required=True)
+parser.add_argument('-j','--n_cpu', required=True)
+parser.add_argument('-x', '--temp_dir', required=True)
+parser.add_argument('-b', '--biomart_host', required=True)
+parser.add_argument('-u', '--min_upstream', required=True)
+parser.add_argument('-v', '--max_upstream', required=True)
+parser.add_argument('-w', '--min_downstream', required=True)
+parser.add_argument('-z', '--max_downstream', required=True)
 
 args = vars(parser.parse_args())
 path_input = args['path_input']
@@ -28,6 +35,13 @@ path_scenicplus_obj = args['path_scenicplus_obj']
 path_grn = args['path_grn']
 path_r2g = args['path_r2g']
 path_tri = args['path_tri']
+n_cpu = int(args['n_cpu'])
+temp_dir = args['temp_dir']
+biomart_host = args['biomart_host']
+min_upstream = int(args['min_upstream'])
+max_upstream = int(args['max_upstream'])
+min_downstream = int(args['min_downstream'])
+max_downstream = int(args['max_downstream'])
 
 # Read rna adata
 adata = mu.read(path_input)
@@ -56,7 +70,6 @@ if organism == 'human':
     species = "hsapiens"
     assembly = "hg38"
     tf_file = "resources/tf_lists/human.txt"
-    biomart_host = "http://sep2019.archive.ensembl.org/"
 
 # Run SCENIC+
 path_output = os.path.dirname(path_scenicplus_obj)
@@ -69,45 +82,16 @@ try:
         tf_file = tf_file,
         save_path = path_output,
         biomart_host = biomart_host,
-        upstream = [1000, 150000],
-        downstream = [1000, 150000],
+        upstream = [min_upstream, max_upstream],
+        downstream = [min_downstream, max_downstream],
         calculate_TF_eGRN_correlation = True,
         calculate_DEGs_DARs = False,
         export_to_loom_file = False,
         export_to_UCSC_file = False,
         path_bedToBigBed = 'resources/bin',
-        n_cpu = 1,
-        _temp_dir="/cellar/users/aklie/tmp",  # TODO: no hardcoding
+        n_cpu = n_cpu,
+        _temp_dir=temp_dir
     )
 except Exception as e:
     dill.dump(scplus_obj, open(path_scenicplus_obj, 'wb'), protocol=-1)
     print(e, "\nSCENIC+ object saved to", path_scenicplus_obj)
-
-# Save pipeline outputs
-apply_std_filtering_to_eRegulons(scplus_obj)
-
-# grn
-grn = scplus_obj.uns["TF2G_adj"][["TF", "target", "importance_x_rho"]]
-grn.columns = ["source", "target", "weight"]
-grn["pval"] = 1
-grn.to_csv(path_grn, sep="\t", index=False)
-
-# r2g
-r2g = scplus_obj.uns["region_to_gene"] \
-    .rename(columns={"importance_x_rho": "weight"})
-r2g["pval"] = 1
-r2g.drop(columns=["Distance"], inplace=True)
-r2g = r2g[["target", "region", "weight", "pval", "importance", "rho"]]
-r2g.to_csv(path_r2g, sep="\t", index=False)
-
-# tri
-tri = scplus_obj.uns["eRegulon_metadata"]
-tri["weight"] = tri[["R2G_importance_x_rho", "TF2G_importance_x_rho"]].mean(axis=1)
-tri["pval"] = 1
-tri["region"] = tri["Region"].str.replace(":", "-")
-tri = tri.rename(columns={"TF": "source", "Gene": "target"})
-tri = tri[["source", "target", "region", "weight", "pval", "is_extended", 
-           "R2G_importance", "R2G_rho", "R2G_importance_x_rho",
-           "R2G_importance_x_abs_rho", "TF2G_importance", "TF2G_regulation",
-           "TF2G_rho", "TF2G_importance_x_abs_rho", "TF2G_importance_x_rho"]]
-tri.to_csv(path_tri, sep="\t", index=False)

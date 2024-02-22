@@ -4,16 +4,20 @@
 #date: 2024-02-21
 
 # TODO
-- [ ] Document how each SCENIC+ script works here
-- [ ] Push this README and neurips.small.h5mu to the repo
-- [ ] Figure out best way to host motif annotations, rankings and scores for the `run_cisTarget.py` script (https://resources.aertslab.org/cistarget/)
-- [ ] How to handle configurable parameters for the snakemake rule. Abandon gin for this? Somehow integrate the two?
-- [ ] Update scripts to store outputs in mudata
-- [ ] Get running on test_mudata.h5mu and neurips.small.h5mu -- do I need to update config.yaml for every new dataset?
+- [x] Document how each SCENIC+ script works here
+- [x] Push this README and neurips.small.h5mu to the repo
+- [x] Figure out best way to host motif annotations, rankings and scores for the `run_cisTarget.py` script (https://resources.aertslab.org/cistarget/)
+- [x] How to handle configurable parameters for the snakemake rule. Abandon gin for this? Somehow integrate the two? --> SCENIC+ has same directory structure (will be included in main pipeline eventually)
+- [ ] Look a little closer at the outputs of SCENIC+ to make sure that endpoints make sense
+- [x] Update scripts to store outputs in mudata
+- [ ] Get running on test_mudata.h5mu and neurips.small.h5mu
+- [ ] Update this README with clear instructions on how to run the pipeline and what the expected outputs are and mean
 - [ ] Fix singularity container problems so we can use it
-- [ ] Should we allow modififiable search space
+- [x] Should we allow modififiable search space
 - [ ] Deal with remaining errors
 - [ ] Add conda environment
+
+Rule for downloading needed databases
 
 # SCENIC+ GRN inference
 This directory contains Python scripts for running the SCENIC+ pipeline for inference of gene regulatory networks (GRNs) from single-cell multiome data (paired scRNA-seq and scATAC-seq).
