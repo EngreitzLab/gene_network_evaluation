@@ -23,6 +23,8 @@ rule run_cisTopic:
         ncpu=lambda w: config['n_jobs'],
         temp_dir=lambda w: config['scratchdir'],
         random_state=lambda w: config['random_state']
+    log:
+        "{outdir}/logs/cistopic.log"
     shell:
         """
         python workflow/scripts/run_cisTopic.py -i {input.data} -o {params.organism} -c {output.path_cistopic_obj} -n '{params.n_topics}' -t {params.n_iter} -a {params.alpha} -x {params.alpha_by_topic} -e {params.eta} -y {params.eta_by_topic} -m {output.path_models} -j {params.ncpu} -d {params.temp_dir} -r {params.random_state}
@@ -42,6 +44,8 @@ rule candidate_enhancers:
         ntop=lambda w: config['ntop'],
         scale_factor_impute=lambda w: config['scale_factor_impute'],
         scale_factor_normalize=lambda w: config['scale_factor_normalize']
+    log:
+        "{outdir}/logs/candidate_enhancers.log"
     shell:
         """
         python workflow/scripts/candidate_enhancers.py -c {input.path_cistopic_obj} -o {output.path_otsu_bin_topics} -n {params.ntop} -t {output.path_top_bin_topics} -s {params.scale_factor_impute} -r {params.scale_factor_normalize} -m {output.path_markers}
@@ -64,6 +68,8 @@ rule run_cisTarget:
         run_without_promoters=lambda w: config['run_without_promoters'],
         ncpus=lambda w: config['n_jobs'],
         temp_dir=lambda w: config['scratchdir']
+    log:
+        "{outdir}/logs/cistarget.log"
     shell:
         """
         python workflow/scripts/run_cisTarget.py -o {params.organism} -p {input.path_otsu_bin_topics} -t {input.path_top_bin_topics} -m {input.path_markers} -d {output.path_motif_enrichment} -a {params.tf_annotations} -r {params.rankings} -s {params.scores} -w {params.run_without_promoters} -j {params.ncpus} -x {params.temp_dir}
@@ -83,13 +89,15 @@ rule run_scenicplus:
         ncpus=lambda w: config['n_jobs'],
         temp_dir=lambda w: config['scratchdir'],
         biomart_host=lambda w: config['biomart_host'],
-        min_upstream_distance=lambda w: config['min_upstream_distance'],
-        max_downstream_distance=lambda w: config['max_downstream_distance']
-        min_upstream_distance=lambda w: config['min_upstream_distance'],
-        max_downstream_distance=lambda w: config['max_downstream_distance']
+        min_distance_upstream=lambda w: config['min_distance_upstream'],
+        max_distance_upstream=lambda w: config['max_distance_upstream'],
+        min_distance_downstream=lambda w: config['min_distance_downstream'],
+        max_distance_downstream=lambda w: config['max_distance_downstream']
+    log:
+        "{outdir}/logs/scenicplus.log"
     shell:
         """
-        python workflow/scripts/run_scenic+.py -i {input.path_input} -c {input.path_cistopic_obj} -m {input.path_motif_enrichment} -o {params.organism} -s {output.path_scenic_obj} -g {output.path_grn} -r {output.path_r2g} -t {output.path_tri} -j {params.ncpus} -d {params.temp_dir} -b {params.biomart_host} -u {params.min_upstream_distance} v {params.max_downstream_distance} -w {params.min_upstream_distance} -z {params.max_downstream_distance}
+        python workflow/scripts/run_scenic+.py -i {input.path_input} -c {input.path_cistopic_obj} -m {input.path_motif_enrichment} -o {params.organism} -s {output.path_scenic_obj}  -j {params.ncpus} -d {params.temp_dir} -b {params.biomart_host} -u {params.min_distance_upstream} -v {params.max_distance_downstream} -w {params.min_distance_upstream} -z {params.max_distance_downstream}
         """
 
 rule filter_links:
@@ -99,11 +107,14 @@ rule filter_links:
     singularity:
         "envs/scenic+.sif"
     output:
+        path_cistromes="{outdir}/cistromes.pkl",
         path_grn="{outdir}/grn.csv",
         path_r2g="{outdir}/r2g.csv",
-        path_tri="{outdir}/tri.csv"
+        path_tri="{outdir}/tri.csv",
+        path_mdata="{outdir}/scenic+.h5mu"
+    log:
+        "{outdir}/logs/filter_links.log"
     shell:
         """
-        python workflow/scripts/filter_links.py -i {input.path_input} -s {input.path_scenic_obj} -g {output.path_grn} -r {output.path_r2g} -t {output.path_tri}
+        python workflow/scripts/filter_links.py -i {input.path_input} -s {input.path_scenic_obj} -g {output.path_grn} -r {output.path_r2g} -t {output.path_tri} -m {output.path_mdata} -c {output.path_cistromes}
         """
-

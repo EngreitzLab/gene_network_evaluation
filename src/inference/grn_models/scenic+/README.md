@@ -1,45 +1,70 @@
-#title: SCENIC+ GRN inference
-#author: Adam Klie
-#email: aklie@ucsd.edu
-#date: 2024-02-21
+author: Adam Klie <br>
+email: aklie@ucsd.edu <br>
+date: 2024-02-21
 
 # TODO
 - [x] Document how each SCENIC+ script works here
 - [x] Push this README and neurips.small.h5mu to the repo
 - [x] Figure out best way to host motif annotations, rankings and scores for the `run_cisTarget.py` script (https://resources.aertslab.org/cistarget/)
 - [x] How to handle configurable parameters for the snakemake rule. Abandon gin for this? Somehow integrate the two? --> SCENIC+ has same directory structure (will be included in main pipeline eventually)
-- [ ] Look a little closer at the outputs of SCENIC+ to make sure that endpoints make sense
+- [x] Look a little closer at the outputs of SCENIC+ to make sure that endpoints make sense
 - [x] Update scripts to store outputs in mudata
-- [ ] Get running on test_mudata.h5mu and neurips.small.h5mu
+- [x] Get running neurips.small.h5mu    
 - [ ] Update this README with clear instructions on how to run the pipeline and what the expected outputs are and mean
-- [ ] Fix singularity container problems so we can use it
+- [ ] Make a human ready config and a mouse ready config
+- [ ] Fix singularity container problems and rebuild
+- [ ] Test on SCENIC+ singularity container
+- [ ] Find place to host the singularity container
+- [ ] Figure out how to run pipeline end-to-end without having to pass in any file names (e.g. `snakemake --cores 1 --configfile /path/to/config.yaml` instead of `snakemake --cores 1 --configfile /path/to/config.yaml tri.csv`)
 - [x] Should we allow modififiable search space
-- [ ] Deal with remaining errors
-- [ ] Add conda environment
-
-Rule for downloading needed databases
+- [x] Add conda environment
 
 # SCENIC+ GRN inference
-This directory contains Python scripts for running the SCENIC+ pipeline for inference of gene regulatory networks (GRNs) from single-cell multiome data (paired scRNA-seq and scATAC-seq).
+This directory contains a snakemake workflow for running the SCENIC+ pipeline for inference of gene regulatory networks (GRNs) from single-cell multiome data (paired scRNA-seq and scATAC-seq).
 
 # Quick start
+1. Modify the config in `config/config.yaml` or create a new one with the same structure
+ - [] Point to the correct input file (`input_loc`) (see [Expected input](#expected-input))
+ - [] Change the `organism` to the correct species (currently only human and mouse are supported)
+ - [] Change output directory (`outdir`) to where you want the output to be saved. This includes all intermediate files and the final MuData object (see [Output](#output))
+ - [] Modify the path to the SCENIC+ singularity container (`singularity_image`) (see [Environment](#environment) for more details)
+ - [] Modify the scratch directory (`scratch`) to where you want the temporary files to be saved
+ - [] Choose the number of threads to use (`threads`) based on your system
+2. Run the pipeline
 ```bash
-cd smk
-snakemake --cores 1 tri.csv
+snakemake --cores 1 --configfile /path/to/config.yaml tri.csv
 snakemake --use-singularity --cores 1 tri.csv  # Use singularity container
 ```
 
 # Expected input
-* `mdata.h5mu` — MuData object in h5mu format containing single-cell multiome data.
-* Inference results are stored in the mudata format (see [mudata documentation](https://mudata.readthedocs.io/en/latest/)).
+* `mdata.h5mu` — MuData object in h5mu format containing single-cell multiome data. (see [mudata documentation](https://mudata.readthedocs.io/en/latest/))
+    * The MuData object MUST contain the following:
+        * `atac` in `mod` -- h5ad for scATAC-seq data
+            * `layers["counts"]` — a sparse matrix of raw fragment counts
+            * `var_names` — a list of region names in 'chr-start-end' format
+        * `rna` in `mod` -- h5ad for scRNA-seq data
+            * `layers["counts"]` — a sparse matrix of raw UMI counts
+        * `obs` — a dataframe of cell metadata
+            * `celltypes` — a column of cell type annotations
+        * `var` — a dataframe of gene metadata
+
+# Expected output
+* Once the pipeline completes successfully, the `outdir` specified in the config will contain a variety of [SCENIC+ outputs](https://scenicplus.readthedocs.io/en/latest/pbmc_multiome_tutorial.html#Note-on-the-output-of-SCENIC+)
+* Inference results are stored in the h5mu format in `scenic+.h5mu`
+    * uns["cistromes] -- a dictionary of cistromes where significant TF motifs are keys and the values are the regions that are enriched for that motif (see ## `run_cisTarget.py` for more details)
+    * uns["r2g"] -- a dataframe of region-to-gene edges with weights inferred via GBM regression of region accessibility onto gene expression (see ## `run_scenic+.py` for more details)
+    * uns["grn"] -- a dataframe of gene regulatory network (GRN) adjacencies with weights inferred via GBM regression of TF expression onto gene expression (see ## `run_scenic+.py` for more details)
+    * uns["tri"] -- a dataframe containing GRN adjacencies pruned via SCENIC+ using cistromes and r2g links (see ## `run_scenic+.py` for more details)
+    * uns["tri_filtered"] -- the same as uns["tri"] but with edges that are likely false removed (see ## `filter_links.py` for more details)
 
 # Scripts
+See below for more details on each step of the SCENIC+ pipeline.
 
 ## `run_cisTopic.py` — build topic models from the scATAC-seq matrix
 ```bash
 python run_cisTopic.py -i /path/to/input/mdata.h5mu -o human -c cistopic_obj.pkl -n '2;4;8;16' -t 150 -a 50 -x True -e 0.1 -y False -m models.pkl
 ```
-![Alt text](cistopic.png)
+![cistopic overview](static/cistopic.png)
 SCENIC+ uses cisTopic to infer topics from single-cell ATAC-seq data based on Latent Dirichlet Allocation (LDA).
 - Builds a cisTopic object from the input MuData
     - Binarizes the matrix

@@ -18,7 +18,7 @@ rule download_tf_annotations:
         link = config['tf_annotations']
     run:
         shell("mkdir -p resources/annotations")
-        shell("wget -c {params.link} -O resources/annotations")
+        shell("wget -c {params.link} -P resources/annotations")
 
 rule download_tf_list:
     output: 
@@ -39,7 +39,5 @@ rule download_databases:
     run:
         shell("mkdir -p resources/rankings")
         shell("mkdir -p resources/scores")
-        shell("wget -c {params.rankings} -O resources/rankings")
-        shell("wget -c {params.scores} -O resources/scores")
-
-
+        shell("wget -c {params.rankings} -P resources/rankings")
+        shell("wget -c {params.scores} -P resources/scores")
