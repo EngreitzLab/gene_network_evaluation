@@ -10,10 +10,11 @@ date: 2024-02-21
 - [x] Look a little closer at the outputs of SCENIC+ to make sure that endpoints make sense
 - [x] Update scripts to store outputs in mudata
 - [x] Get running neurips.small.h5mu    
-- [ ] Update this README with clear instructions on how to run the pipeline and what the expected outputs are and mean
-- [ ] Make a human ready config and a mouse ready config
-- [ ] Fix singularity container problems and rebuild
-- [ ] Test on SCENIC+ singularity container
+- [x] Update this README with clear instructions on how to run the pipeline and what the expected outputs are and mean
+- [x] Make a human ready config 
+- [x] Make a mouse ready config
+- [ ] Fix singularity container problems and rebuild (maybe try out the developmental install at somepoint?)
+- [ ] Test on new SCENIC+ singularity container
 - [ ] Find place to host the singularity container
 - [ ] Figure out how to run pipeline end-to-end without having to pass in any file names (e.g. `snakemake --cores 1 --configfile /path/to/config.yaml` instead of `snakemake --cores 1 --configfile /path/to/config.yaml tri.csv`)
 - [x] Should we allow modififiable search space
@@ -289,5 +290,7 @@ I have yet to find a single developmental installation that works fixes both pro
 
 # FAQs/Known issues
 - I hit ray spill errors where it appears the tmp directory specified in the container is full
+- https://github.com/aertslab/scenicplus/issues/76
+- https://github.com/aertslab/scenicplus/issues/21
 - https://github.com/aertslab/pycistarget/issues/6 — issue when number of foreground and background regions for cisTarget are the same number
 - https://github.com/aertslab/pycistarget/issues/16 — happens in cisTarget object creation (seems like I need to remove mito fragments)
