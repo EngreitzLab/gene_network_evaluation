@@ -44,13 +44,22 @@ region_sets['DARs'] = {}
 for topic in region_bin_topics_otsu.keys():
     regions = region_bin_topics_otsu[topic].index[region_bin_topics_otsu[topic].index.str.startswith('chr')] #only keep regions on known chromosomes
     region_sets['topics_otsu'][topic] = pr.PyRanges(region_names_to_coordinates(regions))
+if len(region_sets['topics_otsu']) == 0:
+    print('No regions found in topics_otsu')
+    del region_sets['topics_otsu']
 for topic in region_bin_topics_top.keys():
     regions = region_bin_topics_top[topic].index[region_bin_topics_top[topic].index.str.startswith('chr')] #only keep regions on known chromosomes
     region_sets['topics_top'][topic] = pr.PyRanges(region_names_to_coordinates(regions))
+if len(region_sets['topics_otsu']) == 0:
+    print('No regions found in topics_otsu')
+    del region_sets['topics_otsu']
 for DAR in markers_dict.keys():
     regions = markers_dict[DAR].index[markers_dict[DAR].index.str.startswith('chr')] #only keep regions on known chromosomes
     if len(regions) > 0:
         region_sets['DARs'][DAR] = pr.PyRanges(region_names_to_coordinates(regions))
+if len(region_sets['DARs']) == 0:
+    print('No DARs found')
+    del region_sets['DARs']
 
 # Select dbs
 if organism == 'human':

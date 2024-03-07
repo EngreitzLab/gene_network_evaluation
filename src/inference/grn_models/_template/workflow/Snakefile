@@ -3,6 +3,6 @@ from snakemake.utils import min_version
 min_version('7.29.0')
 
 configfile: 'config/config.yaml'
-container: 'envs/scenic+.sif'
-include: 'rules/download.smk'
-include: 'rules/scenic+.smk'
+#container: 'envs/my_grn_method.sif'
+#include: 'rules/download.smk'
+#include: 'rules/my_grn_method.smk'
