@@ -1,0 +1,22 @@
+# Configuration file for my_grn_model
+input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu
+organism: human # human or mouse
+outdir: /cellar/users/aklie/tutorials/gene_program_evaluation/celloracle/neurips2021/small/2024_03_06 # Created if doesn't exist.
+scratchdir: /cellar/users/aklie/tmp # Should exist
+singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/celloracle/envs/celloracle.sif # Optional
+n_jobs: 1 # Threads
+random_state: 1234
+
+# peak correlation parameters
+genome_sizes: https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes
+
+# tss annotation parameters
+thr_coaccess: 0.8
+
+# tf_motif scan parameters
+thr_motif_score: 10
+fpr: 0.02
+
+# filter grn parameters
+thr_edge_pval: 0.001
+thr_top_edges: 2000
