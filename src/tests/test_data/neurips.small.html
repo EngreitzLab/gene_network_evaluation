@@ -1,0 +1,156 @@
+<style>
+.hl-dim, .hl-size, .hl-values, .hl-types, .hl-dims {
+  color: #777777;
+}
+.hl-dim::before, .hl-size::before {
+  content: "\00a0\00a0\00a0";
+}
+.hl-values {
+  font-family: monospace;
+}
+.hl-file {
+  background-color: #EEEEEE;
+  border-radius: .5rem;
+  padding: .2rem .4rem;
+  color: #555555;
+}
+.hl-empty {
+  color: #999999;
+}
+.hl-import {
+  color: #777777;
+}
+.block-mod {
+  display: block;
+  margin: 0 2rem;
+}
+.title {
+  display: inline-block;
+  font-weight: 600;
+  color: #555555;
+}
+.title-mod {
+  font-size: 1.2rem;
+  color: #04b374;
+  padding: 0 .5rem;
+}
+.title-attr {
+  font-size: 1.0rem;
+  padding-top: .2rem;
+}
+summary {
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+details > summary::before {
+  content: '⊕';
+}
+details[open] > summary::before {
+  content: '⊖';
+}
+table tr {
+  background-color: transparent !important;
+}
+table tr:hover {
+  background-color: #04b37433 !important;
+}
+.col-index {
+  text-align: left !important;
+}
+.summary-mod {
+  margin-left: -2rem;
+}
+.summary-mod:hover {
+  background-color: #04b37411;
+}
+.summary-mod::before {
+  color: #04b374;
+  content: '●';
+}
+details[open] > .summary-mod::before {
+  content: '○';
+}
+</style><span>MuData object <span class='hl-dim'>123 obs &times; 8704 var in 2 modalities</span></span><br><details><summary><div class='title title-attr'>Metadata</div><span class='hl-dim'>.obs</span><span class='hl-size'>18 elements</span></summary><div><table><tr>
+                                <td class='col-index'>atac:pseudotime_order</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>0.91,0.93,0.56,0.07,0.02,0.68,1.00,0.52,0.76,0.95,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>rna:pseudotime_order</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>0.91,0.93,0.32,0.05,0.07,0.45,0.98,0.28,0.76,0.99,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>celltype</td>  <td class='hl-types'>category</td>  <td class='hl-values'>Erythroblast,Erythroblast,MK/E prog,HSC,HSC,Proery...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>batch</td>  <td class='hl-types'>category</td>  <td class='hl-values'>s1d1,s1d1,s1d1,s1d1,s1d1,s1d1,s1d1,s1d1,s1d1,s1d1,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>Samplename</td>  <td class='hl-types'>category</td>  <td class='hl-values'>site1_donor1_multiome,site1_donor1_multiome,site1_...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>Site</td>  <td class='hl-types'>category</td>  <td class='hl-values'>site1,site1,site1,site1,site1,site1,site1,site1,si...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorNumber</td>  <td class='hl-types'>category</td>  <td class='hl-values'>donor1,donor1,donor1,donor1,donor1,donor1,donor1,d...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>Modality</td>  <td class='hl-types'>category</td>  <td class='hl-values'>multiome,multiome,multiome,multiome,multiome,multi...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>VendorLot</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>3054455,3054455,3054455,3054455,3054455,3054455,30...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorID</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>15078,15078,15078,15078,15078,15078,15078,15078,15...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorAge</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>34,34,34,34,34,34,34,34,34,34,35,35,35,35,35,35,35...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorBMI</td>  <td class='hl-types'>float64</td>  <td class='hl-values'>24.80,24.80,24.80,24.80,24.80,24.80,24.80,24.80,24...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorBloodType</td>  <td class='hl-types'>category</td>  <td class='hl-values'>B-,B-,B-,B-,B-,B-,B-,B-,B-,B-,B+,B+,B+,B+,B+,B+,B+...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorRace</td>  <td class='hl-types'>category</td>  <td class='hl-values'>White,White,White,White,White,White,White,White,Wh...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>Ethnicity</td>  <td class='hl-types'>category</td>  <td class='hl-values'>HISPANIC OR LATINO,HISPANIC OR LATINO,HISPANIC OR ...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorGender</td>  <td class='hl-types'>category</td>  <td class='hl-values'>Male,Male,Male,Male,Male,Male,Male,Male,Male,Male,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>QCMeds</td>  <td class='hl-types'>category</td>  <td class='hl-values'>False,False,False,False,False,False,False,False,Fa...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>DonorSmoker</td>  <td class='hl-types'>category</td>  <td class='hl-values'>Nonsmoker,Nonsmoker,Nonsmoker,Nonsmoker,Nonsmoker,...</td>
+                            </tr></table></div></details><details><summary><div class='title title-attr'>Embeddings & mappings</div><span class='hl-dim'>.obsm</span><span class='hl-size'>2 elements</span></summary><div><table><tr>
+                                       <td class='col-index'>atac</td>  <td class='hl-types'>bool</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'></td>
+                                   </tr>
+<tr>
+                                       <td class='col-index'>rna</td>  <td class='hl-types'>bool</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'></td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Distances</div><span class='hl-dim'>.obsp</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No distances</span></details><div class='block-mod'><div><details><summary class='summary-mod'><div class='title title-mod'>atac</div><span class='hl-dim'>123 &times 8192</span></summary><span>AnnData object <span class='hl-dim'>123 obs &times; 8192 var</span></span><br><div class='title title-attr'>Matrix</div><span class='hl-dim'>.X</span><div>
+            <span class='hl-types'>float32</span> <span>&nbsp;&nbsp;&nbsp;<span class='hl-import'>scipy.sparse._csr.</span>csr_matrix</span>
+         </table></div><details><summary><div class='title title-attr'>Layers</div><span class='hl-dim'>.layers</span><span class='hl-size'>1 element</span></summary><div><table><tr>
+                                       <td class='col-index'>counts</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>scipy.sparse._csr.</span>csr_matrix</td>  <td class='hl-dims'></td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Metadata</div><span class='hl-dim'>.obs</span><span class='hl-size'>1 element</span></summary><div><table><tr>
+                                <td class='col-index'>pseudotime_order</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>0.91,0.93,0.56,0.07,0.02,0.68,1.00,0.52,0.76,0.95,...</td>
+                            </tr></table></div></details><details><summary><div class='title title-attr'>Embeddings</div><span class='hl-dim'>.obsm</span><span class='hl-size'>2 elements</span></summary><div><table><tr>
+                                       <td class='col-index'>X_lsi</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>49 columns</td>
+                                   </tr>
+<tr>
+                                       <td class='col-index'>X_umap</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>2 columns</td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Distances</div><span class='hl-dim'>.obsp</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No distances</span></details><details><summary><div class='title title-attr'>Miscellaneous</div><span class='hl-dim'>.uns</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No miscellaneous</span></details></details></div></div><div class='block-mod'><div><details><summary class='summary-mod'><div class='title title-mod'>rna</div><span class='hl-dim'>123 &times 512</span></summary><span>AnnData object <span class='hl-dim'>123 obs &times; 512 var</span></span><br><div class='title title-attr'>Matrix</div><span class='hl-dim'>.X</span><div>
+            <span class='hl-types'>float32</span> <span>&nbsp;&nbsp;&nbsp;<span class='hl-import'>scipy.sparse._csr.</span>csr_matrix</span>
+         </table></div><details><summary><div class='title title-attr'>Layers</div><span class='hl-dim'>.layers</span><span class='hl-size'>1 element</span></summary><div><table><tr>
+                                       <td class='col-index'>counts</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>scipy.sparse._csr.</span>csr_matrix</td>  <td class='hl-dims'></td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Metadata</div><span class='hl-dim'>.obs</span><span class='hl-size'>1 element</span></summary><div><table><tr>
+                                <td class='col-index'>pseudotime_order</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>0.91,0.93,0.32,0.05,0.07,0.45,0.98,0.28,0.76,0.99,...</td>
+                            </tr></table></div></details><details><summary><div class='title title-attr'>Embeddings</div><span class='hl-dim'>.obsm</span><span class='hl-size'>2 elements</span></summary><div><table><tr>
+                                       <td class='col-index'>X_pca</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>50 columns</td>
+                                   </tr>
+<tr>
+                                       <td class='col-index'>X_umap</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>2 columns</td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Distances</div><span class='hl-dim'>.obsp</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No distances</span></details><details><summary><div class='title title-attr'>Miscellaneous</div><span class='hl-dim'>.uns</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No miscellaneous</span></details></details></div></div><br/>
