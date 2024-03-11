@@ -1,0 +1,26 @@
+# Configuration file for my_grn_model
+input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu
+outdir: /cellar/users/aklie/tutorials/gene_program_evaluation/wgcna/neurips2021/small/2024_03_11 # Created if doesn't exist.
+scratchdir: /cellar/users/aklie/tmp # Should exist
+#singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/program_models/wgcna/envs/wgcna.sif # Optional
+name: neurips2021_small
+n_jobs: 1 # Threads
+random_state: 1234
+
+# prep metacells parameters
+metacell_groupby: "celltype,Samplename"
+genes: 0.05
+nearest_neighbors: 2
+reduction: pca
+min_cells: 2
+
+# test soft powers parameters
+softpower_groupby: NULL
+softpower_groups: NULL
+
+# construct network parameters
+
+# analyze modules parameters
+modules_harmonize_by: Samplename
+modules_groupby: NULL
+modules_groups: NULL
