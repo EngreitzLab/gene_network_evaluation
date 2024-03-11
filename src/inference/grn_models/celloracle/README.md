@@ -3,8 +3,13 @@ email: aklie@ucsd.edu <br>
 date: 2024-02-28
 
 # TODO
-- [ ] Full test on neurips.small.h5mu
+- [x] Full test on neurips.small.h5mu
 - [ ] Complete expected output section of this README
+- [ ] Need to sort out the expectation of the counts tables present (CellOracle needs both log1p and raw counts)
+- [ ] Need to sort out the expectation of the embedding
+- [ ] Need to think about the best output format for the GRN
+- [ ] Develop logic for when no scATAC seq data is present
+- [ ] Add to IGVF docs
 
 # CellOracle GRN inference
 
@@ -39,19 +44,21 @@ snakemake --use-singularity --cores 1 tri.csv  # Use singularity container
 # Scripts
 See below for more details on each step of the CellOracle pipeline.
 
+![Alt text](image.png)
+
 ## `peak_corr.R` - use Cicero to identify co-accessible peaks
 ```bash
 Rscript workflow/scripts/peak_corr.R {input.data} {params.organism} {output.path_all_peaks} {output.path_connections}
 ```
 - Runs Cicero on the scATAC-seq data to identify co-accessible peaks. 
-- The output is a list of all peaks (`all_peaks.csv`) and a list of connections between peaks based...
+- The output is a list of all peaks (`all_peaks.csv`) and all pairwise peaks with coaccessibility scores (`cicero_connections.csv`)
 
 ## `tss_annotation.py` — identify peaks that overlap TSS and use this for initial peak-to-gene linking
 ```bash
 python workflow/scripts/tss_annotation.py -a {input.all_peaks} -c {input.connections} -o {params.organism} -t {params.thr_coaccess} -p {output}
 ```
-- Identify peaks that overlap TSSs
-- Can threshold the co-accessibility score to only include high-confidence connections
+- Identify peaks that overlap TSSs as annotated from the HOMER database
+- Thresholds the co-accessibility score to only include high-confidence connections
 
 ## `tf_motif_scan.py` — scan peaks for motifs and use this for initial TF-to-peak linking
 ```bash
@@ -68,9 +75,11 @@ python workflow/scripts/build_grn.py -m {input.mdata} -b {input.base_grn} -l {ou
 - Generates an adjacency matrix of TF-gene links where the columns are the TFs and the rows are the genes (with the TSS peak also included)
 
 ## `build_grn.py` — Run the regularized linear regression for identifying bona fide TF-gene links
+![Alt text](image-1.png)
 ```bash
 python workflow/scripts/build_grn.py -m {input.mdata} -b {input.base_grn} -l {output}
 ```
+- 
 - Run sklearn's regularized linear regression to identify bona fide TF-gene links
 
 ## `filter_grn.py` — Prune low confidence calls using p-value threshold
