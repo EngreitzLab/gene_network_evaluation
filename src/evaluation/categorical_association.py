@@ -245,6 +245,12 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
                                                             for prog_nam in tqdm(mdata[prog_key].var_names,
                                                             desc='Testing {} association'.format(categorical_key), 
                                                             unit='programs'))
+
+    # Convert to float to prevent error when saving mudata
+    mdata[prog_key].var['{}_kruskall_wallis_stat'.format(store_key)] = \
+    mdata[prog_key].var['{}_kruskall_wallis_stat'.format(store_key)].astype(float)
+    mdata[prog_key].var['{}_kruskall_wallis_pval'.format(store_key)] = \
+    mdata[prog_key].var['{}_kruskall_wallis_pval'.format(store_key)].astype(float)
     
     mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)] = \
     np.zeros((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
