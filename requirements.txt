@@ -1,0 +1,15 @@
+mudata
+joblib
+tqdm
+scipy
+numpy
+pandas
+scikit-learn  # Optional
+scikit-posthocs  # Optional
+seaborn
+gseapy  # Optional
+lxml  # Optional
+pymemesuite  # Optional
+google-cloud-bigquery # Optional
+plotly # Optional -- for interactive plots
+db_dtypes # Optional -- for BigQuery
