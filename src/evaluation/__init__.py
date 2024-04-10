@@ -2,3 +2,4 @@ from .categorical_association import compute_categorical_association
 from .explained_variance_ratio import compute_explained_variance_ratio
 from .geneset_enrichment import compute_geneset_enrichment
 from .motif_enrichment import compute_motif_enrichment, compute_motif_enrichment_
+from .create_opentargets_gwas_benchmarking_data import run_opentargets_query, process_json_format_l2g_columns, filter_open_targets_gwas_query, dataframe_to_adjacency_matrix

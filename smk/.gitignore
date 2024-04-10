@@ -1,6 +1,7 @@
 results/**
 
 resources/**
+!resources/OpenTargets_L2G_noQC.csv.gz
 
 logs/**
 
