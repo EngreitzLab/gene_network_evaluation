@@ -9,4 +9,3 @@ rule run_filter_opentargets_query:
         remove_mhc_region=True
     script:
         "../scripts/4_1_filter_open_targets_to_high_quality_gwas.py"
-        

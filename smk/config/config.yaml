@@ -15,4 +15,4 @@ promoter_coordinates: path/to/promoter/gene/links/p2g.txt # Check format in reso
 hocomoco: https://hocomoco12.autosome.org/final_bundle/hocomoco12/H12CORE/formatted_motifs/H12CORE_meme_format.meme # Link
 workdir: path/to/working/directory/ # Created if doesn't exist.
 scratchdir: path/to/scratch/dir # Should exist
-repodir: path/to/repo/ 
+repodir: /home/robertg1/gene_program_evaluation/
