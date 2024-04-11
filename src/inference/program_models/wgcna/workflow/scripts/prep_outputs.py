@@ -33,8 +33,7 @@ MEs = pd.read_csv(path_MEs, sep='\t')
 programs = pd.DataFrame(index=modules["module"].unique())
 
 # Make Anndata with cell x program matrix
-adata = anndata.AnnData(X=MEs.values, obs=pd.DataFrame(index=MEs.index), var=programs)
-adata
+adata = anndata.AnnData(X=MEs.values, obs=pd.DataFrame(index=MEs.index), var=MEs.columns.to_frame(name="color"))
 
 # Get program x feature matrix
 loadings = modules.loc[:, modules.columns.str.contains("kME")]
@@ -43,7 +42,8 @@ loadings.columns = loading_names
 loadings = loadings[programs.index].T
 
 # Add program x feature matrix to anndata
-adata.varm["loadings"] = loadings
+adata.varm["loadings"] = loadings.values
+adata.uns["loadings"] = {"names": loadings.columns.to_numpy()}
 
 # Store in mdata
 mdata.mod["hdwgcna"] = adata

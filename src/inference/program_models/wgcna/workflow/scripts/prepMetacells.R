@@ -107,8 +107,8 @@ cat("\n")
 # Actually read it
 cat(sprintf("Reading h5mu file %s\n", path_data))
 mdata <- readH5MU(path_data)
-counts <- assays(experiments(mdata)$rna)$soupx_counts
-metadata <- as.data.frame(colData(mdata))
+counts <- assays(experiments(mdata)$rna)$counts
+metadata <- as.data.frame(colData(experiments(mdata)$rna))
 adata <- Seurat::CreateSeuratObject(
     counts = counts, 
     meta.data = metadata
