@@ -34,6 +34,7 @@ indata@x[indata@x > 0] <- 1
 cellinfo <- data.frame(row.names=barcodes, cells=barcodes)
 
 # Format peak info
+peaks <- gsub(":", "-", peaks)
 peakinfo <- data.frame(row.names=peaks, site_name=peaks)
 peakinfo <- tidyr::separate(data = peakinfo, col = 'site_name', into = c("chr", "bp1", "bp2"), sep = "-", remove=FALSE)
 
