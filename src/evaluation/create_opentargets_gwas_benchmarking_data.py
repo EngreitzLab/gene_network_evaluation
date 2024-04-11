@@ -118,9 +118,10 @@ def process_json_format_l2g_columns(row, column_name):
         print(f"Error: {e}, Row: {row}")
         return None
 
+
 def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, remove_mhc_region=True):
-    l2g = pd.read_csv(input_file, compression='gzip')
-    
+    l2g = pd.read_csv(input_file, compression='gzip', low_memory=False)
+
     # Convert the trait_efos into just a flat list of EFO IDs rather than json formatted
     l2g['trait_efos'] = l2g.apply(lambda row: process_json_format_l2g_columns(row, "trait_efos"), axis=1)
 
@@ -139,7 +140,7 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
     )
 
     # Retain the GWAS with the largest sample size by number of cases by EFO group
-    filtered_l2g['n_cases'] = filtered_l2g['n_cases'].fillna(filtered_l2g['n_initial'])
+    filtered_l2g.loc[:, 'n_cases'] = filtered_l2g['n_cases'].fillna(filtered_l2g['n_initial'])
     filtered_l2g = (filtered_l2g.assign(rank=filtered_l2g.groupby(["trait_efos"])["n_cases"].rank(method="min", ascending=False))
                  .query("rank == 1")
                  .drop(columns=["rank"])
