@@ -15,19 +15,64 @@ from tqdm.auto import tqdm
 import logging
 logging.basicConfig(level = logging.INFO)
 
+
+def create_geneset_dict(df, key_column="trait_efos", gene_column="gene_name"):
+    """
+    Create a geneset dictionary from a pandas DataFrame.
+
+    This function iterates over the rows of the DataFrame and constructs a geneset dictionary,
+    where keys are unique values from the specified key column, and values are lists of gene names
+    associated with each key.
+
+    Parameters:
+    - df : pandas DataFrame
+        A pandas dataframe that you wish to convert to a dictionary for geneset enrichment.
+        Useful for taking in OpenTargets GWAS L2G query results.
+    - key_column : str, optional (default: "trait_efos")
+        The name of the column in the DataFrame to use as the key for the geneset dictionary.
+    - gene_column : str, optional (default: "gene_name")
+        The name of the column in the DataFrame containing the gene names.
+
+    Returns:
+    - geneset_dict : dict
+        A dictionary where keys are unique values from the key column (the name of each geneset),
+        and values are lists of gene names.
+    """
+    geneset_dict = {}
+    for index, row in df.iterrows():
+        key = row[key_column]
+        gene = row[gene_column]
+        if key not in geneset_dict:
+            geneset_dict[key] = []
+        geneset_dict[key].append(gene)
+    return geneset_dict
+
+
 # Convert everything to human format (upper-case)
 # Maybe better to shift this to the data loader
 def get_idconversion(var_names):
-
     bm = Biomart()
+
+    # Initialize gene_names list
+    gene_names = []
+
     # Check top 10
-    for i in range(10):
+    for i in range(min(10, len(var_names))):
         if var_names[i].lower().startswith('ens'):
-            queries ={'ensembl_gene_id': list(var_names)}
-            gene_names = \
-            queries['external_gene_name'].apply(lambda x: x.upper()).values
+            # Assuming you are querying Biomart here, but you didn't provide the code
+            queries = {'ensembl_gene_id': list(var_names)}
+            gene_names = queries['external_gene_name'].apply(lambda x: x.upper()).values
+            break  # Exit loop since we found 'ens' prefix
+        
+        elif ':ens' in var_names[i].lower():
+            # Modify gene names to keep only the part before ':' in cases where the format is
+            # GENE:ENSG0000000000
+            gene_names = [name.split(':')[0].upper() for name in var_names]
+            break  # Exit loop since we found ':ens' substring
+        
         else:
-            gene_names = [nam.upper() for nam in var_names]
+            # Convert all names to uppercase
+            gene_names = [name.upper() for name in var_names]
 
     return gene_names
 
@@ -114,7 +159,8 @@ def perform_prerank(mdata, prog_key='prog', data_key='rna',
 # Compute gene set enrichment analysis using loadings
 def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', 
                                organism='human', library='Reactome_2022', 
-                               database='enrichr', n_jobs=1, inplace=True, 
+                               database='enrichr', n_jobs=1, inplace=True,
+                               user_geneset=None,
                                **kwargs):
 
     """
@@ -137,6 +183,10 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna',
             database of gene-set libraries to use.
         n_jobs: int (default: 1)
             number of threads to run processes on.
+        user_geneset: dict (default: None)
+            a user-defined geneset to be used instead of downloading from a library 
+            where keys are the names of each geneset and values are capitalized, HGNC-style
+            gene-names.
         inplace: Bool (default: True)
             update the mudata object inplace or return a copy
        
@@ -153,7 +203,10 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna',
                                data_key: mdata[data_key].copy()})
 
     # Get geneset
-    geneset = get_geneset(organism, library, database)
+    if user_geneset is not None:
+        geneset = user_geneset
+    else:
+        geneset = get_geneset(organism, library, database)
     mdata[prog_key].uns['genesets_{}'.format(library)] = list(geneset.keys())
 
     # Store results in a new anndata
@@ -193,23 +246,55 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna',
     if not inplace: return (mdata[prog_key].uns['gsea_varmap_{}'.format(library)].keys(), 
                             mdata[prog_key].varm,
                             mdata[prog_key].uns['genesets_{}'.format(library)])
-	
-if __name__=='__main__':
-    parser = argparse.ArgumentParser()
+    
+### Add a special function to run gene set enrichment for OpenTargets GWAS data
+def compute_geneset_enrichment_ot_gwas(mdata, gwas_data, prog_key='cNMF', data_key='rna', 
+                                       organism='Human', library='GWAS', n_jobs=1, inplace=True,
+                                       key_column='trait_efos', gene_column="gene_name", 
+                                       **kwargs):
+    """
+    Perform gene set enrichment analysis using GWAS data.
 
-    parser.add_argument('mudataObj_path')
-    parser.add_argument('-og', '--organism', default='Human', choices={'human', 'mouse'}) 
-    parser.add_argument('-gs', '--library', default='Reactome_2022', type=str) 
-    parser.add_argument('-db', '--database', default='enrichr', choices={'msigdb', 'enrichr'}) 
-    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', type=str)
-    parser.add_argument('-n', '--n_jobs', default=1, type=int)
-    parser.add_argument('--output', action='store_false') 
+    This function computes gene set enrichment using GWAS data. The GWAS data can be provided
+    as a pandas DataFrame or a file path to a CSV file.
 
-    args = parser.parse_args()
+    Parameters:
+    - mdata : MuData
+        Mudata object containing anndata of program scores and cell-level metadata.
+    - gwas_data : pandas DataFrame or str
+        GWAS data provided as a pandas DataFrame or a file path to a CSV file.
+    - prog_key : str, optional (default: 'cNMF')
+        Cell program key name in the MuData object (e.g. cNMF)
+    - data_key : str, optional (default: 'rna')
+        Genomic data name in the MuData object (e.g. rna). This is where gene names are pulled from.
+    - organism : str, optional (default: 'Human')
+        Annotation of the species used for enrichment. Almost always Human for GWAS data.
+    - library : str, optional (default: 'GWAS')
+        How to name the user-defined gene set library
+    - n_jobs : int, optional (default: 1)
+        Number of threads to run processes on.
+    - inplace : bool, optional (default: True)
+        Update the mudata object inplace or return a copy.
+    - key_column : str, optional (default: 'trait_efos')
+        Name of the column in the GWAS data DataFrame to use as the key for the geneset dictionary.
+    - gene_column : str, optional (default: 'gene_name')
+        Name of the column in the GWAS data DataFrame containing the gene names.
+    - **kwargs : dict
+        Additional keyword arguments to pass to the underlying function.
 
-    mdata = mudata.read(args.mudataObj_path)
-    compute_geneset_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, 
-                               organism=args.organism, library=args.library, database=arg.database, 
-                               n_jobs=args.n_jobs, inplace=args.output)
-
+    """
+    # Read GWAS data from disc if provided as a path
+    if isinstance(gwas_data, str):
+        df = pd.read_csv(gwas_data)
+    elif isinstance(gwas_data, pd.DataFrame):
+        df = gwas_data
+    else:
+        raise ValueError("gwas_data must be either a pandas DataFrame or a file path to a CSV file.")
+    
+    # Create geneset dictionary from GWAS data
+    gmt = create_geneset_dict(df, key_column=key_column, gene_column=gene_column)
+    
+    # Perform gene set enrichment using the created geneset dictionary
+    compute_geneset_enrichment(mdata=mdata, prog_key=prog_key, data_key=data_key, 
+                               organism=organism, library=library, 
+                               database=None, n_jobs=n_jobs, inplace=inplace, user_geneset=gmt)

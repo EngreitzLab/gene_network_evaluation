@@ -13,6 +13,6 @@ genome_fasta: path/to/genome/fasta.fa
 enhancer_coordinates: path/to/enhancer/gene/links/e2g.txt # Check format in resources
 promoter_coordinates: path/to/promoter/gene/links/p2g.txt # Check format in resources
 hocomoco: https://hocomoco12.autosome.org/final_bundle/hocomoco12/H12CORE/formatted_motifs/H12CORE_meme_format.meme # Link
-workdir: path/to/working/directory/ # Created if doesn't exist.
+workdir: /home/robertg1/gene_program_evaluation/smk/workflow/rules/
 scratchdir: path/to/scratch/dir # Should exist
 repodir: /home/robertg1/gene_program_evaluation/
