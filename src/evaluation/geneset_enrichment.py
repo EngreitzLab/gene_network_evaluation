@@ -16,7 +16,7 @@ import logging
 logging.basicConfig(level = logging.INFO)
 
 
-def create_geneset_dict(df, key_column="trait_efos", gene_column="gene_name"):
+def create_geneset_dict(df, key_column='trait_efos', gene_column='gene_name'):
     """
     Create a geneset dictionary from a pandas DataFrame.
 
@@ -24,19 +24,19 @@ def create_geneset_dict(df, key_column="trait_efos", gene_column="gene_name"):
     where keys are unique values from the specified key column, and values are lists of gene names
     associated with each key.
 
-    Parameters:
-    - df : pandas DataFrame
-        A pandas dataframe that you wish to convert to a dictionary for geneset enrichment.
-        Useful for taking in OpenTargets GWAS L2G query results.
-    - key_column : str, optional (default: "trait_efos")
-        The name of the column in the DataFrame to use as the key for the geneset dictionary.
-    - gene_column : str, optional (default: "gene_name")
-        The name of the column in the DataFrame containing the gene names.
+    ARGS
+        df : pandas DataFrame
+            A pandas dataframe that you wish to convert to a dictionary for geneset enrichment.
+            Useful for taking in OpenTargets GWAS L2G query results.
+        key_column : str, optional (default: "trait_efos")
+            The name of the column in the DataFrame to use as the key for the geneset dictionary.
+        gene_column : str, optional (default: "gene_name")
+            The name of the column in the DataFrame containing the gene names.
 
-    Returns:
-    - geneset_dict : dict
-        A dictionary where keys are unique values from the key column (the name of each geneset),
-        and values are lists of gene names.
+    RETURNS
+        geneset_dict : dict
+            A dictionary where keys are unique values from the key column (the name of each geneset),
+            and values are lists of gene names.
     """
     geneset_dict = {}
     for index, row in df.iterrows():
@@ -156,6 +156,38 @@ def perform_prerank(mdata, prog_key='prog', data_key='rna',
             mdata[prog_key].varm[key][prog_idx, set_idxs] = \
             pre_res[value].values.reshape(1,-1)
 
+### Add an option to do regular Fisher's Exact enrichment @ a threshold
+### of n top genes in addition to GSEA's rank-based enrichment
+def perform_fisher_enrich(mdata, prog_key='prog', data_key='rna',
+                   prog_nam=None, geneset=None, library=None,
+                   loading_rank_thres=500, **kwargs):
+
+    # Gene names in human (upper case) format
+    if 'var_names' in mdata[prog_key].uns.keys():
+        gene_names = get_idconversion(mdata[prog_key].uns['var_names'])
+    else:
+        try: assert mdata[prog_key].varm['loadings'].shape[1]==mdata[data_key].var.shape[0]
+        except: raise ValueError('Different number of genes present in data and program loadings')
+        gene_names = get_idconversion(mdata[data_key].var_names)
+
+    # Gene scores for each program
+    loadings = pd.DataFrame(data=mdata[prog_key][:, 
+                                       prog_nam].varm['loadings'].flatten(),
+                            index=gene_names)
+    
+    # Define a set of background genes as the intersection of genes in the mudata object and in any of the genesets in the library
+    background_genes = set({item for value in gmt.values() for item in value}).intersection(set(loadings.index))
+    
+    # Use GSEA to run Fisher's Exact instead of rank-based enrichment
+    enr_res = gp.enrich(gene_list=list(loadings.sort_values(by=0, ascending=False).head(loading_rank_thres).index),
+                 gene_sets=gmt,
+                 background=background_genes, 
+                    **kwargs).res2d
+    
+    enr_res.set_index('Term', inplace=True)
+    return(enr_res)
+    ####TO DO: Implement this option in compute_geneset_enrichment()
+
 # Compute gene set enrichment analysis using loadings
 def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', 
                                organism='human', library='Reactome_2022', 
@@ -250,37 +282,42 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna',
 ### Add a special function to run gene set enrichment for OpenTargets GWAS data
 def compute_geneset_enrichment_ot_gwas(mdata, gwas_data, prog_key='cNMF', data_key='rna', 
                                        organism='Human', library='GWAS', n_jobs=1, inplace=True,
-                                       key_column='trait_efos', gene_column="gene_name", 
+                                       key_column='trait_efos', gene_column='gene_name', 
                                        **kwargs):
     """
     Perform gene set enrichment analysis using GWAS data.
 
-    This function computes gene set enrichment using GWAS data. The GWAS data can be provided
+    This function computes gene set enrichment using GWAS L2G data. The GWAS data can be provided
     as a pandas DataFrame or a file path to a CSV file.
 
-    Parameters:
-    - mdata : MuData
-        Mudata object containing anndata of program scores and cell-level metadata.
-    - gwas_data : pandas DataFrame or str
-        GWAS data provided as a pandas DataFrame or a file path to a CSV file.
-    - prog_key : str, optional (default: 'cNMF')
-        Cell program key name in the MuData object (e.g. cNMF)
-    - data_key : str, optional (default: 'rna')
-        Genomic data name in the MuData object (e.g. rna). This is where gene names are pulled from.
-    - organism : str, optional (default: 'Human')
-        Annotation of the species used for enrichment. Almost always Human for GWAS data.
-    - library : str, optional (default: 'GWAS')
-        How to name the user-defined gene set library
-    - n_jobs : int, optional (default: 1)
-        Number of threads to run processes on.
-    - inplace : bool, optional (default: True)
-        Update the mudata object inplace or return a copy.
-    - key_column : str, optional (default: 'trait_efos')
-        Name of the column in the GWAS data DataFrame to use as the key for the geneset dictionary.
-    - gene_column : str, optional (default: 'gene_name')
-        Name of the column in the GWAS data DataFrame containing the gene names.
-    - **kwargs : dict
-        Additional keyword arguments to pass to the underlying function.
+    ARGS
+        mdata : MuData
+            Mudata object containing anndata of program scores and cell-level metadata.
+        gwas_data : pandas DataFrame or str
+            GWAS data provided as a pandas DataFrame or a file path to a CSV file.
+        prog_key : str, optional (default: 'cNMF')
+            Cell program key name in the MuData object (e.g. cNMF)
+        data_key : str, optional (default: 'rna')
+            Genomic data name in the MuData object (e.g. rna). This is where gene names are pulled from.
+        organism : str, optional (default: 'Human')
+            Annotation of the species used for enrichment. Almost always Human for GWAS data.
+        library : str, optional (default: 'GWAS')
+            How to name the user-defined gene set library
+        n_jobs : int, optional (default: 1)
+            Number of threads to run processes on.
+        inplace : bool, optional (default: True)
+            Update the mudata object inplace or return a copy.
+        key_column : str, optional (default: 'trait_efos')
+            Name of the column in the GWAS data DataFrame to use as the key for the geneset dictionary.
+        gene_column : str, optional (default: 'gene_name')
+            Name of the column in the GWAS data DataFrame containing the gene names.
+        **kwargs : dict
+            Additional keyword arguments to pass to the underlying function.
+    RETURNS
+        if not inplace:
+            mdata[prog_key].uns['gsea_varmap_{}'.format(library)].keys(), 
+            mdata[prog_key].varm,
+            mdata[prog_key].uns['genesets_{}'.format(library)]    
 
     """
     # Read GWAS data from disc if provided as a path
