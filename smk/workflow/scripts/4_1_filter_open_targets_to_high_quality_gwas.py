@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, snakemake.config['repodir'])
-from src.evaluation import create_opentargets_gwas_benchmarking_data
+from src.evaluation import filter_open_targets_gwas_query
 
 import logging
 logging.basicConfig(filename=snakemake.log[0],

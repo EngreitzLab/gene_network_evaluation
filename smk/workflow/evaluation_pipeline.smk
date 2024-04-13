@@ -9,7 +9,8 @@ rule all:
         'touch/1_run_technical_evaluations.done',
         'touch/2_run_geneset_enrichment.done',
         'touch/3_1_run_enhancer_motif_enrichment.done',
-        'touch/3_2_run_promoter_motif_enrichment.done'
+        'touch/3_2_run_promoter_motif_enrichment.done',
+        'resources/OpenTargets_L2G_Filtered.csv.gz'
         
 # Load data in .h5mu format
 # https://mudata.readthedocs.io/en/latest/
@@ -34,6 +35,9 @@ rule run_geneset_enrichment:
 
 # Run motif enrichment
 include: 'rules/3_run_motif_enrichment.smk'
+
+# Run open target analysis
+include: 'rules/4_run_query_open_targets_analysis.smk'
 
 
 

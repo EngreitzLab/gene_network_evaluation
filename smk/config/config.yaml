@@ -16,3 +16,4 @@ hocomoco: https://hocomoco12.autosome.org/final_bundle/hocomoco12/H12CORE/format
 workdir: /home/robertg1/gene_program_evaluation/smk/workflow/rules/
 scratchdir: path/to/scratch/dir # Should exist
 repodir: /home/robertg1/gene_program_evaluation/
+credentials: /home/robertg1/.ssh/test-bigquery-ot-956f8a01208f.json

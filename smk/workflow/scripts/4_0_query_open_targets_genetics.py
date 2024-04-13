@@ -1,13 +1,10 @@
 import sys
 sys.path.insert(1, snakemake.config['repodir'])
-from src.evaluation import create_opentargets_gwas_benchmarking_data
+from src.evaluation import run_opentargets_query
 
 import logging
 logging.basicConfig(filename=snakemake.log[0],
                     level = logging.INFO)
-
-#import functions
-from src.evaluation import create_opentargets_gwas_benchmarking_data
     
 with open(snakemake.log[0], 'a') as f:
     f.write('\nstderr:\n')
