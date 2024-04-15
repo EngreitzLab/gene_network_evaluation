@@ -13,3 +13,4 @@ pymemesuite  # Optional
 google-cloud-bigquery # Optional
 plotly # Optional -- for interactive plots
 db_dtypes # Optional -- for BigQuery
+ipywidgets
