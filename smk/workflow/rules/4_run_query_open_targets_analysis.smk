@@ -1,7 +1,13 @@
+#specify that snakemake should run all steps necessary to
+#produce the filtered OpenTargets result
+rule all:
+  input:
+      'resources/OpenTargets_L2G_Filtered.csv.gz'
+
 #run full query on OpenTargets
 rule run_opentargets_query:
     input:
-        config{'credentials'}
+        config['credentials']
     output: 'resources/OpenTargets_L2G_noQC.csv.gz'
     log: 'logs/4_0_run_full_query_on_OpenTargets.log'
     params:
@@ -24,5 +30,4 @@ rule run_filter_opentargets_query:
         remove_mhc_region=True
     script:
         "../scripts/4_1_filter_open_targets_to_high_quality_gwas.py"
-
 
