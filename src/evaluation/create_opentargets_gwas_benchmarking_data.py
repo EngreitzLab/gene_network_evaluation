@@ -137,7 +137,7 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
         "and not trait_reported.str.contains('EA', case=True)"
         "and trait_category != 'Uncategorised'"
         "and trait_category != 'phenotype'"
-        "and trait_category != 'measurement'")
+        "and trait_category != 'measurement'"
     )
 
     # Retain the GWAS with the largest sample size by number of cases by EFO group
