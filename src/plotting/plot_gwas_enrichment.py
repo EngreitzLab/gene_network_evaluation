@@ -50,7 +50,12 @@ def create_enrichment_plotting_df(mdata,
     return enrich_ps
 
 
-def plot_interactive_phewas(data, x_column='trait_reported', y_column='-log10(p-value)', color_column='trait_category', filter_column='Program_Name'):
+def plot_interactive_phewas(data, x_column='trait_reported',
+                            y_column='-log10(p-value)',
+                            color_column='trait_category',
+                            filter_column='Program_Name',
+                            significance_threshold=0.05):
+    
     # Get unique values for the filtering column
     filter_values = ['All'] + list(data[filter_column].unique())
 
@@ -76,9 +81,13 @@ def plot_interactive_phewas(data, x_column='trait_reported', y_column='-log10(p-
             yaxis_title=y_column,
             yaxis=dict(tickformat=".1f"),
             width=1000,  # Adjust width as needed
-            height=500,  # Adjust height as needed
+            height=500,  # Adjust height as needed,
             xaxis_tickfont=dict(size=4)
         )
+
+        # Add horizontal dashed line for significance threshold
+        fig.add_hline(y=-np.log10(significance_threshold), line_dash="dash",
+                      annotation_text=f'Significance Threshold ({significance_threshold})', annotation_position="top right")
 
         # Clear previous plot and display the new one
         with output:
