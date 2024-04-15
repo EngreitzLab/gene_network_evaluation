@@ -4,6 +4,52 @@ import mudata
 import plotly.express as px
 from ipywidgets import interact, Dropdown, Output, VBox
 
+def create_enrichment_plotting_df(mdata,
+                       l2g_dataframe_path,
+                       varm_key_name="FDR_GWAS",
+                       uns_key_name='genesets_GWAS',
+                       prog_key="cNMF"):
+    
+    # Load the GWAS dataframe
+    l2g = pd.read_csv(l2g_dataframe_path, compression='gzip', low_memory=False)
+    l2g_metadata = l2g[["trait_efos", "trait_reported", "trait_category"]].drop_duplicates()
+
+    # Get P-values for each GWAS program
+    prog_nam = mdata[prog_key].var.index 
+    enrich_ps = pd.DataFrame(index=mdata[prog_key].uns[uns_key_name])
+
+    for prog in prog_nam:
+        # Extract p-values for the current program
+        prog_p_values = mdata[prog_key][:, prog].varm[varm_key_name].flatten()
+        
+        # Add the p-values as a column in the DataFrame
+        enrich_ps[prog] = pd.Series(prog_p_values, index=mdata[prog_key].uns[uns_key_name])
+
+    #drop columns that are NA, meaning that enrichment could not be computed for that
+    # Program x GWAS pair
+    enrich_ps.dropna(axis=0, how='all', inplace=True)
+    
+    #merge with the L2G metadata to map trait_efos to trait_reported and trait_category
+    enrich_ps = enrich_ps.reset_index(names='trait_efos').merge(l2g_metadata, on="trait_efos", how="left")
+    
+    #make the dataframe in long format
+    enrich_ps = enrich_ps.melt(id_vars=["trait_efos", "trait_reported", "trait_category"], 
+                               var_name="Program_Name", 
+                               value_name="Enrichment_Pvals").drop_duplicates().sort_values(by=["trait_category", "Enrichment_Pvals"])
+    
+    #If the input P-value == 0, then replace it with the lowest non-zero P-value in the dataframe
+    min_value = (enrich_ps.query("Enrichment_Pvals > 0")['Enrichment_Pvals']).min()
+    
+    #compute the -log(10) P-value and deal with edge-cases (e.g. P=0, P=1)
+    enrich_ps.loc[enrich_ps["Enrichment_Pvals"] == 0, "Enrichment_Pvals"] = min_value #replace P=0 with min non-0 p-value
+    enrich_ps['-log10(p-value)'] = abs(-1*np.log10(enrich_ps['Enrichment_Pvals']))
+    
+    enrich_ps = enrich_ps.query('trait_category != "measurement"')
+    enrich_ps.reset_index(drop=True, inplace=True)
+    
+    return enrich_ps
+
+
 def plot_interactive_phewas(data, x_column='trait_reported', y_column='-log10(p-value)', color_column='trait_category', filter_column='Program_Name'):
     # Get unique values for the filtering column
     filter_values = ['All'] + list(data[filter_column].unique())

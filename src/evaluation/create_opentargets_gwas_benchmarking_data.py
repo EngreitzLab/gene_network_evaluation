@@ -137,6 +137,7 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
         "and not trait_reported.str.contains('EA', case=True)"
         "and trait_category != 'Uncategorised'"
         "and trait_category != 'phenotype'"
+        "and trait_category != 'measurement'")
     )
 
     # Retain the GWAS with the largest sample size by number of cases by EFO group
@@ -149,7 +150,7 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
     # Rename the y_proba_full_model to L2G
     filtered_l2g.rename(columns={'y_proba_full_model': 'L2G'}, inplace=True)
 
-    # Filter positions outside the extended MHC region
+    # Filter to positions outside the extended MHC region, which can have poor L2G mapping
     if remove_mhc_region:
         mhc_start = 28510120
         mhc_end = 33480577
@@ -175,58 +176,4 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
 
     # Save the filtered DataFrame to a CSV file
     filtered_l2g.to_csv(output_file, index=False)
-
-
-### Create adjacency matrix
-def dataframe_to_adjacency_matrix(df, row_column_name='gene_name',
-                                  col_column_name='trait_reported',
-                                  values_col_name='L2G',
-                                  threshold=None,
-                                  sparse_output=False):
-    """
-    Convert a DataFrame into an adjacency matrix.
-
-    Parameters:
-        df (pandas.DataFrame): Input DataFrame.
-        row_column_name (str): Name of the column to use as row indices.
-        col_column_name (str): Name of the column to use as column indices.
-        values_col_name (str): Name of the column to use for values in the matrix.
-        threshold (float or None): Threshold value for creating a binary matrix. If provided,
-            values greater than the threshold will be set to 1, and values less than or equal
-            to the threshold will be set to 0. Default is None.
-        sparse_output (bool): If True, return a sparse matrix (scipy.sparse.coo_matrix),
-            otherwise return a dense matrix (pandas.DataFrame). Default is False.
-
-    Returns:
-        scipy.sparse.coo_matrix or pandas.DataFrame: An adjacency matrix representation of the input DataFrame.
-            If sparse_output is True, a sparse matrix is returned; otherwise, a dense matrix is returned.
-
-    """
-    # Select columns from the DataFrame
-    selected_cols = [row_column_name, col_column_name, values_col_name]
-    selected_df = df[selected_cols]
     
-    # Pivot the DataFrame
-    pivot_df = selected_df.pivot_table(index=row_column_name,
-                                       columns=col_column_name,
-                                       values=values_col_name,
-                                       aggfunc='first',
-                                       fill_value=0)
-    
-    if threshold is not None:
-        # Threshold the values to create a binary matrix
-        binary_matrix = pivot_df.apply(lambda x: (x > threshold).astype(int))
-        
-        if sparse_output:
-            # Convert the binary matrix to a sparse matrix
-            adjacency_matrix = coo_matrix(binary_matrix.values)
-        else:
-            adjacency_matrix = binary_matrix
-    else:
-        if sparse_output:
-            # Convert the pivot table DataFrame to a sparse matrix
-            adjacency_matrix = coo_matrix(pivot_df.values)
-        else:
-            adjacency_matrix = pivot_df
-    
-    return adjacency_matrix
