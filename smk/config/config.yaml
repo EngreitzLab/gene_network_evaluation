@@ -1,6 +1,6 @@
 n_jobs: 8 # Threads
-input_loc: path/to/mudata/mudata.h5mu
-prog_key: prog # mudata key for anndata containing cellwise program scores
+input_loc: /data/deyk/scdata/2kG.library_K60_kangh.h5mu
+prog_key: cNMF # mudata key for anndata containing cellwise program scores
 data_key: rna # mudata key containing data used to estimate programs
 categorical_keys: ['batch', 'condition'] # obs key containing batch annotation
 pseudobulk_key: # obs key representing replicates (ideally biological)
@@ -13,7 +13,7 @@ genome_fasta: path/to/genome/fasta.fa
 enhancer_coordinates: path/to/enhancer/gene/links/e2g.txt # Check format in resources
 promoter_coordinates: path/to/promoter/gene/links/p2g.txt # Check format in resources
 hocomoco: https://hocomoco12.autosome.org/final_bundle/hocomoco12/H12CORE/formatted_motifs/H12CORE_meme_format.meme # Link
-workdir: /home/robertg1/gene_program_evaluation/smk/workflow/rules/
+workdir: /home/robertg1/gene_program_evaluation/smk/
 scratchdir: path/to/scratch/dir # Should exist
 repodir: /home/robertg1/gene_program_evaluation/
-credentials: /home/robertg1/.ssh/test-bigquery-ot-956f8a01208f.json
+credentials: /home/robertg1/.ssh/test-bigquery-ot-956f8a01208f.json #Google Cloud credentials for BigQuery (see README)
