@@ -8,8 +8,7 @@ import matplotlib.patches as mpatches
 from matplotlib import pyplot as plt
 
 
-# Generic volcano plot
-def structure_plot(cell_topic_participation,
+def plot_structure(cell_topic_participation,
                    level,
                    colors_topics=None,
                    category=None,
