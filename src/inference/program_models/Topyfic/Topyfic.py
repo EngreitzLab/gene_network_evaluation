@@ -8,21 +8,6 @@ import anndata
 import Topyfic
 
 
-# NOTE: _template_env.yml contains the essential pacakges that must be present
-# in your conda env. Add more packages as neccessary.
-
-# Write a function to run your method
-
-# Most parameters of this function will be supplied by the user 
-# using a gin-config file. Generally those should include
-# all the user tunable parameters specific for this method.
-# Read more here https://github.com/google/gin-config/blob/master/docs/index.md
-
-# Other general parameters such as number of workers etc.
-# are supplied separately as they will be common in the 
-# pipeline that will use these functions.
-# Replace name with run_{program_inference_method}_
-
 # Topyfic described -> https://github.com/mortazavilab/Topyfic
 import pandas as pd
 
@@ -138,13 +123,13 @@ def run_Topyfic_(adata,
 # but use the named parameters in the parser as they relate
 # to the keys specified in our mudata input/output specification
 # Replace name with run_{program_inference_method}
-def run_program_inference_method(mdata,
-                                 work_dir=None,
-                                 prog_key='program_inference_method',
-                                 data_key='rna',
-                                 layer='X',
-                                 config_path=None,
-                                 inplace=True):
+def run_Topyfic(mdata,
+                work_dir=None,
+                prog_key='Topyfic',
+                data_key='rna',
+                layer='X',
+                config_path=None,
+                inplace=True):
     """
     Perform gene program inference using {inference_method}.
 
@@ -210,7 +195,7 @@ if __name__ == '__main__':
 
     parser.add_argument('mudataObj_path')
     parser.add_argument('--work_dir', default='./', type=str)
-    parser.add_argument('-pk', '--prog_key', default='program_inference_method', typ=str)
+    parser.add_argument('-pk', '--prog_key', default='Topyfic', typ=str)
     parser.add_argument('-dk', '--data_key', default='rna', typ=str)  # could be atac
     parser.add_argument('--layer', default='X', type=str)  # layer of data anndata to use for inference
     parser.add_argument('--config_path', default='./Topyfic_config.gin', type=str)
@@ -219,10 +204,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     mdata = mudata.read(args.mudataObj_path)
-    run_program_inference_method(mdata,
-                                 work_dir=args.work_dir,
-                                 prog_key=args.prog_key,
-                                 data_key=args.data_key,
-                                 layer=args.layer,
-                                 config_path=args.config_path,
-                                 inplace=args.output)
+    run_Topyfic(mdata,
+                work_dir=args.work_dir,
+                prog_key=args.prog_key,
+                data_key=args.data_key,
+                layer=args.layer,
+                config_path=args.config_path,
+                inplace=args.output)
