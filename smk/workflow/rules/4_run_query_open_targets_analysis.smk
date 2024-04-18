@@ -2,7 +2,7 @@
 #produce the filtered OpenTargets result
 rule all:
   input:
-      'resources/OpenTargets_L2G_Filtered.csv.gz'
+      config['anno_mdata_loc']
 
 #run full query on OpenTargets
 rule run_opentargets_query:
@@ -30,4 +30,17 @@ rule run_filter_opentargets_query:
         remove_mhc_region=True
     script:
         "../scripts/4_1_filter_open_targets_to_high_quality_gwas.py"
-
+        
+#using the filtered OpenTargets GWAS file, run GSEA enrichment for each program x GWAS
+rule run_gwas_enrichment:
+    input:
+        gwas_data='resources/OpenTargets_L2G_Filtered.csv.gz'
+    output:
+        output_file=config['anno_mdata_loc']
+    log: 'logs/4_2_run_gwas_enrichment.log'
+    params:
+        mdata=config['input_loc'],
+        prog_key=config['prog_key'],
+        data_key=config['data_key']
+    script:
+        "../scripts/4_2_run_gwas_enrichment.py"
