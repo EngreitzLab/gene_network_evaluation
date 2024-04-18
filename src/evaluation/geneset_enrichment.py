@@ -119,10 +119,6 @@ def insert_df_into_mudata(mdata, df, library="GSEA", prog_key="cNMF",
 
     #cp the mudata object
     mdata2=mdata
-    
-    # Add the varmap to the mudata object
-    varmap_name = f"{varmap_name_prefix}_{library}"
-    mdata2[prog_key].uns[varmap_name] = mudata_keys_dict
 
     # Insert the values from the dataframe into the array for each key
     for key, colname in mudata_keys_dict.items():
@@ -140,6 +136,10 @@ def insert_df_into_mudata(mdata, df, library="GSEA", prog_key="cNMF",
         
         # Add the array into the MuData object
         mdata2[prog_key].varm[key] = all_progs_array
+        
+    # Add the varmap to the mudata object
+    varmap_name = f"{varmap_name_prefix}_{library}"
+    mdata2[prog_key].uns[varmap_name] = all_progs_df.index
         
     return(mdata2)
 
