@@ -1,6 +1,5 @@
-n_jobs: 8 # Threads
+n_jobs: 1 # Threads
 input_loc: /data/deyk/scdata/2kG.library_K60_kangh.h5mu
-anno_mdata_loc: /data/deyk/genevieve/cell_programs/test_gwas_gsea_mudata.h5mu #path to desired annotated mudata object
 prog_key: cNMF # mudata key for anndata containing cellwise program scores
 data_key: rna # mudata key containing data used to estimate programs
 categorical_keys: ['batch', 'condition'] # obs key containing batch annotation

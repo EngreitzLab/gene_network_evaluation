@@ -17,11 +17,13 @@ with open(snakemake.log[0], 'a') as f:
             mdata=snakemake.params[0],
             prog_key=snakemake.params[1],
             data_key=snakemake.params[2],
-            organism='Human',
-            library='GWAS',
-            n_jobs=config['n_jobs'],
-            inplace=True,
+            output_file=snakemake.output[0],
+            prog_nam=None,
+            library='OT_GWAS',
+            n_jobs=1,
+            inplace=False,
             key_column='trait_efos',
-            gene_column='gene_name'
+            gene_column='gene_name',
+            method='fisher'
         )
-        
+

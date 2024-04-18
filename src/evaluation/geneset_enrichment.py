@@ -146,8 +146,12 @@ def insert_df_into_mudata(mdata, df, library="GSEA", prog_key="cNMF",
 
 def compute_geneset_enrichment(mdata, prog_key='cNMF', data_key='rna', organism='human', library='Reactome_2022',
                                method="gsea", prog_nam=None, database='enrichr', n_jobs=1, inplace=False,
-                               user_geneset=None, loading_rank_thresh=500, **kwargs):
+                               user_geneset=None, loading_rank_thresh=500, output_file=None, **kwargs):
 
+    #read in mudata if it is provided as a path
+    if isinstance(mdata, str):
+        mdata = mudata.read(mdata)
+    
     #get the geneset
     if user_geneset is not None:
         geneset = user_geneset
@@ -164,26 +168,30 @@ def compute_geneset_enrichment(mdata, prog_key='cNMF', data_key='rna', organism=
         pre_res = perform_fisher_enrich(loadings=loadings, geneset=geneset, loading_rank_thresh=500)
         
     #return the result depending on whether or not we want to do it inplace
+    if output_file:
+        pre_res.to_csv(output_file)
+    
     if inplace:
         mdata=insert_df_into_mudata(mdata, df=pre_res, library=library, prog_key=prog_key,
                                                geneset_index="Term", program_index="program_name",
                                                varmap_name_prefix="gsea_varmap")
-    else:
+    if not inplace and not output_file:
         return(pre_res)
-
 
 
 def compute_geneset_enrichment_ot_gwas(mdata, gwas_data, prog_key='cNMF', prog_nam=None, data_key='rna',
                                        library='OT_GWAS', n_jobs=1, inplace=False, key_column='trait_efos',
-                                       gene_column='gene_name', method='fisher', **kwargs):
+                                       gene_column='gene_name', method='fisher', output_file=None, **kwargs):
+    #read in gwas data
     if isinstance(gwas_data, str):
         df = pd.read_csv(gwas_data, compression='gzip', low_memory=False)
     elif isinstance(gwas_data, pd.DataFrame):
         df = gwas_data
     else:
         raise ValueError("gwas_data must be either a pandas DataFrame or a file path to a CSV file.")
-
+    
     gmt = create_geneset_dict(df, key_column=key_column, gene_column=gene_column)
 
     return(compute_geneset_enrichment(mdata=mdata, prog_key=prog_key, data_key=data_key, library=library,
-                               database=None, n_jobs=n_jobs, inplace=inplace, user_geneset=gmt, prog_nam=prog_nam, method=method))
+                               database=None, n_jobs=n_jobs, inplace=inplace, user_geneset=gmt, prog_nam=prog_nam, method=method,
+                                     output_file=output_file))

@@ -2,6 +2,8 @@
 *.snakemake
 **/resources/*
 !/resources/OpenTargets_L2G_noQC.csv.gz
+!/resources/OpenTargets_L2G_Filtered.csv.gz
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
