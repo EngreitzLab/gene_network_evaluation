@@ -4,57 +4,61 @@ import mudata
 import plotly.express as px
 from ipywidgets import interact, Dropdown, Output, VBox
 
-def create_enrichment_plotting_df(mdata,
-                       l2g_dataframe_path,
-                       varm_key_name="FDR_GWAS",
-                       uns_key_name='genesets_GWAS',
-                       prog_key="cNMF"):
-    
-    # Load the GWAS dataframe
-    l2g = pd.read_csv(l2g_dataframe_path, compression='gzip', low_memory=False)
-    l2g_metadata = l2g[["trait_efos", "trait_reported", "trait_category"]].drop_duplicates()
+import pandas as pd
+import numpy as np
 
-    # Get P-values for each GWAS program
-    prog_nam = mdata[prog_key].var.index 
-    enrich_ps = pd.DataFrame(index=mdata[prog_key].uns[uns_key_name])
+def process_enrichment_data(enrich_res,
+                            metadata,
+                            pval_col="P-value",
+                            enrich_geneset_id_col="Term",
+                            metadata_geneset_id_col="trait_efos",
+                            color_category_col="trait_category",
+                            program_name_col="program_name",
+                            annotation_cols=["trait_reported", "Genes", "study_id", "pmid"]):
 
-    for prog in prog_nam:
-        # Extract p-values for the current program
-        prog_p_values = mdata[prog_key][:, prog].varm[varm_key_name].flatten()
-        
-        # Add the p-values as a column in the DataFrame
-        enrich_ps[prog] = pd.Series(prog_p_values, index=mdata[prog_key].uns[uns_key_name])
+    # Read in enrichment results
+    if isinstance(enrich_res, str):
+        enrich_df = pd.read_csv(enrich_res)
+    elif isinstance(enrich_res, pd.DataFrame):
+        enrich_df = enrich_res
+    else:
+        raise ValueError("enrich_res must be either a pandas DataFrame or a file path to a CSV file.")
 
-    #drop columns that are NA, meaning that enrichment could not be computed for that
-    # Program x GWAS pair
-    enrich_ps.dropna(axis=0, how='all', inplace=True)
-    
-    #merge with the L2G metadata to map trait_efos to trait_reported and trait_category
-    enrich_ps = enrich_ps.reset_index(names='trait_efos').merge(l2g_metadata, on="trait_efos", how="left")
-    
-    #make the dataframe in long format
-    enrich_ps = enrich_ps.melt(id_vars=["trait_efos", "trait_reported", "trait_category"], 
-                               var_name="Program_Name", 
-                               value_name="Enrichment_Pvals").drop_duplicates().sort_values(by=["trait_category", "Enrichment_Pvals"])
-    
-    #If the input P-value == 0, then replace it with the lowest non-zero P-value in the dataframe
-    min_value = (enrich_ps.query("Enrichment_Pvals > 0")['Enrichment_Pvals']).min()
-    
-    #compute the -log(10) P-value and deal with edge-cases (e.g. P=0, P=1)
-    enrich_ps.loc[enrich_ps["Enrichment_Pvals"] == 0, "Enrichment_Pvals"] = min_value #replace P=0 with min non-0 p-value
-    enrich_ps['-log10(p-value)'] = abs(-1*np.log10(enrich_ps['Enrichment_Pvals']))
-    
-    enrich_ps = enrich_ps.query('trait_category != "measurement"')
+    if isinstance(metadata, str):
+        metadata_df = pd.read_csv(metadata, compression='gzip', low_memory=False)
+    elif isinstance(metadata, pd.DataFrame):
+        metadata_df = metadata
+    else:
+        raise ValueError("metadata must be either a pandas DataFrame or a file path to a CSV file.")
+
+    # Join the enrichment results and the metadata
+    enrich_ps = enrich_df.merge(metadata_df, left_on=enrich_geneset_id_col, right_on=metadata_geneset_id_col, how="left")
+
+    # Only keep the relevant columns
+    keep_cols = list([enrich_geneset_id_col, pval_col, metadata_geneset_id_col, color_category_col, program_name_col] + annotation_cols)
+    enrich_ps = enrich_ps[keep_cols]
+
+    # Sort by P-value
+    enrich_ps = enrich_ps.drop_duplicates().sort_values(by=[color_category_col, pval_col])
+
+    # If the input P-value == 0, then replace it with the lowest non-zero P-value in the dataframe
+    min_value = enrich_ps.query(f"`{pval_col}` > 0")[pval_col].min()
+
+    # Compute the -log(10) P-value and deal with edge-cases (e.g. P=0, P=1)
+    enrich_ps.loc[enrich_ps[pval_col] == 0, pval_col] = min_value  # Replace P=0 with min non-0 p-value
+    enrich_ps['-log10(p-value)'] = abs(-1 * np.log10(enrich_ps[pval_col]))
+
     enrich_ps.reset_index(drop=True, inplace=True)
-    
+
     return enrich_ps
 
 
 def plot_interactive_phewas(data, x_column='trait_reported',
                             y_column='-log10(p-value)',
                             color_column='trait_category',
-                            filter_column='Program_Name',
-                            significance_threshold=0.05):
+                            filter_column='program_name',
+                            significance_threshold=0.05,
+                            annotation_cols=["program_name", "trait_reported", "Genes", "study_id", "pmid"]):
     
     # Get unique values for the filtering column
     filter_values = ['All'] + list(data[filter_column].unique())
@@ -73,7 +77,7 @@ def plot_interactive_phewas(data, x_column='trait_reported',
         # Create the plot
         fig = px.scatter(filtered_data, x=x_column, y=y_column, color=color_column,
                          title='Cell Program x OpenTargets GWAS L2G Enrichment',
-                         hover_data=[filter_column, 'trait_efos', x_column, color_column, 'Enrichment_Pvals'])
+                         hover_data=annotation_cols)
 
         # Customize layout
         fig.update_layout(
@@ -107,3 +111,4 @@ def plot_interactive_phewas(data, x_column='trait_reported',
 
     # Display dropdown widget and initial plot
     display(VBox([dropdown, output]))
+    

@@ -169,7 +169,7 @@ def compute_geneset_enrichment(mdata, prog_key='cNMF', data_key='rna', organism=
         
     #return the result depending on whether or not we want to do it inplace
     if output_file:
-        pre_res.to_csv(output_file)
+        pre_res.to_csv(output_file, index=False)
     
     if inplace:
         mdata=insert_df_into_mudata(mdata, df=pre_res, library=library, prog_key=prog_key,

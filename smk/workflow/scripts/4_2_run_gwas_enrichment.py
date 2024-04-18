@@ -20,7 +20,7 @@ with open(snakemake.log[0], 'a') as f:
             output_file=snakemake.output[0],
             prog_nam=None,
             library='OT_GWAS',
-            n_jobs=1,
+            n_jobs=snakemake.params[3],
             inplace=False,
             key_column='trait_efos',
             gene_column='gene_name',
