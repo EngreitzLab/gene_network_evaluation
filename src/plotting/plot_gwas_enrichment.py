@@ -58,13 +58,20 @@ def plot_interactive_phewas(data, x_column='trait_reported',
                             color_column='trait_category',
                             filter_column='program_name',
                             significance_threshold=0.05,
-                            annotation_cols=["program_name", "trait_reported", "Genes", "study_id", "pmid"]):
+                            annotation_cols=["program_name", "trait_reported",
+                                             "trait_category", "P-value",
+                                             "Genes", "study_id", "pmid"],
+                           query_string="trait_category != 'measurement'",
+                           title="Cell Program x OpenTargets GWAS L2G Enrichment"):
     
     # Get unique values for the filtering column
     filter_values = ['All'] + list(data[filter_column].unique())
 
     # Initialize output widget to display the plot
     output = Output()
+    
+    if query_string:
+        data=data.query(query_string)
 
     # Function to update plot based on dropdown selection
     def update_plot(selected_value):
@@ -76,7 +83,7 @@ def plot_interactive_phewas(data, x_column='trait_reported',
 
         # Create the plot
         fig = px.scatter(filtered_data, x=x_column, y=y_column, color=color_column,
-                         title='Cell Program x OpenTargets GWAS L2G Enrichment',
+                         title=title,
                          hover_data=annotation_cols)
 
         # Customize layout
@@ -111,4 +118,3 @@ def plot_interactive_phewas(data, x_column='trait_reported',
 
     # Display dropdown widget and initial plot
     display(VBox([dropdown, output]))
-    
