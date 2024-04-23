@@ -133,11 +133,14 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
 
     # Remove unusual traits
     filtered_l2g = filtered_l2g.query(
-        "not trait_reported.str.contains(' or |conditional| and | x |pleiotropy', case=False) "
+        "not trait_reported.str.contains(' or |conditional| and | x |pleiotropy|interaction|eg:', case=False)"
         "and not trait_reported.str.contains('EA', case=True)"
         "and trait_category != 'Uncategorised'"
-        "and trait_category != 'phenotype'"
-        "and trait_category != 'measurement'"
+        "and not trait_reported.str.contains('intake', case=False)"
+        "and not trait_reported.str.contains(' ms]', case=False)"
+        "and not trait_reported.str.contains('Protein quantitative trait', case=False)"
+        "and not trait_reported.str.contains('adjusted for', case=False)"
+        "and not trait_reported.str.contains('diet', case=False)"
     )
 
     # Retain the GWAS with the largest sample size by number of cases by EFO group

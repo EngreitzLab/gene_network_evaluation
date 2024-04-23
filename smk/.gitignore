@@ -1,7 +1,9 @@
 results/**
 
 resources/**
-!resources/OpenTargets_L2G_noQC.csv.gz
+!/resources/OpenTargets_L2G_noQC.csv.gz
+!/resources/OpenTargets_L2G_Filtered.csv.gz
+!/resources/OpenTargets_L2G_Cell_Program_Enrichment_Results.csv
 
 logs/**
 
