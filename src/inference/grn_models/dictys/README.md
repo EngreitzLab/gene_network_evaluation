@@ -2,8 +2,6 @@ author: Gary Yang <br>
 email: yyang117@jhu.edu <br>
 date: 2024-04-28
 
-# Adding a new GRN model
-
 # TODO
 - [ ] Update script to accomodate bulk ATAC/DNase-seq
 - [ ] Which parameters should I expose to users
