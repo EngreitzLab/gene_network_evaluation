@@ -1,0 +1,21 @@
+# Dataset specific
+working_dir: /home/gary/beerlab/IGVF/dictys_test_data
+output_dir: /home/gary/beerlab/IGVF/dictys_test_data/out
+
+# Should be stored in working_dir
+input_data: clustered_chr1.h5mu
+fragment: chr1.fragments.tsv.gz
+
+#  Annotation filenames, will be downloaded to 
+motif: motifs.motif
+genome: genome
+gene_annotation: gene.bed  ## Should be the same genome build/version as chromatin accessibility reads
+
+# The clusters to run static GRNs
+clusters: ['3', '4', '5', '0', '1', '2']
+
+# parameters
+n_threads: '4' 
+device: 'cuda:0' 
+
+
