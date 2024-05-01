@@ -12,7 +12,8 @@ import argparse
 # Init args
 parser = argparse.ArgumentParser()
 parser.add_argument('-d','--path_data', required=True)
-parser.add_argument('-p','--path_p2g', required=True)
+parser.add_argument('-r','--path_r2g', required=True)
+parser.add_argument('-g','--gdir', required=True)
 parser.add_argument('-o','--organism', required=True)
 parser.add_argument('-f','--fpr', required=True)
 parser.add_argument('-b','--blen', required=True)
@@ -22,7 +23,8 @@ args = vars(parser.parse_args())
 
 # Parse args
 path_data = args['path_data']
-path_p2g = args['path_p2g']
+path_r2g = args['path_r2g']
+gdir = args['gdir']
 organism = args['organism']
 fpr = float(args['fpr'])
 blen = int(args['blen'])
@@ -35,15 +37,8 @@ if organism == 'human':
 elif organism == 'mouse':
     genome = 'mm10'
 
-# Check genome
-genome_installation = ma.is_genome_installed(ref_genome=genome)
-if not genome_installation:
-    install_genome(name=genome, provider="UCSC")
-else:
-    print(genome, "is installed.")
-
 # Load annotated peak data.
-peaks = pd.read_csv(path_p2g)
+peaks = pd.read_csv(path_r2g)
 if peaks.shape[0] == 0:
     tfb = pd.DataFrame(columns=['cre', 'tf', 'score'])
     tfb.to_csv(path_out, index=False)
@@ -110,7 +105,6 @@ def check_peak_format(peaks_df, gname, gdir):
     return df
 
 # Format and delete peaks
-gdir = "/cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/celloracle/resources/genomes"
 peaks = check_peak_format(peaks, gname=genome, gdir=gdir)
 
 # Instantiate TFinfo object
@@ -161,6 +155,7 @@ df = df[['seqname', 'motif_values', 'score']].dropna()
 df = df.reset_index(drop=True).rename(columns={'seqname': 'cre', 'motif_values': 'tf'})
 df['cre'] = df['cre'].str.replace('_', '-')
 df = df.sort_values(['cre', 'score'], ascending=[True, False])
+df["pval"] = np.nan
 
 # Write
 df.to_csv(path_out, index=False)

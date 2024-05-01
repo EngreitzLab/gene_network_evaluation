@@ -1,26 +1,28 @@
-# Configuration file for my_grn_model
-input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu
+# Configuration file for CellOracle
+input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu  # Path to the input data
 organism: human # human or mouse
-outdir: /cellar/users/aklie/tutorials/gene_program_evaluation/celloracle/neurips2021/small/2024_03_06 # Created if doesn't exist.
-scratchdir: /cellar/users/aklie/tmp # Should exist
-singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/celloracle/envs/celloracle.sif # Optional
+genome: hg38  # Genome version
+outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/celloracle/2024_05_01 # Created if doesn't exist
+scratchdir: /cellar/users/aklie/tmp  # Should exist
+#singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/celloracle/envs/celloracle.sif  # Optional
 n_jobs: 1 # Threads
 random_state: 1234
 
-# Cicero parameters
-genome_sizes: https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes
+# region2gene
+genome_sizes: https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes  # Path or URL to the genome sizes file
 binarize: false  # whether to binarize the peak matrix
-dim_reduction_key: X_umap  # key in the anndata object obsm that contains the reduced dimension for building kNN (optional)
+dim_reduction_key: X_umap  # dim reduction used for kNN, if null LSI is computed
 k: 30  # number of neighbors for kNN
 window: 500000  # window size for Cicero
+coacess_thr: 0.1  # Co-accessibility threshold for Cicero
 
-# tss annotation parameters
-thr_coaccess: 0.8
+# tf2region
+fpr: 0.02  # FPR for motif scanning
+blen: 200
+tfb_thr: 5
 
-# tf_motif scan parameters
-thr_motif_score: 10
-fpr: 0.02
-
-# filter grn parameters
-thr_edge_pval: 0.001
-thr_top_edges: 2000
+# grn
+cluster_key: celltype
+layer: null
+alpha: 10
+bagging_number: 20

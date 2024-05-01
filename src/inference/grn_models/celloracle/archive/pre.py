@@ -10,13 +10,12 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-i','--path_input', required=True)
 parser.add_argument('-k','--knn', required=True)
-parser.add_argument('-d','--dim_reduction_key', required=False)
 parser.add_argument('-o','--path_out', required=True)
 args = vars(parser.parse_args())
 
+# Parse args
 path_input = args['path_input']
 k = int(args['knn'])
-dim_reduction_key = args['dim_reduction_key']
 path_out = args['path_out']
 
 # Read rna adata
@@ -27,15 +26,13 @@ adata = mdata.mod['rna'].copy()
 adata.obs['celltype'] = mdata.obs['celltype']
 adata.X = adata.layers['counts'].copy()
 
-# Get dim reduction if none passed in
-if dim_reduction_key is None:
-    print("No dim reduction key passed in. Using PCA.")
-    sc.pp.normalize_total(adata, target_sum=1e4)
-    sc.pp.log1p(adata)
-    sc.pp.scale(adata, max_value=10)
-    sc.pp.pca(adata, n_comps=50)
-    adata.X = adata.layers['counts'].copy()
-    dim_reduction_key = "X_pca"
+# Dim reduction is used in perturbation simulation ()
+adata_pp = adata.copy()
+sc.pp.normalize_total(adata_pp, target_sum=1e4)
+sc.pp.log1p(adata_pp)
+sc.pp.scale(adata_pp, max_value=10)
+sc.pp.pca(adata_pp, n_comps=50)
+adata.obsm["X_pca"] = adata_pp.obsm["X_pca"]
 
 # Instantiate Oracle object
 oracle = co.Oracle()

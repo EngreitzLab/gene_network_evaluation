@@ -17,7 +17,7 @@ parser.add_argument('-t','--thr', required=True)
 parser.add_argument('-p','--path_out', required=True)
 args = vars(parser.parse_args())
 
-# Load args
+# Parse args
 path_data = args['path_data']
 path_all_peaks = args['all_peaks']
 path_connections = args['connections']
@@ -52,6 +52,7 @@ integrated = integrated[integrated['coaccess'] >= thr_coaccess]
 integrated['peak_id'] = integrated['peak_id'].str.replace('_', '-')
 integrated = integrated.rename(columns={'peak_id': 'cre', 'gene_short_name': 'gene', 'coaccess': 'score'})
 integrated = integrated.sort_values(['cre', 'score'], ascending=[True, False])
+integrated["pval"] = np.nan
 
 # Remove unexpressed genes
 genes = mu.read(os.path.join(path_data, 'rna')).var.index.values.astype('U')
