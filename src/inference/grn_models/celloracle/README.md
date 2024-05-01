@@ -21,10 +21,12 @@ date: 2024-02-28
 - [ ] Modify the path to the CellOracle singularity container (`singularity_image`) (see [Environment](#environment) for more details)
 - [ ] Modify the scratch directory (`scratch`) to where you want the temporary files to be saved
 - [ ] Choose the number of threads to use (`threads`) based on your system
+- [ ] Modify other parameters as needed
+
 2. Run the pipeline
 ```bash
-snakemake --cores 1 --configfile /path/to/config.yaml tri.csv  # need to figure out how to not have to pass in tri.csv
-snakemake --use-singularity --cores 1 tri.csv  # Use singularity container
+snakemake --cores 1 outdir/celloracle.h5mu --configfile /path/to/config.yaml
+snakemake --use-singularity --cores 1 outdir/celloracle.h5mu --configfile /path/to/config.yaml # Use singularity container
 ```
 
 # Expected input

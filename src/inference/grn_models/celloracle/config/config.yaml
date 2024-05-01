@@ -7,8 +7,12 @@ singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference
 n_jobs: 1 # Threads
 random_state: 1234
 
-# peak correlation parameters
+# Cicero parameters
 genome_sizes: https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes
+binarize: false  # whether to binarize the peak matrix
+dim_reduction_key: X_umap  # key in the anndata object obsm that contains the reduced dimension for building kNN (optional)
+k: 30  # number of neighbors for kNN
+window: 500000  # window size for Cicero
 
 # tss annotation parameters
 thr_coaccess: 0.8

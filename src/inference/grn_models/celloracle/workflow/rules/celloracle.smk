@@ -4,27 +4,44 @@ import os
 outdir: config['outdir']
 currdir = os.getcwd()
 
-rule peak_corr:
+rule r2g_R:
     input:
         data=config['input_loc']
     singularity:
         "envs/celloracle.sif"
     output:
         path_all_peaks="{outdir}/all_peaks.csv",
-        path_connections="{outdir}/cicero_connections.csv"
+        path_connections="{outdir}/cicero_connections.csv",
+        path_cicero_output="{outdir}/cicero_output.rds"
     params:
-        organism=lambda w: config['organism']
+        organism=lambda w: config['organism'],
+        binarize=lambda w: config['binarize'],
+        dim_reduction_key=lambda w: config['dim_reduction_key'],
+        k=lambda w: config['k'],
+        window=lambda w: config['window'],
+        seed=lambda w: config['random_state']
     log:
-        "{outdir}/logs/peak_corr.log"
+        "{outdir}/logs/r2g.log"
     benchmark:
-        "{outdir}/benchmarks/peak_corr.txt"
+        "{outdir}/benchmarks/r2g.txt"
     shell:
         """
-        Rscript workflow/scripts/peak_corr.R {input.data} {params.organism} {output.path_all_peaks} {output.path_connections}
+        Rscript workflow/scripts/r2g.R \
+        {input.data} \
+        {params.organism} \
+        {params.binarize} \
+        {params.dim_reduction_key} \
+        {params.k} \
+        {params.window} \
+        {output.path_all_peaks} \
+        {output.path_connections} \
+        {output.path_cicero_output} \
+        {params.seed}
         """
 
-rule tss_annotation:
+rule r2g_py:
     input:
+        data=config['input_loc'],
         all_peaks="{outdir}/all_peaks.csv",
         connections="{outdir}/cicero_connections.csv"
     singularity:
@@ -35,11 +52,17 @@ rule tss_annotation:
         organism=lambda w: config['organism'],
         thr_coaccess=lambda w: config['thr_coaccess']
     log:
-        "{outdir}/logs/tss_annotation.log"
+        "{outdir}/logs/r2g_py.log"
     benchmark:
-        "{outdir}/benchmarks/tss_annotation.txt"
+        "{outdir}/benchmarks/r2g_py.txt"
     shell:
-         "python workflow/scripts/tss_annotation.py -a {input.all_peaks} -c {input.connections} -o {params.organism} -t {params.thr_coaccess} -p {output}"
+         "python workflow/scripts/p2g.py \
+         -d {input.data} \
+         -a {input.all_peaks} \
+         -c {input.connections} \
+         -o {params.organism} \
+         -t {params.thr_coaccess} \
+         -p {output}"
 
 rule tf_motif_scan:
     input:

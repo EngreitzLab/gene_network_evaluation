@@ -1,26 +1,31 @@
+import os
 import pandas as pd
 import numpy as np
 from celloracle import motif_analysis as ma
 import celloracle as co
+import mudata as mu
 import argparse
 
 
 # Init args
 parser = argparse.ArgumentParser()
+parser.add_argument('-d','--path_data', required=True)
 parser.add_argument('-a','--all_peaks', required=True)
 parser.add_argument('-c','--connections', required=True)
 parser.add_argument('-o','--organism', required=True)
 parser.add_argument('-t','--thr', required=True)
-parser.add_argument('-p','--prc_peaks', required=True)
+parser.add_argument('-p','--path_out', required=True)
 args = vars(parser.parse_args())
 
+# Load args
+path_data = args['path_data']
 path_all_peaks = args['all_peaks']
 path_connections = args['connections']
 organism = args['organism']
 thr_coaccess = float(args['thr'])
-path_prc_peaks = args['prc_peaks']
+path_out = args['path_out']
 
-# # Load scATAC-seq peak list
+# Load scATAC-seq peak list
 peaks = pd.read_csv(path_all_peaks, index_col=0).x.values.astype('U')
 peaks = np.char.replace(peaks, '-', '_')
 
@@ -42,10 +47,15 @@ tss_annotated = ma.get_tss_info(peak_str_list=peaks, ref_genome=genome)
 integrated = ma.integrate_tss_peak_with_cicero(tss_peak=tss_annotated,
                                                cicero_connections=cicero_connections)
 
-# Filter by coaccessability threshold
-peak = integrated[integrated.coaccess >= thr_coaccess]
-peak = peak[["peak_id", "gene_short_name"]].reset_index(drop=True)
+# Process
+integrated = integrated[integrated['coaccess'] >= thr_coaccess]
+integrated['peak_id'] = integrated['peak_id'].str.replace('_', '-')
+integrated = integrated.rename(columns={'peak_id': 'cre', 'gene_short_name': 'gene', 'coaccess': 'score'})
+integrated = integrated.sort_values(['cre', 'score'], ascending=[True, False])
 
-# Save
-peak.to_csv(path_prc_peaks)
+# Remove unexpressed genes
+genes = mu.read(os.path.join(path_data, 'rna')).var.index.values.astype('U')
+integrated = integrated[integrated['gene'].isin(genes)]
 
+# Write
+integrated.to_csv(path_out, index=False)
