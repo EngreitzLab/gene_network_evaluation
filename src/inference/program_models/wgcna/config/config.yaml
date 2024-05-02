@@ -1,26 +1,28 @@
 # Configuration file for my_grn_model
-input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu
-outdir: /cellar/users/aklie/tutorials/gene_program_evaluation/wgcna/neurips2021/small/2024_03_11 # Created if doesn't exist.
-scratchdir: /cellar/users/aklie/tmp # Should exist
-#singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/program_models/wgcna/envs/wgcna.sif # Optional
+input_loc: /cellar/users/aklie/data/datasets/neurips2021_small/annotation/2023_12_05/mdata.h5mu
+outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/hdwgcna/2024_05_02  # created if doesn't exist.
+scratchdir: /cellar/users/aklie/tmp  # should exist
+singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/program_models/wgcna/envs/wgcna.sif # Optional
 name: neurips2021_small
-n_jobs: 1 # Threads
+n_jobs: 1  # threads
 random_state: 1234
 
 # prep metacells parameters
-metacell_groupby: "celltype,Samplename"
+metacell_groupby: "celltype"
 genes: 0.05
-nearest_neighbors: 2
+nearest_neighbors: 5
 reduction: pca
-min_cells: 2
+min_cells: 10
+target_metacells: 25
+max_shared: 100
 
-# test soft powers parameters
+# soft powers parameters
 softpower_groupby: NULL
 softpower_groups: NULL
 
 # construct network parameters
 
 # analyze modules parameters
-modules_harmonize_by: Samplename
+modules_harmonize_by: NULL
 modules_groupby: NULL
 modules_groups: NULL

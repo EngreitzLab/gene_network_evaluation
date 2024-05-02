@@ -83,8 +83,8 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('-pk', '--prog_key', default='factor_analysis', typ=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
+    parser.add_argument('-pk', '--prog_key', default='factor_analysis', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str) 
     parser.add_argument('--layer', default='X', type=str)
     parser.add_argument('--config_path', default='./factor_analysis_config.gin', type=str)
     parser.add_argument('--output', action='store_false') 
