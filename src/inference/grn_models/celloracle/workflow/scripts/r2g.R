@@ -6,7 +6,7 @@ library(rhdf5)
 # Parse args
 args <- commandArgs(trailingOnly = F)
 path_data <- args[6]
-organism <- args[7]
+chromsizes <- args[7]
 binarize <- as.logical(args[8])
 dim_reduction_key <- args[9]
 k <- as.numeric(args[10])
@@ -16,12 +16,8 @@ path_connections <- args[13]
 path_cicero_out <- args[14]
 seed <- as.numeric(args[15])
 
-# Read genome
-if (organism == 'human'){
-    genome <- read.table('resources/genome_sizes/human.txt')
-} else {
-    genome <- read.table('resources/genome_sizes/mouse.txt')
-}
+# Read chrom sizes
+chrom_sizes <- read.table(chromsizes, header=FALSE, stringsAsFactors=FALSE)
 
 # Process mudata
 indata <- H5Fopen(path_data)
@@ -101,7 +97,7 @@ distance_parameters <- estimate_distance_parameter(
     sample_num=100,
     distance_constraint = round(window/2),
     distance_parameter_convergence=1e-22,
-    genomic_coords=genome
+    genomic_coords=chrom_sizes
 )
 mean_distance_parameter <- mean(unlist(distance_parameters))
 
@@ -111,7 +107,7 @@ cicero_out <- generate_cicero_models(
     cicero_cds,
     distance_parameter=mean_distance_parameter,
     window=window,
-    genomic_coords=genome
+    genomic_coords=chrom_sizes
 )
 
 # Assemble connections

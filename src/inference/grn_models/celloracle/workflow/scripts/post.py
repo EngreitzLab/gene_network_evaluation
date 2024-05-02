@@ -4,7 +4,10 @@ import argparse
 
 
 # Init args
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(
+    prog="python post.py",
+    description="Post process outputs of pipeline for evaluation."
+)
 parser.add_argument('-d','--path_data', required=True)
 parser.add_argument('-r','--path_r2g', required=True)
 parser.add_argument('-t','--path_tf2r', required=True)

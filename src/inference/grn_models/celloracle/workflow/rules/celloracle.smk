@@ -1,18 +1,20 @@
 import os
 
-# organism from config
-organism = config['organism']
-if organism == "human":
-    genome = "hg38"
-elif organism == "mouse":
-    genome = "mm10"
-else:
-    raise ValueError("Unknown organism: {organism}")
-print(f"Organism: {organism}, Genome: {genome}")
-
-# Output directory from config
+# wildcards from config
 outdir: config['outdir']
-currdir = os.getcwd()
+
+rule download_genome:
+    singularity:
+        "envs/celloracle.sif"
+    output: 
+        genome_dir=directory(config['scratchdir']),
+    params:
+        genome=lambda w: config['genome'],
+    shell:
+        "python worfklow/scripts/download_genome.py \
+        -d {output.genome_dir} \
+        -g {params.genome} \
+        > {outdir}/logs/download_genome.log"
 
 rule r2g_R:
     input:
@@ -24,21 +26,21 @@ rule r2g_R:
         path_connections="{outdir}/cicero_connections.csv",
         path_cicero_output="{outdir}/cicero_output.rds"
     params:
-        organism=lambda w: config['organism'],
+        chromsizes=lambda w: f"{config['scratchdir']}/{config['genome']}/{config['genome']}.fa.sizes",
         binarize=lambda w: config['binarize'],
         dim_reduction_key=lambda w: config['dim_reduction_key'],
         k=lambda w: config['k'],
         window=lambda w: config['window'],
         seed=lambda w: config['random_state']
     log:
-        "{outdir}/logs/r2g.log"
+        "{outdir}/logs/r2g_R.log"
     benchmark:
-        "{outdir}/benchmarks/r2g.txt"
+        "{outdir}/benchmarks/r2g_R.txt"
     shell:
         """
         Rscript workflow/scripts/r2g.R \
         {input.data} \
-        {params.organism} \
+        {params.chromsizes} \
         {params.binarize} \
         {params.dim_reduction_key} \
         {params.k} \
@@ -46,7 +48,8 @@ rule r2g_R:
         {output.path_all_peaks} \
         {output.path_connections} \
         {output.path_cicero_output} \
-        {params.seed}
+        {params.seed} \
+        > {log}
         """
 
 rule r2g_py:
@@ -59,37 +62,40 @@ rule r2g_py:
     output:
         "{outdir}/r2g.csv"
     params:
-        organism=lambda w: config['organism'],
+        genome=lambda w: config['genome'],
         coaccess_thr=lambda w: config['coaccess_thr']
     log:
         "{outdir}/logs/r2g_py.log"
     benchmark:
         "{outdir}/benchmarks/r2g_py.txt"
     shell:
-         "python workflow/scripts/p2g.py \
-         -d {input.data} \
-         -a {input.all_peaks} \
-         -c {input.connections} \
-         -o {params.organism} \
-         -t {params.coaccess_thr} \
-         -p {output}"
+        "python workflow/scripts/r2g.py \
+        -d {input.data} \
+        -a {input.all_peaks} \
+        -c {input.connections} \
+        -g {params.genome} \
+        -t {params.coaccess_thr} \
+        -o {output} \
+        > {log}"
 
 rule tf2r:
     input:
         data=config['input_loc'],
+        genome_dir=config['scratchdir'],
         r2g="{outdir}/r2g.csv",
-        gdir="resources/genomes/{organism}"
     singularity:
         "envs/celloracle.sif"
     output:
-        "{outdir}/tf2r.csv"
+        path_tfinfo="{outdir}/motifs.celloracle.tfinfo",
+        path_out="{outdir}/tf2r.csv"
     resources:
         mem_mb=32000
     params:
-        organism=lambda w: config['organism'],
+        genome=lambda w: config['genome'],
         fpr=lambda w: config['fpr'],
         blen=lambda w: config['blen'],
-        tfb_thr=lambda w: config['tfb_thr']
+        tfb_thr=lambda w: config['tfb_thr'],
+        threads=lambda w: config['n_jobs']
     log:
         "{outdir}/logs/tf2r.log"
     benchmark:
@@ -98,11 +104,15 @@ rule tf2r:
         "python workflow/scripts/tf2r.py \
         -d {input.data} \
         -r {input.r2g} \
-        -o {params.organism} \
+        -gd {input.genome_dir} \
+        -g {params.genome} \
         -f {params.fpr} \
         -b {params.blen} \
         -t {params.tfb_thr} \
-        -t {output}"
+        -p {params.threads} \
+        -ti {output.path_tfinfo} \
+        -o {output.path_out} \
+        > {log}"
 
 rule grn:
     input:
@@ -131,7 +141,8 @@ rule grn:
         -l {params.layer} \
         -a {params.alpha} \
         -b {params.bagging_number} \
-        -o {output}"
+        -o {output} \
+        > {log}"
 
 rule post:
     input:
@@ -153,4 +164,5 @@ rule post:
         -r {input.path_r2g} \
         -t {input.path_tf2r} \
         -g {input.path_grn} \
-        -o {output.path_mdata}"
+        -o {output.path_mdata} \
+        > {log}"

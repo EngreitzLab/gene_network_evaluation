@@ -1,28 +1,28 @@
 # Configuration file for CellOracle
-input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu  # Path to the input data
-organism: human # human or mouse
-genome: hg38  # Genome version
-outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/celloracle/2024_05_01 # Created if doesn't exist
-scratchdir: /cellar/users/aklie/tmp  # Should exist
-#singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/celloracle/envs/celloracle.sif  # Optional
-n_jobs: 1 # Threads
-random_state: 1234
+input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu  # path to the input data
+outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/celloracle/2024_05_03 # created if doesn't exist
+scratchdir: /cellar/users/aklie/tmp/gene_program_evaluation  # should exist
+singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/celloracle/envs/celloracle.sif  # optional
+n_jobs: 1  # threads
+random_state: 1234  # random state, currently only applies to Cicero co-accessibility analysis step
+
+# genome
+genome: hg38  # genome version
 
 # region2gene
-genome_sizes: https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.chrom.sizes  # Path or URL to the genome sizes file
 binarize: false  # whether to binarize the peak matrix
 dim_reduction_key: X_umap  # dim reduction used for kNN, if null LSI is computed
 k: 30  # number of neighbors for kNN
 window: 500000  # window size for Cicero
-coacess_thr: 0.1  # Co-accessibility threshold for Cicero
+coaccess_thr: 0.1  # co-accessibility threshold for Cicero
 
 # tf2region
-fpr: 0.02  # FPR for motif scanning
-blen: 200
-tfb_thr: 5
+fpr: 0.02  # false positive rate for motif scanning
+blen: 200  # background sequence length for motif scanning
+tfb_thr: 5  # threshold for TF binding score
 
 # grn
-cluster_key: celltype
-layer: null
-alpha: 10
-bagging_number: 20
+cluster_key: celltype  # key to group cells for GRN inference per cell identity
+layer: null  # layer to use for GRN inference
+alpha: 10  # alpha for ridge regression regularization strength
+bagging_number: 20  # number of samples for bagging

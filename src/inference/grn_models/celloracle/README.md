@@ -1,14 +1,9 @@
 author: Adam Klie <br>
 email: aklie@ucsd.edu <br>
-date: 2024-02-28
+date: 2024-05-02
 
 # TODO
-- [x] Full test on neurips.small.h5mu
-- [ ] Complete expected output section of this README
-- [ ] Need to sort out the expectation of the counts tables present (CellOracle needs both log1p and raw counts)
-- [ ] Need to sort out the expectation of the embedding
-- [ ] Need to think about the best output format for the GRN
-- [ ] Develop logic for when no scATAC seq data is present
+- [ ] Test on a diverse set of datasets
 - [ ] Add to IGVF docs
 
 # CellOracle GRN inference
@@ -16,12 +11,12 @@ date: 2024-02-28
 # Quick start
 1. Modify the config in `config/config.yaml` or create a new one with the same structure
 - [ ] Point to the correct input file (`input_loc`) (see [Expected input](#expected-input))
-- [ ] Change the `organism` to the correct species (currently only human and mouse are supported)
-- [ ] Change output directory (`outdir`) to where you want the output to be saved. This includes all intermediate files and the final MuData object (see [Output](#output))
-- [ ] Modify the path to the CellOracle singularity container (`singularity_image`) (see [Environment](#environment) for more details)
+- [ ] Change the `organism` to the correct species (currently only `human` and `mouse` are supported)
+- [ ] Change output directory (`outdir`) to where you want the output to be saved. Thi will include all intermediate files and the final MuData object (see [Output](#output))
+- [ ] Modify the path to the CellOracle singularity container (`singularity_image`) (see [Environment](#environment) for more details) if you are using singularity
 - [ ] Modify the scratch directory (`scratch`) to where you want the temporary files to be saved
 - [ ] Choose the number of threads to use (`threads`) based on your system
-- [ ] Modify other parameters as needed
+- [ ] Modify other parameters as needed (see [Parameters](#parameters) for more details
 
 2. Run the pipeline
 ```bash
@@ -38,54 +33,81 @@ snakemake --use-singularity --cores 1 outdir/celloracle.h5mu --configfile /path/
         * `rna` in `mod` -- h5ad for scRNA-seq data
             * `layers["counts"]` — a sparse matrix of raw UMI counts
         * `obs` — a dataframe of cell metadata
-            * `"celltypes"` — a column of cell type annotations
+            * `"cell_identity"` — a column of cell type annotations (specify `cluster_key` to match in the config file)
         * `var` — a dataframe of gene metadata
 
-# Expected output
+# Workflow
+The CellOracle method consists of the following steps:
+- ***scRNA-seq data preparation***: run kNN imputation on the scRNA-seq data
+- ***base GRN construction***: build a set of possible TF to gene links using co-accessible distal and TSS peaks
+- ***GRN model construction***: use a Bayesian Ridge regression to refine the base GRN with scRNA-seq data
+- ***In silico gene perturbation***: simulate perturbations of TFs using the GRN model to predict gene expression changes
 
-# Scripts
-See below for more details on each step of the CellOracle pipeline.
+> **Note**
+> IMPORTANT: Here we are just taking advantage of CellOracle's GRN inference method (steps 2 and 3 above). We first assume you have already analyzed your scRNA-seq data to the point where you have interesting clusters you would like to build GRNs for. In the evaluation part of this pipeline, we take in arbitrary GRNs (i.e. they can be inferred using any method) and evaluate them using the CellOracle in silico perurbation method.
 
-![Alt text](image.png)
-
-## `peak_corr.R` - use Cicero to identify co-accessible peaks
+# Pipeline outputs
+* `r2g.csv` — region to gene links
 ```bash
-Rscript workflow/scripts/peak_corr.R {input.data} {params.organism} {output.path_all_peaks} {output.path_connections}
+cre,gene,score,pval
+chr1-107964928-107965436,VAV3,1.0,
+chr1-167627734-167628592,RCSD1,0.175306413124479,
+chr1-167630023-167630677,RCSD1,1.0,
+chr1-224160037-224160917,WDR26,0.211109775653612,
+chr1-224433432-224434024,WDR26,1.0,
 ```
-- Runs Cicero on the scATAC-seq data to identify co-accessible peaks. 
-- The output is a list of all peaks (`all_peaks.csv`) and all pairwise peaks with coaccessibility scores (`cicero_connections.csv`)
+> **Note**
+> The `score` column is the co-accessibility score between the region and gene. The `pval` column is NaN for CellOracle as Cicero does not provide p-values. A score of 1.0 indicates that this is a TSS peak, anything less than 1.0 is a distal peak.
 
-## `tss_annotation.py` — identify peaks that overlap TSS and use this for initial peak-to-gene linking
+* `tf2r.csv` — TF to region links
 ```bash
-python workflow/scripts/tss_annotation.py -a {input.all_peaks} -c {input.connections} -o {params.organism} -t {params.thr_coaccess} -p {output}
+cre,tf,score,pval
+chr1-107964928-107965436,SP4,306.97722557821425,
+chr1-107964928-107965436,E2F2,39.214405253215055,
+chr1-107964928-107965436,KLF6,33.173333506316666,
+chr1-107964928-107965436,TCF7L2,21.085326175707472,
+chr1-107964928-107965436,SP1,20.0,
 ```
-- Identify peaks that overlap TSSs as annotated from the HOMER database
-- Thresholds the co-accessibility score to only include high-confidence connections
+> **Note**
+> The `score` column is the motif score for the TF binding to the region. The `pval` column is NaN for CellOracle as GimmmeMotifs does not provide p-values. Rigth now, I believe we are allowing for both direct and indirect TF binding to the region. We may want to keep track of this in the future.
 
-## `tf_motif_scan.py` — scan peaks for motifs and use this for initial TF-to-peak linking
+* `grn.csv` — TF to gene links
 ```bash
-python workflow/scripts/tf_motif_scan.py -p {input} -o {params.organism} -f {params.fpr} -t {output}
+tf,gene,score,pval,cluster
+ARID5B,FAM13A,0.3710782,1.2700890408360003e-05,HSC
+ARID5B,SAMD9,0.13423152,0.024985336730666132,Proerythroblast
+ARID5B,FAM13A,0.11488605,0.04676196383997795,Proerythroblast
+ARID5B,DST,0.006444159,0.860277418467874,MK/E prog
+ARID5B,SAMD9,-0.02657091,0.6167909876627851,HSC
 ```
-- Scans peaks for motifs using `gimmemotifs scan` (TODO: add refs)
-- Currently defaults to gimme.vertebrate.v5.0 for human, but we could add support for other databases
+> **Note**
+> The `score` column is the coefficient of the TF in the Bayesian Ridge regression. The `pval` column is the p-value of the coefficient across the bagging. The `cluster` column is the cell type cluster that the GRN was built in.
 
-## `build_base_grn.py` — incorporate these peak-to-gene and TF-to-peak links into an initial TF-gene GRN
-```bash
-python workflow/scripts/build_grn.py -m {input.mdata} -b {input.base_grn} -l {output}
-```
-- Incorporates the peak-to-gene and TF-to-peak links into an initial TF-gene GRN
-- Generates an adjacency matrix of TF-gene links where the columns are the TFs and the rows are the genes (with the TSS peak also included)
+## Building a base GRN
+![Alt text](static/base_grn.png)
 
-## `build_grn.py` — Run the regularized linear regression for identifying bona fide TF-gene links
-![Alt text](image-1.png)
-```bash
-python workflow/scripts/build_grn.py -m {input.mdata} -b {input.base_grn} -l {output}
-```
-- 
-- Run sklearn's regularized linear regression to identify bona fide TF-gene links
+Start with scATAC-seq data.
 
-## `filter_grn.py` — Prune low confidence calls using p-value threshold
+1. Use Cicero to generate region to gene links
+2. Annotate TSSs:
+    - By default, CellOracle uses HOMER’s TSS database and finds all peaks that overlap TSS’s
+    - It will then look for any peaks with a co-accessibility score greater than a threshold to these TSS peaks and call this a putative region-gene link
+3. Perform a TF binding motif scan:
+    - By default, CellOracles uses a `gimmemotifs` database and the `gimmemotifs` `scan` function.
+    - **Note:** Does not allow multiple TF binding sites to occur in a single input region
+
+> **Note**
+> Cicero region to gene connections are called globally! Not at cell type resolution, possible we add cell type specific region to gene links in the future.
+
+## Refining the GRN with scRNA-seq data
+![Alt text](static/grn.png)
+
+Briefly, each gene’s expression will be predicted by candidate regulators defined in a base GRN. A bagging ridge regression is fit to each gene and coefficient distributions (for each candidate regulator TF) are calculated from each bagging run. The mean of this distribution is output for each TF-gene is returned along with a p-value corresponding to a 1-sample t-test for the distribution of coefficients with the alternative hypothesis that the coefficient is different from 0. Finally the number of bagging samples to use as wells as the regularization strength can be tuned.
+
+# More details
+
+## Environment
+You can find a `.def` file for building the singularity container in the `envs/` directory:
 ```bash
-python workflow/scripts/filter_grn.py -l {input.grn} -b {input.base} -p {params.thr_edge_pval} -t {params.thr_top_edges} -g {output.grn} -r {output.base}
+singularity build --remote envs/celloracle.sif workflow/envs/celloracle.def 
 ```
-- Prune low confidence calls using p-value threshold
