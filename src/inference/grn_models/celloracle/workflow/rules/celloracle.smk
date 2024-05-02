@@ -6,16 +6,16 @@ outdir: config['outdir']
 rule download_genome:
     singularity:
         "envs/celloracle.sif"
-    output: 
+    output:
         genome_dir=directory(config['scratchdir']),
     params:
         genome=lambda w: config['genome'],
     shell:
-        "python worfklow/scripts/download_genome.py \
+        "python workflow/scripts/download_genome.py \
         -d {output.genome_dir} \
-        -g {params.genome} \
-        > {outdir}/logs/download_genome.log"
+        -g {params.genome}"
 
+# This rule must be run after the download_genome rule
 rule r2g_R:
     input:
         data=config['input_loc']
@@ -166,3 +166,5 @@ rule post:
         -g {input.path_grn} \
         -o {output.path_mdata} \
         > {log}"
+
+ruleorder: download_genome > r2g_R > r2g_py > tf2r > grn > post

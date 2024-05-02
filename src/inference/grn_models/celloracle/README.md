@@ -11,10 +11,10 @@ date: 2024-05-02
 # Quick start
 1. Modify the config in `config/config.yaml` or create a new one with the same structure
 - [ ] Point to the correct input file (`input_loc`) (see [Expected input](#expected-input))
-- [ ] Change the `organism` to the correct species (currently only `human` and `mouse` are supported)
-- [ ] Change output directory (`outdir`) to where you want the output to be saved. Thi will include all intermediate files and the final MuData object (see [Output](#output))
-- [ ] Modify the path to the CellOracle singularity container (`singularity_image`) (see [Environment](#environment) for more details) if you are using singularity
-- [ ] Modify the scratch directory (`scratch`) to where you want the temporary files to be saved
+- [ ] Change the `genome` to the correct species and version (e.g. `hg38`)
+- [ ] Change output directory (`outdir`) to where you want the output to be saved. This will include all intermediate files and the final MuData object (see [Output](#output))
+- [ ] Only if you are using the `--use-singularity` flag. Modify the path to the CellOracle singularity container (`singularity_image`) (see [Environment](#environment) for more details)
+- [ ] Modify the scratch directory (`scratchdir`) to where you want the temporary genome files o be saved
 - [ ] Choose the number of threads to use (`threads`) based on your system
 - [ ] Modify other parameters as needed (see [Parameters](#parameters) for more details
 
@@ -105,6 +105,9 @@ Start with scATAC-seq data.
 Briefly, each gene’s expression will be predicted by candidate regulators defined in a base GRN. A bagging ridge regression is fit to each gene and coefficient distributions (for each candidate regulator TF) are calculated from each bagging run. The mean of this distribution is output for each TF-gene is returned along with a p-value corresponding to a 1-sample t-test for the distribution of coefficients with the alternative hypothesis that the coefficient is different from 0. Finally the number of bagging samples to use as wells as the regularization strength can be tuned.
 
 # More details
+
+## Parameter recommendations
+Coming soon
 
 ## Environment
 You can find a `.def` file for building the singularity container in the `envs/` directory:
