@@ -159,6 +159,7 @@ df = df.reset_index(drop=True).rename(columns={'seqname': 'cre', 'motif_values':
 df['cre'] = df['cre'].str.replace('_', '-')
 df = df.sort_values(['cre', 'score'], ascending=[True, False])
 df["pval"] = np.nan
+df["cluster"] = "global"
 
 # Write
 df.to_csv(path_out, index=False)

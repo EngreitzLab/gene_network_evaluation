@@ -48,6 +48,7 @@ integrated['peak_id'] = integrated['peak_id'].str.replace('_', '-')
 integrated = integrated.rename(columns={'peak_id': 'cre', 'gene_short_name': 'gene', 'coaccess': 'score'})
 integrated = integrated.sort_values(['cre', 'score'], ascending=[True, False])
 integrated["pval"] = np.nan
+integrated["cluster"] = "global"
 
 # Remove unexpressed genes
 genes = mu.read(os.path.join(path_data, 'rna')).var.index.values.astype('U')
