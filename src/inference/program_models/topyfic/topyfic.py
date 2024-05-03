@@ -5,13 +5,6 @@ import argparse
 import mudata
 import anndata
 
-import Topyfic
-
-
-# Topyfic described -> https://github.com/mortazavilab/Topyfic
-import pandas as pd
-
-
 def run_Topyfic_train(adata,
                       k,
                       name='Topyfic',
@@ -35,7 +28,6 @@ def run_Topyfic_train(adata,
     train.save_train(save_path=output_dir)
 
     return train
-
 
 def run_Topyfic_topmodel(adata,
                          trains,
@@ -81,14 +73,10 @@ def run_Topyfic_(adata,
                  file_format='pdf',
                  output_dir="",
                  **kwargs):
-    # Write code to run your method
-    # You can write additional functions in this script
-    # Or create more complex scripts in the scripts folder
-    # and import the functions 
 
-    # Place any imports that will only be present
-    # in the method env (_template_env.yml) inside
-    # this function
+
+    import pandas as pd
+    import Topyfic
 
     adata = anndata.AnnData(adata.layers[layer], obs=adata.obs, var=adata.var)
 
@@ -116,22 +104,17 @@ def run_Topyfic_(adata,
 
     return train, top_model, analysis_top_model
 
-
-# Use this function to store method outputs in the relevant
-# mudata keys. This function will load the gin config file
-# and call the previous function. Add parameters as neccessary
-# but use the named parameters in the parser as they relate
-# to the keys specified in our mudata input/output specification
-# Replace name with run_{program_inference_method}
 def run_Topyfic(mdata,
                 work_dir=None,
-                prog_key='Topyfic',
+                prog_key='topyfic',
                 data_key='rna',
                 layer='X',
                 config_path=None,
                 inplace=True):
     """
-    Perform gene program inference using {inference_method}.
+    Perform gene program inference using Topyfic.
+
+    https://github.com/mortazavilab/Topyfic
 
     ARGS:
         mdata : MuData
@@ -164,16 +147,14 @@ def run_Topyfic(mdata,
     if not inplace:
         mdata = mudata.MuData({data_key: mdata[data_key].copy()})
 
-    # Create output directory for cNMF results
+    # Create output directory for results
     if work_dir is not None:
         try:
             os.makedirs(work_dir, exist_ok=True)
         except:
             raise ValueError('Work directory location does not exist.')
 
-    # Compute (structure this as neccessary)
-    # Not that method specific params loaded via gin do not
-    # have to be passed explicity
+    # Run model
     train, top_model, analysis_top_model = \
         run_Topyfic_(mdata[data_key],
                      layer=layer,
@@ -195,10 +176,10 @@ if __name__ == '__main__':
 
     parser.add_argument('mudataObj_path')
     parser.add_argument('--work_dir', default='./', type=str)
-    parser.add_argument('-pk', '--prog_key', default='Topyfic', typ=str)
-    parser.add_argument('-dk', '--data_key', default='rna', typ=str)  # could be atac
+    parser.add_argument('-pk', '--prog_key', default='topyfic', typ=str)
+    parser.add_argument('-dk', '--data_key', default='rna', typ=str)
     parser.add_argument('--layer', default='X', type=str)  # layer of data anndata to use for inference
-    parser.add_argument('--config_path', default='./Topyfic_config.gin', type=str)
+    parser.add_argument('--config_path', default='./topyfic_config.gin', type=str)
     parser.add_argument('--output', action='store_false')
 
     args = parser.parse_args()
