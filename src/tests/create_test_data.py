@@ -11,13 +11,6 @@ from tqdm.auto import tqdm
 
 from pathlib import Path
 
-def load_motif_names():
-    path = (Path(__file__).parent / './test_data/motif_list.txt').resolve()
-    with open(path, 'r') as fil:
-        motif_names = fil.readlines()
-        motif_names = [nam.strip() for nam in motif_names]
-    return motif_names
-
 def load_gene_names():
     path = (Path(__file__).parent / './test_data/gene_list.txt').resolve()
     with open(path, 'r') as fil:
