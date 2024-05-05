@@ -1,10 +1,22 @@
-from google.cloud import bigquery
+import os
+import argparse
+
+import mudata
+
 import pandas as pd
-from scipy.sparse import coo_matrix
+from .enrichment_geneset import compute_geneset_enrichment, create_geneset_dict
+
+import logging
+logging.basicConfig(level = logging.INFO)
 
 ### Query Open Targets using BigQuery to obtain GWAS to Gene mappings across many traits
+def run_opentargets_query(credentials_path, output_file, min_assoc_loci=10, 
+                          min_n_cases=1000, min_l2g_score=0.2, study_ids_to_keep=None):
 
-def run_opentargets_query(credentials_path, output_file, min_assoc_loci=10, min_n_cases=1000, min_l2g_score=0.2, study_ids_to_keep=None):
+    from google.cloud import bigquery
+    import pandas as pd
+    from scipy.sparse import coo_matrix
+
     try:
         # Authenticate with BigQuery
         client = bigquery.Client.from_service_account_json(credentials_path)
@@ -82,8 +94,6 @@ def run_opentargets_query(credentials_path, output_file, min_assoc_loci=10, min_
         print(f"An error occurred: {str(e)}")
         return None
 
-
-
 ### Filter Open Targets query results to a set of high-quality GWAS and L2G scores
 
 def process_json_format_l2g_columns(row, column_name):
@@ -117,7 +127,6 @@ def process_json_format_l2g_columns(row, column_name):
     except Exception as e:
         print(f"Error: {e}, Row: {row}")
         return None
-
 
 def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, remove_mhc_region=True):
     l2g = pd.read_csv(input_file, compression='gzip', low_memory=False)
@@ -180,3 +189,40 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
     # Save the filtered DataFrame to a CSV file
     filtered_l2g.to_csv(output_file, index=False)
     
+# Compute Trait enrichment using open-targets GWAS
+def compute_trait_enrichment(mdata, gwas_data, prog_key='prog', 
+                             prog_nam=None, data_key='rna', library='OT_GWAS', 
+                             n_jobs=1, inplace=False, key_column='trait_efos',
+                             gene_column='gene_name', method='fisher', 
+                             output_file=None, **kwargs):
+    #read in gwas data
+    if isinstance(gwas_data, str):
+        df = pd.read_csv(gwas_data, compression='gzip', low_memory=False)
+    elif isinstance(gwas_data, pd.DataFrame):
+        df = gwas_data
+    else:
+        raise ValueError("gwas_data must be either a pandas DataFrame or a file path to a CSV file.")
+    
+    gmt = create_geneset_dict(df, key_column=key_column, gene_column=gene_column)
+
+    return (compute_geneset_enrichment(mdata=mdata, prog_key=prog_key, data_key=data_key, 
+                                       library=library, database=None, n_jobs=n_jobs, inplace=inplace, 
+                                       user_geneset=gmt, prog_nam=prog_nam, method=method))
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('mudataObj_path')
+    parser.add_argument('GWAS_data_path')    
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str)
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('--output', action='store_false') 
+
+    args = parser.parse_args()
+
+    mdata = mudata.read(args.mudataObj_path)
+    compute_trait_enrichment(mdata, args.GWAS_data_path, 
+                             prog_key=args.prog_key, 
+                             data_key=args.data_key, 
+                             n_jobs=args.n_jobs, 
+                             inplace=args.output)
