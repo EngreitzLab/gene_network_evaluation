@@ -5,15 +5,19 @@ import mudata
 
 import numpy as np
 from scipy import sparse
-from sklearn.metrics import explained_variance_score
+from sklearn.metrics import explained_variance_score, r2_score
 
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
+
+import logging
+logging.basicConfig(level = logging.INFO)
 
 def _compute_explained_variance_ratio(mdata, prog_key=None, data_key=None, 
                                       prog_nam=None,layer='X', **kwargs):
 
     # FIXME: This takes a lot of memory (200G single core on TeloHAEC)
+    # https://lightning.ai/docs/torchmetrics/stable/regression/explained_variance.html
     if layer=='X':
         recons = mdata[prog_key][:,prog_nam].X.dot(\
                 sparse.csr_matrix(mdata[prog_key][:,prog_nam].varm['loadings']))
@@ -22,8 +26,7 @@ def _compute_explained_variance_ratio(mdata, prog_key=None, data_key=None,
                 sparse.csr_matrix(mdata[prog_key][:,prog_nam].varm['loadings']))        
 
     mdata[prog_key].var.loc[prog_nam, 'explained_variance_ratio_{}'.format(layer)] = \
-                  explained_variance_score(mdata[data_key].X.toarray(), recons.toarray(),
-                                           **kwargs)
+    r2_score(mdata[data_key].X.toarray(), recons.toarray(), **kwargs)
 
 # For explained variance vs r2_score see
 # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html
@@ -52,8 +55,18 @@ def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna',
             mdata[prog_key].var['explained_variance_ratio_{}'.format(layer)]
             
     """
+    # Read in mudata if it is provided as a path
+    frompath=False
+    if isinstance(mdata, str):
+        if os.path.exists(mdata):
+            mdata = mudata.read(mdata)
+            if inplace:
+                logging.warning('Changed to inplace=False since path was provided')
+                inplace=False
+            frompath=True
+        else: raise ValueError('Incorrect mudata specification.')
     
-    if not inplace:
+    if not inplace and not frompath:
         mdata = mudata.MuData({prog_key: mdata[prog_key].copy(),
                                data_key: mdata[data_key].copy()})
 
@@ -67,6 +80,7 @@ def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna',
     else:
         if not sparse.issparse(mdata[data_key].layers[layer]):
             mdata[data_key].layers[layer] = sparse.csr_matrix(mdata[data_key].layers[layer])
+            
     if not sparse.issparse(mdata[prog_key].X):
         mdata[prog_key].X = sparse.csr_matrix(mdata[prog_key].X)
   
@@ -83,7 +97,7 @@ def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna',
                                                        for prog_nam in tqdm(mdata[prog_key].var_names,
                                                        desc='Computing explained variance', unit='programs'))
 
-    if not inplace: return mdata[prog_key].var.loc[:, 'explained_variance_ratio_{}'.format(layer)]
+    if not inplace: return (mdata[prog_key].var.loc[:, ['explained_variance_ratio_{}'.format(layer)]])
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()

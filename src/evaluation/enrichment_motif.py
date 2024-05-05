@@ -204,7 +204,7 @@ def perform_correlation(motif_count_df, prog_genes,
 # Count up motif ocurrences and perform diff. test
 def compute_motif_enrichment_(mdata, motif_count_df, prog_key='prog',  
                               gene_names=None, weighted=True, num_genes=None, 
-                              correlation='pearsonr', n_jobs=-1):
+                              correlation='pearsonr', n_jobs=1):
     """
     Perform motif enrichment using gene program loadings and
     motif counts linked to genes via motif scanning of
@@ -219,7 +219,9 @@ def compute_motif_enrichment_(mdata, motif_count_df, prog_key='prog',
     loadings = pd.DataFrame(data=mdata[prog_key].varm['loadings'],
                             index=mdata[prog_key].var_names,
                             columns=gene_names)
-    loadings = loadings.loc[:, motif_count_df.index.values]
+    # FIXME: Causes expansion due to duplications in gene_names
+    # Ensure index matches b/w loadings and counts
+    # loadings = loadings.loc[:, motif_count_df.index.values]
 
     # Binary matrix 
     if not weighted:
@@ -239,6 +241,7 @@ def compute_motif_enrichment_(mdata, motif_count_df, prog_key='prog',
     motif_enrich_pval_df = pd.DataFrame(index=mdata[prog_key].var_names,
                                         columns=motif_count_df.columns.values)
 
+    # FIXME: If n_jobs>1 then parallel processes dont seem to terminate.
     # Perform test in parallel across motifs and programs
     Parallel(n_jobs=n_jobs, 
              backend='threading')(delayed(perform_correlation)(motif_count_df,
@@ -306,11 +309,21 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
            mdata[prog_key].uns['motif_names']     
 
     """
+
+    # Read in mudata if it is provided as a path
+    frompath=False
+    if isinstance(mdata, str):
+        if os.path.exists(mdata):
+            mdata = mudata.read(mdata)
+            if inplace:
+                logging.warning('Changed to inplace=False since path was provided')
+                inplace=False
+            frompath=True
+        else: raise ValueError('Incorrect mudata specification.')
     
-    if not inplace:
+    if not inplace and not frompath:
         mdata = mudata.MuData({prog_key: mdata[prog_key].copy(),
                                data_key: mdata[data_key].copy()})
-
 
     if 'var_names' in mdata[prog_key].uns.keys():
         gene_names = mdata[prog_key].uns['var_names']
@@ -318,6 +331,10 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
         try: assert mdata[prog_key].varm['loadings'].shape[1]==mdata[data_key].var.shape[0]
         except: raise ValueError('Different number of genes present in data and program loadings')
         gene_names = mdata[data_key].var_names
+    
+    # 
+    if ':ens' in gene_names[0].lower():
+        gene_names = [name.split(':')[0] for name in gene_names]
 
     # Check if output loc exists
     if output_loc is not None:
@@ -374,7 +391,7 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
                                                                gene_name) \
                                                                for motif_idx in tqdm(range(len(motifs_record)),
                                                                                      desc='Matching motifs to sequences',
-                                                                                     unit='motifs'     ) \
+                                                                                     unit='motifs') \
                                                                for gene_name in tqdm(matching_gene_names,
                                                                                      desc='Motif scanning',
                                                                                      unit='genes'))
@@ -394,7 +411,7 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
     motif_count_df = compute_motif_instances(mdata, motif_match_df, sig=sig, gene_names=gene_names)
     motif_enrich_stat_df, motif_enrich_pval_df = compute_motif_enrichment_(mdata, motif_count_df, prog_key=prog_key, 
                                                                            gene_names=gene_names, weighted=weighted, 
-                                                                           num_genes=num_genes, n_jobs=n_jobs) 
+                                                                           num_genes=num_genes, n_jobs=n_jobs)
                          
     # Store motif counts
     mdata[prog_key].uns['motif_counts'] = motif_count_df.loc[gene_names].values
@@ -404,12 +421,22 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
     mdata[prog_key].varm['motif_enrich_{}_pval'.format(correlation)] = motif_enrich_pval_df.values
     mdata[prog_key].uns['motif_names'] = motif_count_df.columns.values
 
-    return (mdata[prog_key].uns['motif_matching'],
-            mdata[prog_key].uns['motif_counts'],
-            mdata[prog_key].uns['motif_names'],
-            mdata[prog_key].varm['motif_enrich_{}_stat'.format(correlation)],
-            mdata[prog_key].varm['motif_enrich_{}_pval'.format(correlation)],
-            mdata[prog_key].uns['motif_names'])
+    if not inplace: 
+
+        motif_enrich_stat_df = motif_enrich_stat_df.melt(var_name='motif', value_name='stat')
+        motif_enrich_stat_df = motif_enrich_stat_df.reset_index().set_index(['index', 'motif'])
+
+        motif_enrich_pval_df = motif_enrich_pval_df.melt(var_name='motif', value_name='pval')
+        motif_enrich_pval_df = motif_enrich_pval_df.reset_index().set_index(['index', 'motif'])
+
+        motif_enrichment_df = motif_enrich_stat_df.merge(motif_enrich_pval_df,
+                                                        left_index=True, 
+                                                        right_index=True)
+        motif_enrichment_df = motif_enrichment_df.reset_index()
+
+        return (motif_match_df,
+                motif_count_df.loc[gene_names].values,
+                motif_enrichment_df)                
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()

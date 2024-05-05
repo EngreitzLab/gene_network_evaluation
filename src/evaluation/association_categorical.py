@@ -149,7 +149,12 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
     """
     
     store_key = categorical_key
-    prog_df = pd.DataFrame(mdata[prog_key][:, prog_nam].X, 
+
+    prog_data_ = mdata[prog_key][:, prog_nam].X
+    if sparse.issparse(prog_data_):
+        prog_data_ = prog_data_.toarray()
+
+    prog_df = pd.DataFrame(prog_data_, 
                            columns=[prog_nam], 
                            index=mdata[prog_key].obs.index)
     prog_df[categorical_key] = mdata[prog_key].obs[categorical_key].astype(str).values
@@ -222,7 +227,18 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
             mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]           
 
     """
-    if not inplace:
+    # Read in mudata if it is provided as a path
+    frompath=False
+    if isinstance(mdata, str):
+        if os.path.exists(mdata):
+            mdata = mudata.read(mdata)
+            if inplace:
+                logging.warning('Changed to inplace=False since path was provided')
+                inplace=False
+            frompath=True
+        else: raise ValueError('Incorrect mudata specification.')
+
+    if not inplace and not frompath:
         mdata = mudata.MuData({prog_key: mdata[prog_key].copy()})
     
     if pseudobulk_key is None:
@@ -271,13 +287,37 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
                                                         unit='programs'))
     
     # Returning test results only
-    if not inplace: return (mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(store_key), 
-                                                        '{}_kruskall_wallis_pval'.format(store_key)]],
-                           mdata[prog_key].uns['{}_association_categories'.format(store_key)],
-                           mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)], 
-                           mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)],
-                           mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
-                           )
+    if not inplace: 
+
+        results_df = mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(store_key), 
+                                                 '{}_kruskall_wallis_pval'.format(store_key)]]
+        min_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)],
+                                   index=mdata[prog_key].var.index,
+                                   columns=mdata[prog_key].uns['{}_association_categories'.format(categorical_key)])
+        results_df = results_df.merge(min_pval_df, left_index=True, right_index=True, 
+                                      suffixes=('','_{}_association_{}_min_pval'.format(store_key, test)))
+        
+        mean_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)],
+                                   index=mdata[prog_key].var.index,
+                                   columns=mdata[prog_key].uns['{}_association_categories'.format(categorical_key)])
+        results_df = results_df.merge(mean_pval_df, left_index=True, right_index=True, 
+                                      suffixes=('','_{}_association_{}_mean_pval'.format(store_key, test)))
+
+        posthoc_df = []
+        dict_ = mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
+        for key, values in dict_.items():
+
+            tmp_df = values.where(np.triu(np.ones(values.shape), k=1).astype(bool))
+            tmp_df = tmp_df.stack().reset_index()
+            tmp_df.columns = ['{}_a'.format(store_key),
+                            '{}_b'.format(store_key),
+                            'p_value']
+            tmp_df['program_name'] = key
+            posthoc_df.append(tmp_df)
+
+        posthoc_df = pd.concat(posthoc_df, ignore_index=True)
+
+        return (results_df, posthoc_df)
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
