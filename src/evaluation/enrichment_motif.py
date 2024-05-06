@@ -299,14 +299,15 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
         inplace: Bool (default: True)
             update the mudata object inplace or return a copy
        
-    RETURNS 
+    ---
         if not inplace:
-           mdata[prog_key].uns['motif_matching'],
-           mdata[prog_key].uns['motif_counts'],
-           mdata[prog_key].uns['motif_names'],
-           mdata[prog_key].varm['motif_enrich_{}_stat'.format(correlation)],
-           mdata[prog_key].varm['motif_enrich_{}_pval'.format(correlation)],
-           mdata[prog_key].uns['motif_names']     
+            RETURNS
+                motif_match_df,
+                motif_count_df.loc[gene_names].values,
+                motif_enrichment_df
+        else:
+            UPDATES
+
 
     """
 
@@ -423,11 +424,15 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
 
     if not inplace: 
 
-        motif_enrich_stat_df = motif_enrich_stat_df.melt(var_name='motif', value_name='stat')
-        motif_enrich_stat_df = motif_enrich_stat_df.reset_index().set_index(['index', 'motif'])
+        motif_enrich_stat_df = motif_enrich_stat_df.reset_index().melt(id_vars='index',
+                                                                       var_name='motif', 
+                                                                       value_name='stat')
+        motif_enrich_stat_df = motif_enrich_stat_df.set_index(['index', 'motif'])
 
-        motif_enrich_pval_df = motif_enrich_pval_df.melt(var_name='motif', value_name='pval')
-        motif_enrich_pval_df = motif_enrich_pval_df.reset_index().set_index(['index', 'motif'])
+        motif_enrich_pval_df = motif_enrich_pval_df.reset_index().melt(id_vars='index',
+                                                                       var_name='motif', 
+                                                                       value_name='pval')
+        motif_enrich_pval_df = motif_enrich_pval_df.set_index(['index', 'motif'])
 
         motif_enrichment_df = motif_enrich_stat_df.merge(motif_enrich_pval_df,
                                                         left_index=True, 
