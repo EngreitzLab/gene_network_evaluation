@@ -217,14 +217,18 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
         inplace: Bool (default: True)
             update the mudata object inplace or return a copy
        
-    RETURNS 
-        if not inplace:
+       ---
+        if inplace:
+            UPDATES
             mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
             mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
             mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)]
             mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)] 
             mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
-            mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]           
+            mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]    
+        else:
+            RETURNS
+            results_df, posthoc_df       
 
     """
     # Read in mudata if it is provided as a path
