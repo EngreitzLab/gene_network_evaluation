@@ -1,0 +1,7 @@
+loom_in: "path/to/loom.loom"
+outdir: "path/to/output"
+tf_list: "path/to/tfs.txt"
+ranking: "path/to/ranking.db"
+annotation: "path/to/annotation.csv"
+num_runs: 5
+method: "grnboost2"
