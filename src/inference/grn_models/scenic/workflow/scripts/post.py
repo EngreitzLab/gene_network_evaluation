@@ -95,6 +95,7 @@ def main(args):
     end_time = time.time()
     logging.info(f"Process completed. Results saved at {output_path}. Duration: {end_time - start_time:.2f} seconds")
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Consolidate SCENIC regulons into a single network.")
     parser.add_argument('--scenic_out_dir', type=str, required=True, help='Path to the output directory.')
