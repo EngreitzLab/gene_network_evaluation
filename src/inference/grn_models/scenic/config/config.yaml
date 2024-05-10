@@ -1,9 +1,9 @@
 # Configuration file for SCENIC
 input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu  # path to the input data
-outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic/2024_05_03 # created if doesn't exist
+outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic/2024_05_10 # created if doesn't exist
 scratchdir: /cellar/users/aklie/tmp/gene_program_evaluation  # should exist
 singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic/envs/scenic.sif  # optional
-n_jobs: 1  # threads
+n_jobs: 4  # threads for each rule, make sure you don't overspecificy your system
 random_state: 1234  # random state, currently only applies to Cicero co-accessibility analysis step
 
 # Method params

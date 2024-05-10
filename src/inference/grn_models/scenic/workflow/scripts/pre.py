@@ -57,6 +57,10 @@ def write_loom(adata, filename, layer=None, use_raw=False):
     col_attrs["nUMI"] = np.array(np.sum(X.transpose(), axis=0)).flatten()
     lp.create(filename, X.transpose(), row_attrs, col_attrs)
 
+# Help message
+n_cells, n_genes = mdata.mod["rna"].X.shape
+print(f"Running inference on {n_cells} cells and {n_genes} genes, make sure this was intended based on your input")
+
 # Write loom
 write_loom(
     mdata.mod["rna"],
