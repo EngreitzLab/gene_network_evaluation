@@ -349,5 +349,3 @@ rule eGRN_extended:
         --top_n_regionTogenes_per_region {params.top_n_regionTogenes_per_region} \
         --min_regions_per_gene {params.min_regions_per_gene} \
         --rho_threshold {params.rho_threshold}
-
-rule post
