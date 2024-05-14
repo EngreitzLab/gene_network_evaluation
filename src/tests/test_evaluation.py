@@ -21,21 +21,23 @@ def test_gene_enrichment(mdata):
     try: compute_geneset_enrichment(mdata)
     except: raise RuntimeError('Gene set enrichment')
 
-def test_motif_enrichment(mdata, coords_file_loc, seq_file_loc):
+def test_motif_enrichment(mdata, seq_file_loc):
     
-    try: motif_file = read_motif_file((Path(__file__).parent /\
-                                       '../../smk/resources/hocomoco_meme.meme').resolve())[:3]
-    except: raise RuntimeError('Reading motif file')
+    # try: motif_file = read_motif_file((Path(__file__).parent /\
+    #                                    './test_data/motifs.meme').resolve())[:3]
+    # except: raise RuntimeError('Reading motif file')
 
-    try: coords_file = read_coords_file(coords_file_loc)
-    except: raise RuntimeError('Reading coordinate file')
+    # try: coords_file = read_coords_file((Path(__file__).parent /\
+    #                                    './test_data/p2g_links.txt').resolve())
+    # except: raise RuntimeError('Reading coordinate file')
 
-    try: seq_file = read_sequence_file(seq_file_loc)
-    except: raise RuntimeError('Reading sequence file')
+    # try: seq_file = read_sequence_file(seq_file_loc)
+    # except: raise RuntimeError('Reading sequence file')
 
-    try: compute_motif_enrichment(mdata, motif_file, seq_file,
-                                  coords_file, output_loc=None)
-    except: raise RuntimeError('Motif enrichment')
+    # try: compute_motif_enrichment(mdata, motif_file, seq_file,
+    #                               coords_file, output_loc=None)
+    # except: raise RuntimeError('Motif enrichment')
+    raise NotImplementedError()
 
 if __name__=='__main__':
 
