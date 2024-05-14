@@ -3,6 +3,9 @@ import argparse
 
 import mudata
 
+import logging
+logging.basicConfig(level = logging.INFO)
+
 # The template is intended to be a general guide on how to organise your code
 # so feel free to write functions as required.
 # Extended the parser and function with specific parameters required for
@@ -18,9 +21,27 @@ def helper_function(mdata, intermediate=None):
 def compute_eval_measure_(some_values, somearg=None):
     return eval_measure
 
+# Function to insert outputs inplace into mudata
+def insert_evaluation(mdata, evaluation_output):
+
+    # Example of how this could look
+    mdata[prog_key].var['eval_measure'] = evaluation_output
+
+    # Not all eval measures might be condensed at a program level
+    # Store eval measure or additional outputs in
+    # var - program indexed series
+    # obs - cell indexed series
+    # varm - program indexed array
+    # obsm - cell indexed array
+    # uns - unstructured information
+    # obsp - cell x cell structured outputs
+    # varp - program x program structured outputs
+
+    # See https://anndata.readthedocs.io/en/latest/tutorials/notebooks/getting-started.html
+
 # Rename function to compute_{eval_measure}
 def compute_eval_measure(mdata, prog_key='prog', data_key='rna', 
-                         somearg=None,  n_jobs=1, inplace=True, 
+                         somearg=None, n_jobs=1, inplace=True, 
                          **kwargs):
     """
     Computes eval_measure.
@@ -44,33 +65,33 @@ def compute_eval_measure(mdata, prog_key='prog', data_key='rna',
             mdata[prog_key].var['eval_measure']
             
     """
-    
-    # Only copy the anndatas that will be used in the eval
-    if not inplace:
+    # Read in mudata if it is provided as a path
+    frompath=False
+    if isinstance(mdata, str):
+        if os.path.exists(mdata):
+            mdata = mudata.read(mdata)
+            if inplace:
+                logging.warning('Changed to inplace=False since path was provided')
+                inplace=False
+            frompath=True
+        else: raise ValueError('Incorrect mudata specification.')
+
+    # (Optional) Create a copy if your functions performs inplace operations
+    if not inplace and not frompath:
         mdata = mudata.MuData({prog_key: mdata[prog_key].copy(),
                                data_key: mdata[data_key].copy()})
-  
+     
     intermediate_output = helper_function(mdata, 
                                           intermediate=intermediate_input)
 
     # Compute & update mudata with eval measure
-    mdata[prog_key].var['eval_measure'] = compute_eval_measure_(intermediate_output, 
-                                                                somearg=somearg)
-
-    # Not all eval measures might be condensed at a program level
-    # Store eval measure or additional outputs in
-    # var - program indexed series
-    # obs - cell indexed series
-    # varm - program indexed array
-    # obsm - cell indexed array
-    # uns - unstructured information
-    # obsp - cell x cell structured outputs
-    # varp - program x program structured outputs
-
-    # See https://anndata.readthedocs.io/en/latest/tutorials/notebooks/getting-started.html
+    # Return evaluation outputs as pandas DataFrames if possible
+    evaluation_output = compute_eval_measure_(intermediate_output, 
+                                              somearg=somearg)
 
     # Return only the evaluations if not in inplace mode
-    if not inplace: return mdata[prog_key].var['eval_measure']
+    if not inplace: return evaluation_output
+    else: insert_evaluation(mdata, evaluation_output)
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()

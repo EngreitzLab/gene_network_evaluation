@@ -1,0 +1,83 @@
+scenicplus prepare_data download_genome_annotations \
+    --species hsapiens \
+    --genome_annotation_out_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/genome/human_annotations.tsv \
+    --biomart_host http://www.ensembl.org \
+    --chromsizes_out_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/chromsizes/human.tsv
+
+
+scenicplus grn_inference motif_enrichment_cistarget \
+    --region_set_folder /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/region_sets \
+    --cistarget_db_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/rankings/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather \
+    --path_to_motif_annotations /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/annotations/motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl \
+    --annotation_version v10nr_clust \
+    --output_fname_cistarget_result /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/ctx_results.hdf5 \
+    --temp_dir /cellar/users/aklie/tmp/ \
+    --species homo_sapiens \
+    --n_cpu 4
+
+scenicplus grn_inference motif_enrichment_dem \
+    --region_set_folder /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/region_sets \
+    --dem_db_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/scores/hg38_screen_v10_clust.regions_vs_motifs.scores.feather \
+    --balance_number_of_promoters \
+    --path_to_motif_annotations /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/annotations/motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl \
+    --annotation_version v10nr_clust \
+    --output_fname_dem_result /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/dem_results.hdf5 \
+    --temp_dir /cellar/users/aklie/tmp/ \
+    --species homo_sapiens \
+    --n_cpu 4 \
+    --seed 1234 \
+    --genome_annotation /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/genome/human_annotations.tsv
+
+scenicplus prepare_data prepare_menr \
+    --paths_to_motif_enrichment_results /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/ctx_results.hdf5 /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/dem_results.hdf5 \
+    --multiome_mudata_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/pre.h5mu \
+    --out_file_tf_names /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/tf_names.txt \
+    --out_file_direct_annotation /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/cistromes_direct.h5ad \
+    --out_file_extended_annotation /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/cistromes_extended.h5ad \
+    --direct_annotation Direct_annot \
+    --extended_annotation Orthology_annot
+
+scenicplus prepare_data search_spance \
+    --multiome_mudata_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/pre.h5mu \
+    --out_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/search_space.tsv \
+    --upstream 1000 150000 \
+    --downstream 1000 150000 \
+    --extend_tss 10 10 \
+    --gene_annotation_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/genome/human_annotations.tsv \
+    --chromsizes_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/chromsizes/human.tsv
+
+scenicplus grn_inference TF_to_gene \
+    --multiome_mudata_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/pre.h5mu \
+    --tf_names /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/tf_names.txt \
+    --temp_dir /cellar/users/aklie/tmp/ \
+    --out_tf_to_gene_adjacencies /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/tf2g.tsv \
+    --method GBM \
+    --n_cpu 4 \
+    --seed 1234
+
+scenicplus grn_inference region_to_gene \
+    --multiome_mudata_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/pre.h5mu \
+    --search_space_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/search_space.tsv \
+    --temp_dir /cellar/users/aklie/tmp/ \
+    --out_region_to_gene_adjacencies /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/r2g.tsv \
+    --importance_scoring_method GBM \
+    --correlation_scoring_method SR \
+    --n_cpu 4
+
+scenicplus grn_inference eGRN \
+    --TF_to_gene_adj_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/tf2g.tsv \
+    --region_to_gene_adj_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/r2g.tsv \
+    --cistromes_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/cistromes_direct.h5ad \
+    --ranking_db_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/rankings/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather \
+    --n_cpu 4 \
+    --temp_dir /cellar/users/aklie/tmp/ \
+    --eRegulon_out_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/eRegulon_direct.tsv
+
+scenicplus grn_inference eGRN \
+    --TF_to_gene_adj_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/tf2g.tsv \
+    --region_to_gene_adj_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/r2g.tsv \
+    --cistromes_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/cistromes_extended.h5ad \
+    --ranking_db_fname /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/resources/rankings/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather \
+    --n_cpu 4 \
+    --temp_dir /cellar/users/aklie/tmp/ \
+    --eRegulon_out_fname /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic+/2024_05_08/eRegulon_extended.tsv

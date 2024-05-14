@@ -1,5 +1,9 @@
 # organism from config
 organism = config['organism']
+if organism == "human":
+    species = "hsapiens"
+elif organism == "mouse":
+    species = "mmusculus"
 
 rule download_blacklist:
     output: 
@@ -41,3 +45,21 @@ rule download_databases:
         shell("mkdir -p resources/scores")
         shell("wget -c {params.rankings} -P resources/rankings")
         shell("wget -c {params.scores} -P resources/scores")
+
+rule download_genome_annotations:
+    output:
+        path_genome_annotation=os.path.join("resources", "genome", f"{organism}.tsv"),
+        path_chromsizes=os.path.join("resources", "chromsizes", f"{organism}.tsv")
+    params:
+        biomart_host=lambda w: config["biomart_host"]
+    shell:
+        """
+        mkdir -p resources/genome
+        mkdir -p resources/chromsizes
+        scenicplus prepare_data download_genome_annotations \
+        --species {species} \
+        --biomart_host {params.biomart_host} \
+        --genome_annotation_out_fname {output.genome_annotation} \
+        --chromsizes_out_fname {output.chromsizes}
+        """
+        

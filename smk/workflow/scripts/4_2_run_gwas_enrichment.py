@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, snakemake.config['repodir'])
-from src.evaluation import compute_geneset_enrichment_ot_gwas
+from src.evaluation import compute_trait_enrichment
 
 import logging
 logging.basicConfig(filename=snakemake.log[0],
@@ -12,7 +12,7 @@ with open(snakemake.log[0], 'a') as f:
     sys.stderr = sys.stdout = f
 
     if __name__=='__main__':
-        compute_geneset_enrichment_ot_gwas(
+        compute_trait_enrichment(
             gwas_data=snakemake.input[0],
             mdata=snakemake.params[0],
             prog_key=snakemake.params[1],
