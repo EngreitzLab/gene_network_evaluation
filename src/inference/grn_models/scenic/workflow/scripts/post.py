@@ -22,8 +22,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-i','--path_data', required=True)
 parser.add_argument('-l','--path_loom', required=True)
-parser.add_argument('-c','--path_csvs', required=True)
-parser.add_argument('-o','--path_output', required=True)                                   
+parser.add_argument('-c','--path_csvs', required=True, nargs='+')
+parser.add_argument('-o','--path_output', required=True)
 args = vars(parser.parse_args())
 
 # Parse args
@@ -54,9 +54,8 @@ data = mu.read(path_data)
 
 # Read regulons into df
 print("Reading regulons...")
-reg_csvs = sorted(glob.glob(os.path.join(path_csvs, "*reg.csv")))
 all_edges = pd.DataFrame()
-for reg_csv in reg_csvs:
+for reg_csv in path_csvs:
     regulons = load_signatures(reg_csv)
     adj_df = regulon2sadj(regulons)
     all_edges = pd.concat([all_edges, adj_df])

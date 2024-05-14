@@ -54,6 +54,12 @@ obs = adata.obs.copy()
 adata = adata.mod['atac'].copy()
 adata.obs = obs
 
+# Clean up region names if necessary, need to ensure that things are separated as chr:start-end
+# Check for this and fix if necessary
+if sum(adata.var.index.str.contains(":")) == 0:
+    adata.var.index = adata.var.index.str.replace("-", ":")
+    adata.var.index = adata.var.index.str.replace(":", "-", 1)
+
 # Clean up cluster_key if necessary 
 adata.obs[cluster_key] = adata.obs[cluster_key].str.replace("/", "_").copy()
 
@@ -63,7 +69,7 @@ elif organism == 'mouse':
     path_blacklist = 'resources/blacklists/mouse.bed'
 
 # Make first occurences of "-" ":" in var_names if multiple exist
-if sum(adata.var.index.str.contains("-")) > 0:
+if adata.var.index.str.count("-")[0] > 1:
     adata.var.index = adata.var.index.str.replace("-", ":", 1)
 
 # Create cisTopic object
