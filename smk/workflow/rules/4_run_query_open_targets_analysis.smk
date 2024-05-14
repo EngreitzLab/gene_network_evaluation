@@ -1,8 +1,5 @@
 #specify that snakemake should run all steps necessary to
 #produce the filtered OpenTargets query and run enrichment on cell programs
-rule all:
-  input:
-      'resources/OpenTargets_L2G_Cell_Program_Enrichment_Results.csv'
 
 #run full query on OpenTargets
 rule run_opentargets_query:
@@ -36,7 +33,7 @@ rule run_gwas_enrichment:
     input:
         gwas_data='resources/OpenTargets_L2G_Filtered.csv.gz'
     output:
-        output_file='resources/OpenTargets_L2G_Cell_Program_Enrichment_Results.csv'
+        touch('touch/4_run_trait_enrichment.done')
     log: 'logs/4_2_run_gwas_enrichment.log'
     params:
         mdata=config['input_loc'],

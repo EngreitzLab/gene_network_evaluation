@@ -193,8 +193,7 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
 def compute_trait_enrichment(mdata, gwas_data, prog_key='prog', 
                              prog_nam=None, data_key='rna', library='OT_GWAS', 
                              n_jobs=1, inplace=False, key_column='trait_efos',
-                             gene_column='gene_name', method='fisher', 
-                             output_file=None, **kwargs):
+                             gene_column='gene_name', method='fisher', **kwargs):
     #read in gwas data
     if isinstance(gwas_data, str):
         df = pd.read_csv(gwas_data, compression='gzip', low_memory=False)

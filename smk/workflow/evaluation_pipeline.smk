@@ -10,7 +10,7 @@ rule all:
         'touch/2_run_geneset_enrichment.done',
         'touch/3_1_run_enhancer_motif_enrichment.done',
         'touch/3_2_run_promoter_motif_enrichment.done',
-        'resources/OpenTargets_L2G_Filtered.csv.gz'
+        'touch/4_run_trait_enrichment.done'
         
 # Load data in .h5mu format
 # https://mudata.readthedocs.io/en/latest/
