@@ -14,8 +14,7 @@ rule run_enhancer_motif_enrichment:
         touch('touch/3_1_run_enhancer_motif_enrichment.done')
     params:
         seq_class = 'enhancer',
-        sig = 0.05,
-        output_loc = 'enhancer_motif_matches/'
+        sig = 0.05
     log: 'logs/3_1_run_enhancer_motif_enrichment.log'
     script: '../scripts/3_run_motif_enrichment.py'
 
@@ -28,7 +27,6 @@ rule run_promoter_motif_enrichment:
         touch('touch/3_2_run_promoter_motif_enrichment.done')
     params:
         seq_class = 'promoter',
-        sig = 0.05,
-        output_loc = 'promoter_motif_matches/'
+        sig = 0.05
     log: 'logs/3_2_run_promoter_motif_enrichment.log'
     script: '../scripts/3_run_motif_enrichment.py'
