@@ -99,7 +99,7 @@ consolidated = pd.DataFrame({
     'corr': mean_corr.values,
     'cluster': 'global'
 }).reset_index(drop=True)
-consolidated.to_csv(os.path.join(path_csvs, "full_grn.csv"))
+consolidated.to_csv(os.path.join(os.path.dirname(path_output), "full_grn.csv"), index=False)
 
 # Remove self-loops
 print("Removing self-loops...")
@@ -108,7 +108,7 @@ consolidated = consolidated[consolidated["tf"] != consolidated["gene"]]
 # GRN
 grn = consolidated[["tf", "gene", "weight_unsigned", "pval", "cluster"]]
 grn = grn.rename({"weight_unsigned": "score"}, axis=1)
-grn.to_csv(os.path.join(path_csvs, "grn.csv"))
+grn.to_csv(os.path.join(os.path.dirname(path_output), "grn.csv"), index=False)
 
 # add to data
 data.uns["grn"] = grn

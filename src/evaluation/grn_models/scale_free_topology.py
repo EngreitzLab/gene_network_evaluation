@@ -14,13 +14,15 @@ from sklearn.linear_model import LinearRegression
 def compute_scale_free_topology_fit(
     mdata: mudata.MuData,
     grn_key: str = "grn",
-    celltype: str = None,
+    cluster_key: str = None,
+    cluster: str = None,
     inplace: bool = True
 ):
     # Extract GRN
     grn = mdata.uns[grn_key].copy()
-    if celltype is not None:
-        grn = grn.query("celltype == @celltype")
+    if cluster_key is not None:
+        assert cluster is not None, "cluster must be provided if cluster_key is provided"
+        grn = grn.query("cluster_key == @cluster")
 
     # Build iGraph
     g = Graph.DataFrame(grn[["source", "target"]], directed=True, use_vids=False)
@@ -94,9 +96,10 @@ if __name__=='__main__':
 
     parser.add_argument('mudataObj_path')
     parser.add_argument('--grn_key', default="grn")
-    parser.add_argument('--celltype', default=None)
+    parser.add_argument('--cluster_key', default=None)
+    parser.add_argument('--cluster', default=None)
 
     args = parser.parse_args()
 
     mdata = mudata.load(args.mudataObj_path)
-    compute_scale_free_topology_fit(mdata, grn_key=args.grn_key, celltype=args.celltype)
+    compute_scale_free_topology_fit(mdata, grn_key=args.grn_key, cluster_key=args.cluster_key, cluster=args.cluster)
