@@ -65,5 +65,5 @@ print(f"Running inference on {n_cells} cells and {n_genes} genes, make sure this
 write_loom(
     mdata.mod["rna"],
     filename=path_out,
-    layer="counts"
+    layer=layer
 )

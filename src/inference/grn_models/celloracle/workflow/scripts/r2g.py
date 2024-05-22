@@ -51,8 +51,10 @@ integrated["pval"] = np.nan
 integrated["cluster"] = "global"
 
 # Remove unexpressed genes
-genes = mu.read(os.path.join(path_data, 'rna')).var.index.values.astype('U')
-integrated = integrated[integrated['gene'].isin(genes)]
+if os.path.exists(os.path.join(path_data, 'rna')):
+    genes = mu.read(os.path.join(path_data, 'rna')).var.index.values.astype('U')
+    print(f"Subsetting r2g links to {len(genes)} genes expressed in the dataset")
+    integrated = integrated[integrated['gene'].isin(genes)]
 
 # Write
 integrated.to_csv(path_out, index=False)

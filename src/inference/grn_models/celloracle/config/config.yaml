@@ -22,6 +22,7 @@ blen: 200  # background sequence length for motif scanning
 tfb_thr: 5  # threshold for TF binding score
 
 # grn
+base_grn: None  # path to the base GRN (must be in parquet format)
 cluster_key: celltype  # key to group cells for GRN inference per cell identity
 layer: null  # layer to use for GRN inference
 alpha: 10  # alpha for ridge regression regularization strength
