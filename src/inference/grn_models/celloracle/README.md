@@ -11,17 +11,17 @@ date: 2024-05-02
 # Quick start
 1. Modify the config in `config/config.yaml` or create a new one with the same structure
 - [ ] Point to the correct input file (`input_loc`) (see [Expected input](#expected-input))
-- [ ] Change the `genome` to the correct species and version (e.g. `hg38`)
 - [ ] Change output directory (`outdir`) to where you want the output to be saved. This will include all intermediate files and the final MuData object (see [Output](#output))
-- [ ] Only if you are using the `--use-singularity` flag. Modify the path to the CellOracle singularity container (`singularity_image`) (see [Environment](#environment) for more details)
-- [ ] Modify the scratch directory (`scratchdir`) to where you want the temporary genome files o be saved
+- [ ] Modify the scratch directory (`scratchdir`) to where you want the temporary genome files to be saved
+- [ ] If you are planning to use the singularity image with the `--use-singularity` flag, modify the path to the CellOracle singularity container (`singularity_image`)
 - [ ] Choose the number of threads to use (`threads`) based on your system
-- [ ] Modify other parameters as needed (see [Parameters](#parameters) for more details
+- [ ] Change the `genome` to the correct species and version (e.g. `hg38`)
+- [ ] Modify other parameters as needed (see below for more details)
 
 2. Run the pipeline
 ```bash
 snakemake --cores 1 outdir/celloracle.h5mu --configfile /path/to/config.yaml
-snakemake --use-singularity --cores 1 outdir/celloracle.h5mu --configfile /path/to/config.yaml # Use singularity container
+snakemake --use-singularity --cores 1 outdir/celloracle.h5mu --configfile /path/to/config.yaml  # Use singularity container
 ```
 
 # Expected input
@@ -35,6 +35,11 @@ snakemake --use-singularity --cores 1 outdir/celloracle.h5mu --configfile /path/
         * `obs` — a dataframe of cell metadata
             * `"cell_identity"` — a column of cell type annotations (specify `cluster_key` to match in the config file)
         * `var` — a dataframe of gene metadata
+
+> 🚨 **Important Note:**
+>
+> The 'counts' layer matrix MUST be a scipy sparse matrix. Use of a dense matrix will currently cause an error.
+>
 
 # Workflow
 The CellOracle method consists of the following steps:
@@ -97,12 +102,12 @@ Start with scATAC-seq data.
     - **Note:** Does not allow multiple TF binding sites to occur in a single input region
 
 > **Note**
-> Cicero region to gene connections are called globally! Not at cell type resolution, possible we add cell type specific region to gene links in the future.
+> Cicero region to gene connections are called globally! Not at cell type resolution. It is possible we add cell type specific region to gene links in the future.
 
 ## Refining the GRN with scRNA-seq data
 ![Alt text](static/grn.png)
 
-Briefly, each gene’s expression will be predicted by candidate regulators defined in a base GRN. A bagging ridge regression is fit to each gene and coefficient distributions (for each candidate regulator TF) are calculated from each bagging run. The mean of this distribution is output for each TF-gene is returned along with a p-value corresponding to a 1-sample t-test for the distribution of coefficients with the alternative hypothesis that the coefficient is different from 0. Finally the number of bagging samples to use as wells as the regularization strength can be tuned.
+Briefly, each gene’s expression will be predicted by candidate regulators defined in a base GRN. A bagging ridge regression is fit to each gene and coefficient distributions (for each candidate regulator TF) are calculated from each bagging run. The mean of this distribution is output for each TF-gene is returned along with a p-value corresponding to a 1-sample t-test for the distribution of coefficients with the alternative hypothesis that the coefficient is different from 0. The number of bagging samples to use as well as the regularization strength can be tuned.
 
 # More details
 
