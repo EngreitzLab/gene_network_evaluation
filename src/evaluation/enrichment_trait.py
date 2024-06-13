@@ -193,7 +193,7 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
 def compute_trait_enrichment(mdata, gwas_data, prog_key='prog', 
                              prog_nam=None, data_key='rna', library='OT_GWAS', 
                              n_jobs=1, inplace=False, key_column='trait_efos',
-                             gene_column='gene_name', method='fisher', **kwargs):
+                             gene_column='gene_name', method='fisher', loading_rank_thresh=500, **kwargs):
     #read in gwas data
     if isinstance(gwas_data, str):
         df = pd.read_csv(gwas_data, compression='gzip', low_memory=False)
@@ -206,7 +206,7 @@ def compute_trait_enrichment(mdata, gwas_data, prog_key='prog',
 
     return (compute_geneset_enrichment(mdata=mdata, prog_key=prog_key, data_key=data_key, 
                                        library=library, database=None, n_jobs=n_jobs, inplace=inplace, 
-                                       user_geneset=gmt, prog_nam=prog_nam, method=method))
+                                       user_geneset=gmt, prog_nam=prog_nam, method=method, loading_rank_thresh=loading_rank_thresh))
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
