@@ -4,18 +4,26 @@ import os
 outdir: config['outdir']
 currdir = os.getcwd()
 
+# Helper function for creating paths
+def resource_path(local_path, url):
+    basename = os.path.basename(url)
+    return os.path.join(local_path, "resources", basename)
+    
 rule all:
     input:
-        expand("{}/run{{run}}_pyscenic_output.loom".format(config['outdir']), run=range(1, config["num_runs"] + 1)),
+        expand("{}/run{{run}}_adj.tsv".format(config['outdir']), run=range(1, config["num_runs"] + 1)),
+        expand("{}/run{{run}}_reg.csv".format(config['outdir']), run=range(1, config["num_runs"] + 1)),
         "{}/scenic.h5mu".format(config['outdir'])
 
 rule pre:
     input:
         data=config['input_loc']
+    singularity:
+        "envs/scenic.sif"
     output:
         path_out="{outdir}/rna.loom"
     params:
-        layer=config['layer']
+        layer=lambda w: config['layer']
     log:
         "{outdir}/logs/pre.log"
     benchmark:
@@ -36,7 +44,7 @@ rule grn:
     output:
         path_adj="{outdir}/run{run}_adj.tsv"
     params:
-        method=config.get("inference_method", "grnboost2"),
+        method=lambda w: config['inference_method'],
         run="{run}"
     threads: config['n_jobs']
     log: 
@@ -59,9 +67,9 @@ rule prune:
         path_adj="{outdir}/run{run}_adj.tsv",
         path_ranking_db=os.path.join(currdir, "resources", "rankings_db", os.path.basename(config['rankings_db'])),
         path_motif_annotations=os.path.join(currdir, "resources", "motif_annotations", os.path.basename(config['motif_annotations'])),
-        path_loom="{outdir}/rna.loom"
+        path_loom="{outdir}/rna.loom",
     output:
-        path_reg="{outdir}/run{run}_reg.csv"
+        path_reg="{outdir}/run{run}_reg.csv",
     params:
         run="{run}"
     threads: config['n_jobs']
@@ -85,7 +93,7 @@ rule prune:
 rule post:
     input:
         path_data=config['input_loc'],
-        path_csvs=config['outdir'],
+        path_csvs=expand("{}/run{{run}}_reg.csv".format(config['outdir']), run=range(1, config["num_runs"] + 1)),
         path_loom="{}/rna.loom".format(config['outdir']),
     output:
         "{outdir}/scenic.h5mu"

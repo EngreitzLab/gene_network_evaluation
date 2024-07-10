@@ -1,6 +1,6 @@
 # Configuration file for CellOracle
 input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu  # path to the input data
-outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/celloracle/2024_05_03 # created if doesn't exist
+outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/celloracle/2024_05_08 # created if doesn't exist
 scratchdir: /cellar/users/aklie/tmp/gene_program_evaluation  # should exist
 singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/celloracle/envs/celloracle.sif  # optional
 n_jobs: 1  # threads
@@ -22,6 +22,7 @@ blen: 200  # background sequence length for motif scanning
 tfb_thr: 5  # threshold for TF binding score
 
 # grn
+base_grn: None  # path to the base GRN (must be in parquet format)
 cluster_key: celltype  # key to group cells for GRN inference per cell identity
 layer: null  # layer to use for GRN inference
 alpha: 10  # alpha for ridge regression regularization strength

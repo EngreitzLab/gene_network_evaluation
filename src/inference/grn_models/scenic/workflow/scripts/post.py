@@ -22,8 +22,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-i','--path_data', required=True)
 parser.add_argument('-l','--path_loom', required=True)
-parser.add_argument('-c','--path_csvs', required=True)
-parser.add_argument('-o','--path_output', required=True)                                   
+parser.add_argument('-c','--path_csvs', required=True, nargs='+')
+parser.add_argument('-o','--path_output', required=True)
 args = vars(parser.parse_args())
 
 # Parse args
@@ -54,9 +54,8 @@ data = mu.read(path_data)
 
 # Read regulons into df
 print("Reading regulons...")
-reg_csvs = sorted(glob.glob(os.path.join(path_csvs, "*reg.csv")))
 all_edges = pd.DataFrame()
-for reg_csv in reg_csvs:
+for reg_csv in path_csvs:
     regulons = load_signatures(reg_csv)
     adj_df = regulon2sadj(regulons)
     all_edges = pd.concat([all_edges, adj_df])
@@ -100,7 +99,7 @@ consolidated = pd.DataFrame({
     'corr': mean_corr.values,
     'cluster': 'global'
 }).reset_index(drop=True)
-consolidated.to_csv(os.path.join(path_csvs, "full_grn.csv"))
+consolidated.to_csv(os.path.join(os.path.dirname(path_output), "full_grn.csv"), index=False)
 
 # Remove self-loops
 print("Removing self-loops...")
@@ -109,7 +108,7 @@ consolidated = consolidated[consolidated["tf"] != consolidated["gene"]]
 # GRN
 grn = consolidated[["tf", "gene", "weight_unsigned", "pval", "cluster"]]
 grn = grn.rename({"weight_unsigned": "score"}, axis=1)
-grn.to_csv(os.path.join(path_csvs, "grn.csv"))
+grn.to_csv(os.path.join(os.path.dirname(path_output), "grn.csv"), index=False)
 
 # add to data
 data.uns["grn"] = grn

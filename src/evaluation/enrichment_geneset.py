@@ -228,7 +228,7 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', prog_nam=
     if method == "gsea":
         pre_res = perform_prerank(loadings=loadings, geneset=geneset, n_jobs=n_jobs)
     elif method == "fisher":
-        pre_res = perform_fisher_enrich(loadings=loadings, geneset=geneset, loading_rank_thresh=500)
+        pre_res = perform_fisher_enrich(loadings=loadings, geneset=geneset, loading_rank_thresh=loading_rank_thresh)
         
     #return the result depending on whether or not we want to do it inplace   
     if inplace:
