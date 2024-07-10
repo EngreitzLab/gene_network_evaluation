@@ -83,16 +83,20 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('-pk', '--prog_key', default='factor_analysis', typ=str) 
-    parser.add_argument('-dk', '--data_key', default='rna', typ=str) 
+    parser.add_argument('-pk', '--prog_key', default='factor_analysis', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str) 
     parser.add_argument('--layer', default='X', type=str)
     parser.add_argument('--config_path', default='./factor_analysis_config.gin', type=str)
-    parser.add_argument('--output', action='store_false') 
+    parser.add_argument('--output', action='store_true') 
+    parser.add_argument('--path_output', default=None, type=str)
 
     args = parser.parse_args()
-
     mdata = mudata.read(args.mudataObj_path)
-    run_factor_analysis(mdata, prog_key=args.prog_key, 
+    mdata = run_factor_analysis(mdata, prog_key=args.prog_key, 
                         data_key=args.data_key, layer=args.layer, 
                         config_path=args.config_path,
-                        inplace=args.output)
+                        inplace=not args.output)
+    if args.output:
+        assert args.path_output is not None
+        print("here")
+        mdata.write(args.path_output)

@@ -1,0 +1,15 @@
+# Configuration file for SCENIC
+input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu  # path to the input data
+outdir: /cellar/users/aklie/data/datasets/neurips2021_small/analysis/scenic/2024_05_10 # created if doesn't exist
+scratchdir: /cellar/users/aklie/tmp/gene_program_evaluation  # should exist
+singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic/envs/scenic.sif  # optional
+n_jobs: 4  # threads for each rule, make sure you don't overspecificy your system
+random_state: 1234  # random state, currently only applies to Cicero co-accessibility analysis step
+
+# Method params
+num_runs: 5
+layer: "counts"
+tf_list: https://resources.aertslab.org/cistarget/tf_lists/allTFs_hg38.txt
+inference_method: "grnboost2"
+rankings_db: https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather
+motif_annotations: https://resources.aertslab.org/cistarget/motif2tf/motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl

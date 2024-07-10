@@ -1,13 +1,16 @@
 # Configuration file for SCENIC+
 input_loc: /cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/neurips.small.h5mu
-organism: human # human or mouse
 outdir: /cellar/users/aklie/tutorials/gene_program_evaluation/scenic+/neurips2021/small # Created if doesn't exist.
 scratchdir: /cellar/users/aklie/tmp # Should exist
 singularity_image: /cellar/users/aklie/opt/gene_program_evaluation/src/inference/grn_models/scenic+/envs/scenic+.sif # Optional
 n_jobs: 1 # Threads
 random_state: 1234
 
-# pycistopic parameters
+# genome
+organism: human # human or mouse
+biomart_host: "http://sep2019.archive.ensembl.org/"
+
+# pre parameters
 blacklist: https://www.encodeproject.org/files/ENCFF356LFX/@@download/ENCFF356LFX.bed.gz
 n_topics: '2;4;8;16;32;48'
 n_iter: 150
@@ -15,22 +18,52 @@ alpha: 50
 alpha_by_topic: TRUE
 eta: 0.1
 eta_by_topic: FALSE
-
-# candidate enhancer parameters
 ntop: 3000
 scale_factor_impute: 1000000
 scale_factor_normalize: 10000
 
-# pycistarget parameters
+# motif enrichment
 tf_annotations: https://resources.aertslab.org/cistarget/motif2tf/motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl
+annotation_version: "v10nr_clust"
+motif_similarity_fdr: 0.001
+orthologous_identity_threshold: 0.0
+annotations_to_use: "Direct_annot Orthology_annot"
 tf_list: https://resources.aertslab.org/cistarget/tf_lists/allTFs_hg38.txt
-rankings_db: https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather
-scores_db: https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/hg38_screen_v10_clust.regions_vs_motifs.scores.feather
-run_without_promoters: FALSE
 
-# SCENIC+ parameters
-biomart_host: "http://sep2019.archive.ensembl.org/"
-min_distance_upstream: 1000
-max_distance_upstream: 150000
-min_distance_downstream: 1000
-max_distance_downstream: 150000
+# ctx params
+rankings_db: https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather
+fraction_overlap_w_ctx_database: 0.4
+ctx_auc_threshold: 0.005
+ctx_nes_threshold: 3.0
+ctx_rank_threshold: 0.05
+
+# dem parameters
+scores_db: https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/hg38_screen_v10_clust.regions_vs_motifs.scores.feather
+fraction_overlap_w_dem_database: 0.4
+dem_max_bg_regions: 500
+dem_balance_number_of_promoters: True  # not currently used
+dem_promoter_space: 1_000
+dem_adj_pval_thr: 0.05
+dem_log2fc_thr: 1.0
+dem_mean_fg_thr: 0.0
+dem_motif_hit_thr: 3.0
+direct_annotation: "Direct_annot"
+extended_annotation: "Orthology_annot"
+
+# tf2g
+tf_to_gene_importance_method: "GBM"  # Params for tf_to_gene
+
+# r2g
+region_to_gene_importance_method: "GBM" # Params regions_to_gene
+region_to_gene_correlation_method: "SR"
+
+# eRegulons
+order_regions_to_genes_by: "importance"  # Params for eGRN inference
+order_TFs_to_genes_by: "importance"
+gsea_n_perm: 1000
+quantile_thresholds_region_to_gene: "0.85 0.90 0.95"
+top_n_regionTogenes_per_gene: "5 10 15"
+top_n_regionTogenes_per_region: ""
+min_regions_per_gene: 0
+rho_threshold: 0.05
+min_target_genes: 5
