@@ -5,8 +5,8 @@ import pandas as pd
 from callbacks import register_callbacks
 
 # Load data
-explained_variance, enrichment_gsea, enrichment_motif, enrichment_trait = load_data('/cellar/users/aklie/opt/gene_program_evaluation/src/plotting/dashapp/example_data/cNMF_evaluation_output.xlsx')
-trait_phewas = pd.read_csv("/cellar/users/aklie/opt/gene_program_evaluation/src/plotting/dashapp/example_data/cNMF_enrichment_trait_processed.txt", sep='\t')
+explained_variance, enrichment_gsea, enrichment_motif, enrichment_trait = load_data('../example_data/cNMF_evaluation_output.xlsx')
+trait_phewas = pd.read_csv("../example_data/cNMF_enrichment_trait_processed.txt", sep='\t')
 
 # Create Dash app
 app = Dash(__name__)
