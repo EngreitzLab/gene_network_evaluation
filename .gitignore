@@ -1,6 +1,8 @@
 *.sif
 *.snakemake
+archive/
 
+archive/
 **/resources/*
 !/resources/OpenTargets_L2G_noQC.csv.gz
 !/resources/OpenTargets_L2G_Filtered.csv.gz

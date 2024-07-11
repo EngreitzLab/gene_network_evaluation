@@ -169,7 +169,8 @@ def compute_motif_instances(mdata, motif_match_df, sig=0.05, gene_names=None):
     # Count up significant occurences of motif
     motif_match_df_ = motif_match_df.loc[motif_match_df.qvalue<=sig]
     motif_match_df_ = motif_match_df.value_counts(subset=['gene_name', 'motif_name']).reset_index()
-    motif_match_df_ = motif_match_df_.pivot(index='gene_name', columns='motif_name', values='count')
+    motif_match_df_.columns = ['gene_name', 'motif_name', 'motif_count']
+    motif_match_df_ = motif_match_df_.pivot(index='gene_name', columns='motif_name', values='motif_count')
 
     motif_count_df = pd.DataFrame(index=gene_names, columns=motif_match_df_.columns)
     motif_count_df.loc[motif_match_df_.index.values] = motif_match_df_ # Gene names should match as this point
@@ -464,8 +465,8 @@ if __name__=='__main__':
 
     mdata = mudata.read(args.mudataObj_path)
     compute_motif_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, 
-                             motif_file=args.motif_file, seq_file=arg.seq_file, 
-                             coords_file=arg.coords_file, output_loc=args.store_files, 
+                             motif_file=args.motif_file, seq_file=args.seq_file, 
+                             coords_file=args.coords_file, output_loc=args.store_files, 
                              sig=args.significance, num_genes=args.num_genes, 
                              n_jobs=args.n_jobs, correlation=args.correlation, 
                              inplace=args.output)

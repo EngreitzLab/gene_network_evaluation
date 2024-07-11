@@ -119,12 +119,14 @@ rule grn:
         data=config['input_loc'],
         path_r2g="{outdir}/r2g.csv",
         path_tf2r="{outdir}/tf2r.csv"
+        path_base_grn=config['base_grn']
     singularity:
         "envs/celloracle.sif"
     params:
         cluster_key=lambda w: config['cluster_key'],
         layer=lambda w: config['layer'],
         alpha=lambda w: config['alpha'],
+        scale=lambda w: config['scale'],
         bagging_number=lambda w: config['bagging_number'],
     log:
         "{outdir}/logs/grn.log"
@@ -137,10 +139,12 @@ rule grn:
         -d {input.data} \
         -r {input.path_r2g} \
         -t {input.path_tf2r} \
+        -b {input.path_base_grn} \
         -c {params.cluster_key} \
         -l {params.layer} \
         -a {params.alpha} \
         -b {params.bagging_number} \
+        -s {params.scale} \
         -o {output} \
         > {log}"
 
