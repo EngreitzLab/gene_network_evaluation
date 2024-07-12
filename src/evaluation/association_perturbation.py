@@ -20,6 +20,7 @@ logging.basicConfig(level = logging.INFO)
 def compute_perturbation_association_(test_data, reference_data, program, guide, test_stats_df):
 
     test_data_ = test_data[:, program].X.toarray()
+    # TODO: Resample reference data to match number of obs
     reference_data_ = reference_data[:, program].X.toarray()
 
     results = stats.mannwhitneyu(test_data_, reference_data_)
