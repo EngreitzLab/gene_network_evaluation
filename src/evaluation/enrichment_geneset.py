@@ -28,14 +28,26 @@ def create_geneset_dict(dataframe: pd.DataFrame,
     return geneset_dict
 
 # Match gene IDs with database
-def get_idconversion(var_names):
+def get_idconversion(var_names, organism='human'):
 
     bm = Biomart()
     gene_names = []
     for i in range(min(10, len(var_names))):
         if var_names[i].lower().startswith('ens'):
             queries = {'ensembl_gene_id': list(var_names)}
-            gene_names = queries['external_gene_name'].apply(lambda x: x.upper()).values
+
+            if organism=='human':
+                id_dataset='hsapiens_gene_ensembl'
+            elif organism=='mouse':
+                id_dataset='mmusculus_gene_ensembl'
+
+            results = bm.query(dataset=id_dataset,
+                               attributes=['ensembl_gene_id', 'external_gene_name'],
+                               filters=queries)
+
+            if type(results) is str:
+                raise RuntimeError('Gene name query request did not suceed. Consider converting ENS IDs to gene names manually')
+            gene_names = results['external_gene_name'].apply(lambda x: x.upper()).values
             break
         elif ':ens' in var_names[i].lower():
             gene_names = [name.split(':')[0].upper() for name in var_names]
@@ -45,13 +57,13 @@ def get_idconversion(var_names):
     return gene_names
 
 # Extract program loadings
-def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='rna'):
+def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='rna', organism='human'):
 
     if 'var_names' in mdata[prog_key].uns.keys():
-        gene_names = get_idconversion(mdata[prog_key].uns['var_names'])
+        gene_names = get_idconversion(mdata[prog_key].uns['var_names'], organism=organism)
     else:
         assert mdata[prog_key].varm['loadings'].shape[1] == mdata[data_key].var.shape[0]
-        gene_names = get_idconversion(mdata[data_key].var_names)
+        gene_names = get_idconversion(mdata[data_key].var_names, organism=organism)
 
     if prog_nam:
         loadings = pd.DataFrame(data=mdata[prog_key][:, prog_nam].varm['loadings'].flatten(), index=gene_names)
@@ -62,6 +74,10 @@ def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='r
         loadings.set_index("gene_names", inplace=True)
     
     return loadings
+
+    with open('var_names.txt', 'w') as fil:
+        for nam in mdata['rna'].var_names:
+            fil.write(nam+'\n')
 
 # Download geneset
 def get_geneset(organism='human', library='h.all', database='msigdb'):
@@ -222,7 +238,8 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', prog_nam=
         geneset = get_geneset(organism, library, database)
      
     #get the gene loadings for each program
-    loadings = get_program_gene_loadings(mdata, prog_key=prog_key, prog_nam=prog_nam, data_key=data_key)
+    loadings = get_program_gene_loadings(mdata, prog_key=prog_key, prog_nam=prog_nam, 
+                                         data_key=data_key, organism=organism)
     
     #run enrichment
     if method == "gsea":
