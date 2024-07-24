@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def load_data(file_path):
     evaluation_output = pd.ExcelFile(file_path)
     explained_variance = pd.read_excel(evaluation_output, sheet_name='explained_variance')
@@ -8,6 +9,7 @@ def load_data(file_path):
     enrichment_trait = pd.read_excel(evaluation_output, sheet_name='enrichment_trait')
     return explained_variance, enrichment_gsea, enrichment_motif, enrichment_trait
 
+
 def count(categorical_var, count_var, dataframe):
     counts_df = dataframe.value_counts([categorical_var, count_var])
     counts_df = counts_df.groupby(categorical_var).sum()
@@ -15,6 +17,7 @@ def count(categorical_var, count_var, dataframe):
     counts_df = pd.DataFrame(counts_df.reset_index().values,
                              columns=[categorical_var, count_var])
     return counts_df
+
 
 def count_unique(categorical_var, count_var, dataframe, cummul=False, unique=False):
     counts_df = count(categorical_var, count_var, dataframe)
@@ -32,3 +35,27 @@ def count_unique(categorical_var, count_var, dataframe, cummul=False, unique=Fal
         return counts_df
     else:
         return new_df
+
+
+def filter_data(data: pd.DataFrame, filters: dict):
+    """Filter data based on a dictionary of filter criteria.
+    
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame containing the data to be filtered.
+    filters : dict
+        Dictionary of filter criteria where keys are column names and values are the filter values.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filtered DataFrame.
+    """
+    filtered_data = data.copy()
+    for column, value in filters.items():
+        if isinstance(value, tuple) and len(value) == 2:
+            filtered_data = filtered_data[(filtered_data[column] >= value[0]) & (filtered_data[column] <= value[1])]
+        else:
+            filtered_data = filtered_data[filtered_data[column] <= value]
+    return filtered_data

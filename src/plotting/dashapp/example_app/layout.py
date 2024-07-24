@@ -1,387 +1,271 @@
 import pandas as pd
 from dash import html, dcc
 from dash.dash_table import DataTable
+from dash import Input, Output
 import plotly.express as px
 import plotly.io as pio
-from data_processing import count_unique
+from data_processing import count_unique, filter_data
 
 # Set the default template to plotly_white
 pio.templates.default = "plotly_white"
 
-def create_explained_variance_layout(
-    explained_variance: pd.DataFrame,
-    cumulative: bool = False
+def create_scatter_layout(
+    data: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    title: str,
+    sorted: bool = True,
+    x_axis_title: str = None,
+    y_axis_title: str = None,
+    cumulative: bool = False,
+    id_suffix: str = '',
+    show_xaxis_labels: bool = False
 ):
-    """Create the layout for the explained variance plot.
-    
-    Parameters
-    ----------
-    explained_variance : pd.DataFrame
-        DataFrame containing the explained variance data. Expected columns are 'ProgramID' and 'VarianceExplained'.
-
-    Returns
-    -------
-    html.Div
-        A Div containing the explained variance plot.
-    """
-    if cumulative:
-        explained_variance['VarianceExplained'] = explained_variance['VarianceExplained'].cumsum()
-    return html.Div([
-        dcc.Graph(
-            figure=px.scatter(
-                x=explained_variance.sort_values('VarianceExplained', ascending=cumulative)['ProgramID'],
-                y=explained_variance.sort_values('VarianceExplained', ascending=cumulative)['VarianceExplained'],
-                template='plotly_white'
-            ).update_layout(title='Explained Variance by ProgramID', xaxis_title='Component', yaxis_title='Variance Explained (R²)')
-        )
-    ])
-
-
-def create_gsea_layout(
-    enrichment_gsea: pd.DataFrame,
-    starting_fdr: float = 0.05,
-    cumulative: bool = False
-):
-    """Create the layout for the GSEA table and plot.
-
-    Parameters
-    ----------
-    enrichment_gsea : pd.DataFrame
-        DataFrame containing the GSEA enrichment data. Expected columns are 'ProgramID', 'ID', 'qvalue'.
-
-    Returns
-    -------
-    html.Div
-        A Div containing the GSEA table and plot.
-    """
-    # Preprocess data
-    gsea_unique_df = count_unique(
-        categorical_var='ProgramID',
-        count_var='ID',
-        dataframe=enrichment_gsea.loc[enrichment_gsea['qvalue'] <= starting_fdr]
-    )
-    if cumulative:
-        gsea_unique_df['ID'] = gsea_unique_df['ID'].fillna(gsea_unique_df['ID'].max())
-    else:
-        gsea_unique_df['ID'] = gsea_unique_df['ID'].fillna(0)
-
-    return html.Div([
-        html.H2("Enriched GSEA Terms"),
-        html.Div([
-            html.Label('Filter by program'),
-            dcc.Dropdown(
-                id='programid-dropdown',
-                options=[{'label': i, 'value': i} for i in enrichment_gsea['ProgramID'].unique()],
-                multi=True
-            ),
-            html.Label('Filter by qvalue'),
-            # Allow filtering by ANY user input q-value
-            dcc.Input(
-                id='qvalue-input',
-                type='number',
-                value=starting_fdr,
-                step=0.001
-            )
-        ]),
-        DataTable(
-            id='gsea-terms-table',
-            columns=[{"name": i, "id": i} for i in enrichment_gsea.columns],
-            data=enrichment_gsea.to_dict('records'),
-            filter_action="native",
-            sort_action="native",
-            page_size=10
-        ),
-        dcc.Graph(
-            id='gsea-barplot',
-            figure=px.bar(
-                gsea_unique_df.sort_values('ID', ascending=False),
-                x='ProgramID',
-                y='ID',
-                template="plotly_white"
-            ).update_layout(title='Unique GSEA Terms per Program', xaxis_title='ProgramID', yaxis_title='Count')
-        )
-    ])
-
-
-def create_motif_enrichment_layout(
-    enrichment_motif: pd.DataFrame,
-    starting_fdr: float = 0.05,
-    cumulative: bool = False
-):
-    """Create the layout for the motif enrichment table and plot.
-
-    Parameters
-    ----------
-    enrichment_motif : pd.DataFrame
-        DataFrame containing the motif enrichment data. Expected columns are 'ProgramID', 'TFMotif', 'FDR', 'EPType'.
-
-    Returns
-    -------
-    html.Div
-        A Div containing the motif enrichment table and plot.
-    """
-    # Preprocess data
-    filtered_df = enrichment_motif[enrichment_motif['FDR'] <= starting_fdr]
-    motif_promoter_df = count_unique('ProgramID', 'TFMotif', filtered_df[filtered_df['EPType'] == 'Promoter'])
-    motif_enhancer_df = count_unique('ProgramID', 'TFMotif', filtered_df[filtered_df['EPType'] == 'Enhancer'])
-    motif_combined_df = pd.concat([
-        motif_promoter_df.assign(Type='Promoter'),
-        motif_enhancer_df.assign(Type='Enhancer')
-    ])
-    
-    # Calculate total counts across promoters and enhancers
-    program_totals = motif_combined_df.groupby('ProgramID')['TFMotif'].sum().reset_index(name='TotalMotifs')
-
-    # Merge the total counts back to the combined dataframe
-    motif_combined_df = motif_combined_df.merge(program_totals, on='ProgramID')
-
-    # Sort the programs by the total counts
-    program_totals = program_totals.sort_values('TotalMotifs', ascending=False)
-    motif_combined_df = motif_combined_df.sort_values('TotalMotifs', ascending=False)
-
-    return html.Div([
-        html.H2("Motif Enrichment"),
-        html.Div([
-            html.Label('Filter by program'),
-            dcc.Dropdown(
-                id='motif-programid-dropdown',
-                options=[{'label': i, 'value': i} for i in enrichment_motif['ProgramID'].unique()],
-                multi=True
-            ),
-            html.Label('Filter by EPType'),
-            dcc.Dropdown(
-                id='ep-type-dropdown',
-                options=[
-                    {'label': 'Promoter', 'value': 'Promoter'},
-                    {'label': 'Enhancer', 'value': 'Enhancer'}
-                ],
-                multi=True,
-                value=['Promoter', 'Enhancer']
-            ),
-            html.Label('Filter by FDR'),
-            dcc.Input(
-                id='motif-fdr-input',
-                type='number',
-                value=starting_fdr,
-                step=0.001
-            )
-        ]),
-        DataTable(
-            id='motif-terms-table',
-            columns=[{"name": i, "id": i} for i in enrichment_motif.columns],
-            data=enrichment_motif.to_dict('records'),
-            filter_action="native",
-            sort_action="native",
-            page_size=10
-        ),
-        dcc.Graph(
-            id='motif-stacked-barplot',
-            figure=px.bar(
-                motif_combined_df,
-                x='ProgramID',
-                y='TFMotif',
-                color='Type',
-                category_orders={'ProgramID': program_totals['ProgramID'].tolist()},
-                barmode='stack',
-                template="plotly_white"
-            ).update_layout(title='Motif Enrichment (Promoters and Enhancers)', xaxis_title='ProgramID', yaxis_title='Count')
-        )
-    ])
-
-
-def create_gwas_layout(
-    enrichment_trait: pd.DataFrame,
-    starting_pvalue: float = 0.05,
-    cumulative: bool = False
-):
-    """Create the layout for the GWAS trait enrichment table and plot.
-
-    Parameters
-    ----------
-    enrichment_trait : pd.DataFrame
-        DataFrame containing the GWAS trait enrichment data. Expected columns are 'ProgramID', 'Term', 'Adjusted P-value'.
-
-    Returns
-    -------
-    html.Div
-        A Div containing the GWAS trait enrichment table and plot.
-    """
-    # Preprocess data
-    gwas_unique_df = count_unique(
-        categorical_var='ProgramID',
-        count_var='Term',
-        dataframe=enrichment_trait.loc[enrichment_trait['Adjusted P-value'] <= starting_pvalue]
-    )
-    if cumulative:
-        gwas_unique_df['Term'] = gwas_unique_df['Term'].fillna(gwas_unique_df['Term'].max())
-    else:
-        gwas_unique_df['Term'] = gwas_unique_df['Term'].fillna(0)
-
-    return html.Div([
-        html.H2("Enriched GWAS Traits"),
-        html.Div([
-            html.Label('Filter by program'),
-            dcc.Dropdown(
-                id='gwas-programid-dropdown',
-                options=[{'label': i, 'value': i} for i in enrichment_trait['ProgramID'].unique()],
-                multi=True
-            ),
-            html.Label('Filter by adjusted p-value'),
-            # Allow filtering by ANY user input p-value
-            dcc.Input(
-                id='gwas-pvalue-input',
-                type='number',
-                value=starting_pvalue,
-                step=0.001
-            )
-        ]),
-        DataTable(
-            id='gwas-terms-table',
-            columns=[{"name": i, "id": i} for i in enrichment_trait.columns],
-            data=enrichment_trait.to_dict('records'),
-            filter_action="native",
-            sort_action="native",
-            page_size=10
-        ),
-        dcc.Graph(
-            id='gwas-barplot',
-            figure=px.bar(
-                gwas_unique_df.sort_values('Term', ascending=False),
-                x='ProgramID',
-                y='Term',
-                template="plotly_white"
-            ).update_layout(title='Unique GWAS Traits per Program', xaxis_title='ProgramID', yaxis_title='Count')
-        )
-    ])
-
-
-def create_phewas_layout(
-    phewas_data: pd.DataFrame,
-    title: str = "PheWAS Plot",
-    query_string: str = None,
-    id_suffix: str = ""
-):
-    """Create the layout for the PheWAS plot.
+    """Create a scatter plot layout in Dash using Plotly.
 
     Parameters
     ----------
     data : pd.DataFrame
-        DataFrame containing the PheWAS data.
+        DataFrame containing the data for the plot.
+    x_column : str
+        The column to use for the x-axis.
+    y_column : str
+        The column to use for the y-axis.
     title : str
         Title of the plot.
-    query_string : str, optional
-        Query string to filter the data.
-    id_suffix : str, optional
-        Suffix to add to the id of the dropdown and plot.
+    x_axis_title : str, optional
+        Title for the x-axis.
+    y_axis_title : str, optional
+        Title for the y-axis.
+    cumulative : bool, optional
+        Whether to plot cumulative values.
 
     Returns
     -------
     html.Div
-        A Div containing the PheWAS plot and dropdown.
+        A Div containing the scatter plot.
     """
-    if query_string:
-        phewas_data = phewas_data.query(query_string)
+    # Compute cumulative values
+    if cumulative:
+        data[y_column] = data[y_column].cumsum()
 
-    filter_column = 'program_name'
-    filter_values = ['All'] + sorted(phewas_data[filter_column].unique())
+    # Sort
+    x_data = data.sort_values(y_column, ascending=cumulative)[x_column] if sorted else data[x_column]
+    y_data = data.sort_values(y_column, ascending=cumulative)[y_column] if sorted else data[y_column]
+    
+    # Plot
+    fig = px.scatter(
+            x=x_data,
+            y=y_data,
+            template='plotly_white'
+        ).update_layout(
+            title=title, 
+            xaxis_title=x_axis_title if x_axis_title else x_column, 
+            yaxis_title=y_axis_title if y_axis_title else y_column,
+            xaxis=dict(showticklabels=show_xaxis_labels)
+        )
+    
 
-    return html.Div([
-        html.H2(title),
-        html.Label('Filter by program'),
-        dcc.Dropdown(
-            id=f'phewas-program-dropdown-{id_suffix}',
-            options=[{'label': i, 'value': i} for i in filter_values],
-            value='All',
-            multi=False
-        ),
-        dcc.Graph(id=f'phewas-plot-{id_suffix}')
-    ])
+    # Update hover template to show scientific notation
+    fig.update_traces(hovertemplate='%{y:e}')
+
+    # Return the layout
+    return html.Div(
+        [dcc.Graph(figure=fig)],
+        id=f'{x_column}-scatter-container-{id_suffix}'
+    )
 
 
-def create_layout(
-    explained_variance: pd.DataFrame,
-    enrichment_gsea: pd.DataFrame,
-    enrichment_motif: pd.DataFrame,
-    enrichment_trait: pd.DataFrame,
-    phewas_data: pd.DataFrame
+def create_filtered_barplot_layout(
+    app,
+    data: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    filter_column: str,
+    starting_filter_value: float,
+    title: str,
+    x_axis_title: str = None,
+    y_axis_title: str = None,
+    id_suffix: str = '',
+    show_xaxis_labels: bool = True
 ):
-    """Create the layout for the Dash app.
+    """Create a layout for a filtered bar plot.
 
     Parameters
     ----------
-    explained_variance : pd.DataFrame
-        DataFrame containing the explained variance data. Expected columns are 'ProgramID' and 'VarianceExplained'.
-    enrichment_gsea : pd.DataFrame
-        DataFrame containing the GSEA enrichment data. Expected columns are 'ProgramID', 'ID', 'qvalue'.
-    enrichment_motif : pd.DataFrame
-        DataFrame containing the motif enrichment data. Expected columns are 'ProgramID', 'TFMotif', 'FDR', 'EPType'.
-    enrichment_trait : pd.DataFrame
-        DataFrame containing the GWAS trait enrichment data. Expected columns are 'ProgramID', 'Term', 'Adjusted P-value'.
-    phewas_data : pd.DataFrame
-        DataFrame containing the PheWAS data. Expected columns are 'program_name', 'trait_reported', 'trait_category', 'P-value', 'Genes', 'study_id
+    app : Dash
+        The Dash app instance.
+    data : pd.DataFrame
+        DataFrame containing the data for the plot.
+    x_column : str
+        The column to use for the x-axis.
+    y_column : str
+        The column to use for the y-axis.
+    filter_column : str
+        The column to apply the filter on.
+    starting_filter_value : float
+        Initial filter value.
+    title : str
+        Title of the plot.
+    x_axis_title : str, optional
+        Title for the x-axis.
+    y_axis_title : str, optional
+        Title for the y-axis.
+    id_suffix : str, optional
+        Suffix to add to the id of the input and output components to ensure uniqueness.
+    show_xaxis_labels : bool, optional
+        Whether to show x-axis labels.
 
     Returns
     -------
     html.Div
-        A Div containing the layout for the Dash app.
+        A Div containing the filter controls and bar plot.
     """
-    return html.Div([
-        dcc.Store(id='phewas-data', data=phewas_data.to_dict('records')),
-        html.H1("Gene Program Evaluation Dashboard", style={'textAlign': 'center'}),
-        
-        # Explained Variance Section
-        html.Div(id='explained-variance-section', className='section', children=[
-            html.H2("Explained Variance"),
-            create_explained_variance_layout(explained_variance)
-        ]),
-        
-        # Gene Set Enrichment Section
-        html.Div(id='gsea-section', className='section', children=[
-            html.H2("Gene Set Enrichment"),
-            create_gsea_layout(enrichment_gsea)
-        ]),
-        
-        # Motif Enrichment Section
-        html.Div(id='motif-enrichment-section', className='section', children=[
-            html.H2("Motif Enrichment"),
-            create_motif_enrichment_layout(enrichment_motif)
-        ]),
-        
-        # GWAS Enrichment Section
-        html.Div(id='gwas-enrichment-section', className='section', children=[
-            html.H2("GWAS Enrichment"),
-            create_gwas_layout(enrichment_trait),
-            create_phewas_layout(phewas_data, title="Endothelial Cell Programs x GWAS Binary Outcome Enrichments", query_string="trait_category != 'measurement'", id_suffix="binary"),
-            create_phewas_layout(phewas_data, title="Endothelial Cell Programs x GWAS Continuous Outcome Enrichments", query_string="trait_category == 'measurement'", id_suffix="continuous")
-        ]),
-        
-        # Placeholder Sections for Future Content
-        html.Div(id='future-content-section', className='section', children=[
-            html.H2("Future Content"),
-            
-            html.Div(id='preprocessing-section', className='section', children=[
-                html.H3("Preprocessing"),
-                html.P("Placeholder for preprocessing content.", className='placeholder')
-            ]),
-            
-            html.Div(id='covariate-associations-section', className='section', children=[
-                html.H3("Covariate Associations"),
-                html.P("Placeholder for covariate associations content.", className='placeholder')
-            ]),
-            
-            html.Div(id='program-loadings-section', className='section', children=[
-                html.H3("Program Loadings"),
-                html.P("Placeholder for program loadings content.", className='placeholder')
-            ]),
-            
-            html.Div(id='regulators-section', className='section', children=[
-                html.H3("Regulators"),
-                html.P("Placeholder for regulators content.", className='placeholder')
-            ]),
-            
-            html.Div(id='program-curation-section', className='section', children=[
-                html.H3("Program Curation"),
-                html.P("Placeholder for program curation content.", className='placeholder')
-            ]),
-        ])
+    input_id = f'{filter_column}-input-{id_suffix}'
+    container_id = f'{filter_column}-barplot-container-{id_suffix}'
+    print(f"Creating layout for input id: {input_id} and container id: {container_id}")
+    layout = html.Div([
+        html.Label(f'Filter by {filter_column}'),
+        dcc.Input(
+            id=input_id,
+            type='number',
+            value=starting_filter_value,
+        ),
+        html.Div(id=container_id)
     ])
+
+    @app.callback(
+        Output(container_id, 'children'),
+        Input(input_id, 'value')
+    )
+    def update_barplot(filter_value):
+        print("Callback triggered for filter value:", filter_value)
+        filtered_data = data[data[filter_column] <= filter_value]
+        if filtered_data.empty:
+            return html.Div("No data available for the selected filter.")
+        unique_df = count_unique(categorical_var=x_column, count_var=y_column, dataframe=filtered_data)
+        fig = px.bar(
+            unique_df.sort_values(y_column, ascending=False),
+            x=x_column,
+            y=y_column,
+            template='plotly_white'
+        ).update_layout(
+            title=title,
+            xaxis_title=x_axis_title if x_axis_title else x_column,
+            yaxis_title=y_axis_title if y_axis_title else y_column,
+            xaxis=dict(showticklabels=show_xaxis_labels)
+        )
+        return dcc.Graph(figure=fig)
+
+    return layout
+
+
+def create_filtered_stacked_barplot_layout(
+    app,
+    data: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    stack_column: str,
+    filter_column: str,
+    starting_filter_value: float,
+    title: str,
+    x_axis_title: str = None,
+    y_axis_title: str = None,
+    id_suffix: str = '',
+    show_xaxis_labels: bool = True
+):
+    """Create a layout for a filtered stacked bar plot.
+
+    Parameters
+    ----------
+    app : Dash
+        The Dash app instance.
+    data : pd.DataFrame
+        DataFrame containing the data for the plot.
+    x_column : str
+        The column to use for the x-axis.
+    y_column : str
+        The column to use for the y-axis.
+    stack_column : str
+        The column to use for stacking.
+    filter_column : str
+        The column to apply the filter on.
+    starting_filter_value : float
+        Initial filter value.
+    title : str
+        Title of the plot.
+    x_axis_title : str, optional
+        Title for the x-axis.
+    y_axis_title : str, optional
+        Title for the y-axis.
+    id_suffix : str, optional
+        Suffix to add to the id of the input and output components to ensure uniqueness.
+    show_xaxis_labels : bool, optional
+        Whether to show x-axis labels.
+
+    Returns
+    -------
+    html.Div
+        A Div containing the filter controls and stacked bar plot.
+    """
+    input_id = f'{filter_column}-input-{id_suffix}'
+    container_id = f'{filter_column}-stacked-barplot-container-{id_suffix}'
+    print(f"Creating layout for input id: {input_id} and container id: {container_id}")
+
+    layout = html.Div([
+        html.Label(f'Filter by {filter_column}'),
+        dcc.Input(
+            id=input_id,
+            type='number',
+            value=starting_filter_value,
+        ),
+        html.Div(id=container_id)
+    ])
+
+    @app.callback(
+        Output(container_id, 'children'),
+        Input(input_id, 'value')
+    )
+    def update_stacked_barplot(filter_value):
+        print("Callback triggered for filter value:", filter_value)
+        # Filter data
+        filtered_data = data[data[filter_column] <= filter_value]
+
+        # Compute counts for each stack value
+        stacked_data_list = []
+        for stack_value in filtered_data[stack_column].unique():
+            subset = filtered_data[filtered_data[stack_column] == stack_value]
+            unique_counts = count_unique(categorical_var=x_column, count_var=y_column, dataframe=subset)
+            unique_counts[stack_column] = stack_value
+            stacked_data_list.append(unique_counts)
+
+        # Handle empty data case
+        if len(stacked_data_list) == 0:
+            return html.Div("No data available for the selected filter.")
+
+        # Combine stacked data
+        stacked_data = pd.concat(stacked_data_list)
+
+        # Sort by total counts
+        total_counts = stacked_data.groupby(x_column)[y_column].sum().reset_index()
+        total_counts = total_counts.rename(columns={y_column: "Total"})
+        stacked_data = stacked_data.merge(total_counts, on=x_column)
+        stacked_data = stacked_data.sort_values("Total", ascending=False)
+
+        fig = px.bar(
+            stacked_data,
+            x=x_column,
+            y=y_column,
+            color=stack_column,
+            barmode='stack',
+            template='plotly_white'
+        ).update_layout(
+            title=title,
+            xaxis_title=x_axis_title if x_axis_title else x_column,
+            yaxis_title=y_axis_title if y_axis_title else y_column,
+            xaxis=dict(showticklabels=show_xaxis_labels)
+        )
+
+        return dcc.Graph(figure=fig)
+
+    return layout

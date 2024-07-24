@@ -1,6 +1,6 @@
 1. Install dash
 ```bash
-pip install dash
+pip install dash dash-bootstrap-components
 ```
 
 2. Run the app
