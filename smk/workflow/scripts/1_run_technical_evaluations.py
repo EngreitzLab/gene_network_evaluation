@@ -19,15 +19,15 @@ def run_technical_evaluations(config, input_):
     os.makedirs(output_dir, exists_ok=True)
 
     # Compute explained variance ratio
-    # explained_variance_ratios = \
-    # compute_explained_variance_ratio(mdata, n_jobs=1, 
-    #                                  prog_key=config['prog_key'], 
-    #                                  data_key=config['data_key'], 
-    #                                  inplace=False)
-    # explained_variance_ratios.to_csv(os.path.join(output_dir, 
-    #                                  'explained_variance_ratio_{}_{}.txt'.format(config['prog_key'],
-    #                                                                              config['data_key'])),
-    #                                  sep='\t')
+    explained_variance_ratios = \
+    compute_explained_variance_ratio(mdata, n_jobs=1, 
+                                     prog_key=config['prog_key'], 
+                                     data_key=config['data_key'], 
+                                     inplace=False)
+    explained_variance_ratios.to_csv(os.path.join(output_dir, 
+                                     'explained_variance_ratio_{}_{}.txt'.format(config['prog_key'],
+                                                                                 config['data_key'])),
+                                     sep='\t')
 
     # Compute batch association
     for key in config['categorical_keys']:

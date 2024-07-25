@@ -33,15 +33,15 @@ def run_motif_enrichment(config, input_,
                                 num_genes=None, 
                                 n_jobs=-1, 
                                 inplace=False)
+
+        motif_match_df.to_csv(os.path.join(output_dir, 'motif_match_{}.txt'.format(seq_class)),
+                            sep='\t')
+        motif_count_df.to_csv(os.path.join(output_dir, 'motif_count_{}.txt'.format(seq_class)),
+                            sep='\t')
+        motif_enrichment_df.to_csv(os.path.join(output_dir, 'motif_enrichment_{}.txt'.format(seq_class)),
+                                sep='\t')
     else:
         logging.info('No coordinate file was provided.')
-
-    motif_match_df.to_csv(os.path.join(output_dir, 'motif_match_{}.txt'.format(seq_class)),
-                          sep='\t')
-    motif_count_df.to_csv(os.path.join(output_dir, 'motif_count_{}.txt'.format(seq_class)),
-                          sep='\t')
-    motif_enrichment_df.to_csv(os.path.join(output_dir, 'motif_enrichment_{}.txt'.format(seq_class)),
-                               sep='\t')
 
 # Execution (assumes Snakemake)
 with open(snakemake.log[0], 'a') as f:
