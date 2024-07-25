@@ -6,8 +6,10 @@ import plotly.express as px
 import plotly.io as pio
 from data_processing import count_unique, filter_data
 
+
 # Set the default template to plotly_white
 pio.templates.default = "plotly_white"
+
 
 def create_scatter_layout(
     data: pd.DataFrame,
@@ -123,7 +125,7 @@ def create_filtered_barplot_layout(
     """
     input_id = f'{filter_column}-input-{id_suffix}'
     container_id = f'{filter_column}-barplot-container-{id_suffix}'
-    print(f"Creating layout for input id: {input_id} and container id: {container_id}")
+    #print(f"Creating layout for input id: {input_id} and container id: {container_id}")
     layout = html.Div([
         html.Label(f'Filter by {filter_column}'),
         dcc.Input(
@@ -139,7 +141,7 @@ def create_filtered_barplot_layout(
         Input(input_id, 'value')
     )
     def update_barplot(filter_value):
-        print("Callback triggered for filter value:", filter_value)
+        #print("Callback triggered for filter value:", filter_value)
         filtered_data = data[data[filter_column] <= filter_value]
         if filtered_data.empty:
             return html.Div("No data available for the selected filter.")
@@ -210,7 +212,7 @@ def create_filtered_stacked_barplot_layout(
     """
     input_id = f'{filter_column}-input-{id_suffix}'
     container_id = f'{filter_column}-stacked-barplot-container-{id_suffix}'
-    print(f"Creating layout for input id: {input_id} and container id: {container_id}")
+    #print(f"Creating layout for input id: {input_id} and container id: {container_id}")
 
     layout = html.Div([
         html.Label(f'Filter by {filter_column}'),
@@ -227,7 +229,7 @@ def create_filtered_stacked_barplot_layout(
         Input(input_id, 'value')
     )
     def update_stacked_barplot(filter_value):
-        print("Callback triggered for filter value:", filter_value)
+        #print("Callback triggered for filter value:", filter_value)
         # Filter data
         filtered_data = data[data[filter_column] <= filter_value]
 
