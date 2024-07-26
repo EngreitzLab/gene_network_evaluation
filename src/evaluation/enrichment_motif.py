@@ -439,9 +439,13 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
                                                         left_index=True, 
                                                         right_index=True)
         motif_enrichment_df = motif_enrichment_df.reset_index()
+        motif_enrichment_df['program_name'] = motif_enrichment_df['index']
+        motif_enrichment_df.drop('index', axis=1, inplace=True)
+
+        motif_count_df.columns.name=''
 
         return (motif_match_df,
-                motif_count_df.loc[gene_names].values,
+                motif_count_df.loc[gene_names].dropna(),
                 motif_enrichment_df)                
 	
 if __name__=='__main__':
