@@ -1,4 +1,5 @@
 from .association_categorical import compute_categorical_association
+from .association_perturbation import compute_perturbation_association
 from .explained_variance import compute_explained_variance_ratio
 from .enrichment_geneset import compute_geneset_enrichment
 from .enrichment_motif import compute_motif_enrichment, compute_motif_enrichment_
