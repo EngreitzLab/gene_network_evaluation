@@ -2,8 +2,7 @@
 *.snakemake
 archive/
 
-src/plotting/dashapp/example_data/cNMF_evaluation_dashapp_data.h5mu
-src/plotting/dashapp/example_data/cNMF_evaluation_dashapp_data_small.h5mu
+dashapp/example_data/**/*.h5mu
 
 archive/
 **/resources/*
