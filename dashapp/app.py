@@ -1,5 +1,6 @@
 import dash
 from dash import Dash, html, dcc, Input, Output
+import dash_dangerously_set_inner_html
 from data_processing import parse_mdata_summary, parse_mdata_cross_run, extract_total_unique_counts
 from layout import create_scatter_layout, create_filtered_barplot_layout, create_filtered_stacked_barplot_layout
 import dash_bootstrap_components as dbc
@@ -7,10 +8,15 @@ import mudata
 
 
 # Load mudata
-mdata = mudata.read_h5mu("../example_data/cNMF_evaluation_dashapp_data_small.h5mu")
+mdata = mudata.read_h5mu("./example_data/Endothelial/cNMF_evaluation_dashapp_data_small.h5mu")
 summary_dict = parse_mdata_summary(mdata, verbose=False)
 cross_run_dict = parse_mdata_cross_run(mdata, verbose=False)
 
+# Get HTML representation of mudata
+with mudata.set_options(display_style="html", display_html_expand=0b000):
+    html_rep = mdata._repr_html_(expand=0b000)
+import collections
+mdata.mod = collections.OrderedDict(sorted(mdata.mod.items()))
 
 # Create Dash app
 app = Dash(__name__, use_pages=True, pages_folder="", external_stylesheets=[dbc.themes.SPACELAB])
@@ -18,13 +24,15 @@ app.title = "Gene Program Evaluation Dashboard v0.0.1"
 
 # Summary page function: TODO move to pages/summary.py
 def summary_page():
-    return html.Div(id='landing_page', className='section', style={'width': '50%', 'display': 'inline-block', 'vertical-align': 'top'}, children=[
-        html.H2("Input Data Summary"),
-        html.P(f"{len(mdata.mod)} AnnData’s analyzed: {', '.join(mdata.mod.keys())}"),
-        html.P(f"Number of cells in each AnnData: {summary_dict['n_cells']}"),
-        html.P("Number of programs analyzed per modality:"),
-        html.Ul([html.Li(f"{mod}: {summary_dict[mod]['n_programs']}") for mod in mdata.mod.keys()]),
-    ])
+    with mudata.set_options(display_style="html", display_html_expand=0b000):
+        return html.Div(id='landing_page', className='section', style={'width': '50%', 'display': 'inline-block', 'vertical-align': 'top'}, children=[
+            html.H2("Overview"),
+            dash_dangerously_set_inner_html.DangerouslySetInnerHTML(html_rep),
+            #html.P(f"{len(mdata.mod)} AnnData’s analyzed: {', '.join(mdata.mod.keys())}"),
+            #html.P(f"Number of cells in each AnnData: {summary_dict['n_cells']}"),
+            #html.P("Number of programs analyzed per modality:"),
+            #html.Ul([html.Li(f"{mod}: {summary_dict[mod]['n_programs']}") for mod in mdata.mod.keys()]),
+        ])
 
 
 # Cross run analysis: TODO move to pages/cross_run_analysis.py
@@ -155,11 +163,11 @@ def program_analysis():
 
 
 # Register pages
-dash.register_page("Summary", path="/", layout=summary_page(), title="Summary",name="Summary")
+dash.register_page("Overview", path="/", layout=summary_page(), title="Overview",name="Overview")
 dash.register_page("Cross Run Analysis", path="/cross-run", layout=cross_run_analysis(), title="Cross Run Analysis", name="Cross Run Analysis")
 dash.register_page("Single Run Analysis", path="/single-run", layout=single_run_analysis(), title="Single Run Analysis", name="Single Run Analysis")
 dash.register_page("Program Analysis", path="/program-analysis", layout=program_analysis(), title="Program Analysis", name="Program Analysis")
-page_order = ["Summary", "Cross Run Analysis", "Single Run Analysis", "Program Analysis"]
+page_order = ["Overview", "Cross Run Analysis", "Single Run Analysis", "Program Analysis"]
 dash.page_registry = {key: dash.page_registry[key] for key in page_order}
 
 # Create sidebar for page navigation
