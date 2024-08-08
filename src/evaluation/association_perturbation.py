@@ -27,6 +27,7 @@ def compute_perturbation_association_(test_data, reference_data, program, level_
 
     test_stats_df.append([level_name, program, results[0][0], results[1][0]])
 
+# TODO: Add support for stratification by categorical levels
 # Rename function to compute_{eval_measure}
 def compute_perturbation_association(mdata, prog_key='prog',
                                      collapse_targets=True, 
@@ -140,7 +141,7 @@ def compute_perturbation_association(mdata, prog_key='prog',
                 Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(test_data, reference_data, program, guide, test_stats_df) \
                                                             for program in mdata[prog_key].var_names)
 
-    test_stats_df = pd.DataFrame(test_stats_df, columns=['{}_name'.format(level_key), 'program', 'stat', 'pval'])
+    test_stats_df = pd.DataFrame(test_stats_df, columns=['{}_name'.format(level_key), 'program_name', 'stat', 'pval'])
 
     # Return only the evaluations if not in inplace mode
     if not inplace: return test_stats_df
