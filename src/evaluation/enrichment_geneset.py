@@ -72,12 +72,12 @@ def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='r
         loadings = pd.DataFrame(data=mdata[prog_key].varm['loadings'], index=mdata[prog_key].var.index).T
         loadings["gene_names"] = gene_names
         loadings.set_index("gene_names", inplace=True)
-    
-    return loadings
 
     with open('var_names.txt', 'w') as fil:
-        for nam in mdata['rna'].var_names:
+        for nam in mdata[data_key].var_names:
             fil.write(nam+'\n')
+
+    return loadings
 
 # Download geneset
 def get_geneset(organism='human', library='h.all', database='msigdb'):
