@@ -17,7 +17,7 @@ logging.basicConfig(level = logging.INFO)
 # Convenience function for parallelization
 # TODO: Make this usable as a standalone function with mdata as input
 # TODO: Update mdata keys and use those to generate not inplace output
-def compute_perturbation_association_(test_data, reference_data, program, guide, test_stats_df):
+def compute_perturbation_association_(test_data, reference_data, program, level_name, test_stats_df):
 
     test_data_ = test_data[:, program].X.toarray()
     # TODO: Resample reference data to match number of obs
@@ -25,10 +25,12 @@ def compute_perturbation_association_(test_data, reference_data, program, guide,
 
     results = stats.mannwhitneyu(test_data_, reference_data_)
 
-    test_stats_df.append([guide, program, results[0][0], results[1][0]])
+    test_stats_df.append([level_name, program, results[0][0], results[1][0]])
 
 # Rename function to compute_{eval_measure}
-def compute_perturbation_association(mdata, prog_key='prog', pseudobulk=False,
+def compute_perturbation_association(mdata, prog_key='prog',
+                                     collapse_targets=True, 
+                                     pseudobulk=False,
                                      reference_targets=('non-targeting'),
                                      n_jobs=1, inplace=True):
     """
@@ -39,8 +41,12 @@ def compute_perturbation_association(mdata, prog_key='prog', pseudobulk=False,
             mudata object containing anndata of program scores and cell-level metadata.
         prog_key: 
             index for the gene program anndata object (mdata[prog_key]) in the mudata object.
+        collapse_targets: bool (default:True)
+            If target gene per guide is provided, perform tests on target levels. 
+            Exclsuive with pseudobulk.
         pseudobulk: bool (default: False)
-            If multiple guides per target are available - optionally test at pseudobulk level.
+            If multiple non-targeting guides are available - optionally test at pseudobulk level.
+            Exclusive with collapse_targets.
         reference_targets: tuple
             List of target values to use as reference distribution.
         n_jobs: int (default: 1)
@@ -77,8 +83,14 @@ def compute_perturbation_association(mdata, prog_key='prog', pseudobulk=False,
     guide_metadata['Target'] = mdata[prog_key].uns['guide_targets']
 
     # Run tests on pseudobulk if multiple non-targeting guides otherwise at single-cell level
+    if collapse_targets:
+        if pseudobulk:
+            pseudobulk=False
+            logging.info('Setting pseudobulk to False since collapse_targets is True')
+
     if pseudobulk:
-        pseudobulked_scores = pd.DataFrame(index=mdata[prog_key].uns['guide_names'], columns=mdata[prog_key].obs_names)
+        pseudobulked_scores = pd.DataFrame(index=mdata[prog_key].uns['guide_names'], 
+                                           columns=mdata[prog_key].obs_names)
 
         #TODO: Parallelize
         for i, guide in enumerate(mdata[prog_key].uns['guide_names']):
@@ -101,34 +113,49 @@ def compute_perturbation_association(mdata, prog_key='prog', pseudobulk=False,
     test_guides = guide_metadata.loc[~guide_metadata.Target.isin(reference_targets)].index.values
 
     test_stats_df = []
-    for guide in tqdm(test_guides, desc='Testing perturbation association', unit='guides'):
-        if pseudobulk:
-            #TODO: Implement per guide probability under reference approach
-            raise NotImplementedError()
-        else:
+    if collapse_targets:
+        level_key='target'
 
-            test_guide_idx = guide_metadata.index.get_loc(guide)
-            test_data = mdata[prog_key][mdata[prog_key].obsm['guide_assignment'][:,test_guide_idx].astype(bool)]
+        # Run tests for each guide target
+        for target in tqdm(guide_metadata['Target'].unique(), unit='targets'):
+            test_guide_indices = guide_metadata.index.get_indexer(guide_metadata.index[guide_metadata['Target']==target])
+            test_data = mdata[prog_key][mdata[prog_key].obsm['guide_assignment'][:,test_guide_indices].any(-1).astype(bool)]
 
-            Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(test_data, reference_data, program, guide, test_stats_df) \
-                                                         for program in mdata[prog_key].var_names)
+            Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(test_data, reference_data, program, target, test_stats_df) \
+                                                        for program in mdata[prog_key].var_names)
 
-    test_stats_df = pd.DataFrame(test_stats_df, columns=['guide_name', 'program', 'stat', 'pval'])
+    else:
+        level_key='guide'
+
+        # Run tests for each guide
+        for guide in tqdm(test_guides, desc='Testing perturbation association', unit='guides'):
+            # Run test at using pseudobulks at guide level -> requires multiple non-targeting guides as reference
+            if pseudobulk:
+                #TODO: Implement per guide probability under reference approach
+                raise NotImplementedError()
+            else:
+                test_guide_idx = guide_metadata.index.get_loc(guide)
+                test_data = mdata[prog_key][mdata[prog_key].obsm['guide_assignment'][:,test_guide_idx].astype(bool)]
+
+                Parallel(n_jobs=n_jobs, backend='threading')(delayed(compute_perturbation_association_)(test_data, reference_data, program, guide, test_stats_df) \
+                                                            for program in mdata[prog_key].var_names)
+
+    test_stats_df = pd.DataFrame(test_stats_df, columns=['{}_name'.format(level_key), 'program', 'stat', 'pval'])
 
     # Return only the evaluations if not in inplace mode
     if not inplace: return test_stats_df
     else:
-        init_array = np.empty(mdata[prog_key].shape[1], len(mdata[prog_key].uns['guide_names']))
+        init_array = np.empty(mdata[prog_key].shape[1], len(test_stats_df['{}_name'.format(level_key)].unique()))
         init_array[:] = np.nan
 
         stats, pvals = init_array.copy(), init_array.copy()
 
-        for guide in test_guides:
-            guide_idx = guide_metadata.index.get_loc(guide)
-            stats[:, guide_idx] = test_stats_df.loc[test_stats_df.guide_name==guide, 'stat'][mdata[prog_key].var_names].values
-            pvals[:, guide_idx] = test_stats_df.loc[test_stats_df.guide_name==guide, 'pval'][mdata[prog_key].var_names].values
-        mdata[prog_key].varm['perturbation_association_stat'] = stats
-        mdata[prog_key].varm['perturbation_association_pval'] = pvals
+        for level_idx, level_name in enumerate(test_stats_df['{}_name'.format(level_key)].unique()):
+            stats[:, level_idx] = test_stats_df.loc[test_stats_df['{}_name'.format(level_key)]==level_name, 'stat'][mdata[prog_key].var_names].values
+            pvals[:, level_idx] = test_stats_df.loc[test_stats_df['{}_name'.format(level_key)]==level_name, 'pval'][mdata[prog_key].var_names].values
+        mdata[prog_key].varm['perturbation_association_{}_stat'.format(level_key)] = stats
+        mdata[prog_key].varm['perturbation_association_{}_pval'.format(level_key)] = pvals
+        mdata[prog_key].uns['perturbation_association_{}_names'.format(level_key)] = test_stats_df['{}_name'.format(level_key)].unique().values
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
