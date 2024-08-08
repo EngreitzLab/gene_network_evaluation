@@ -5,6 +5,7 @@ from data_processing import parse_mdata_summary, parse_mdata_cross_run, extract_
 from layout import create_scatter_layout, create_filtered_barplot_layout, create_filtered_stacked_barplot_layout
 import dash_bootstrap_components as dbc
 import mudata
+import collections
 
 
 # Load mudata
@@ -15,7 +16,6 @@ cross_run_dict = parse_mdata_cross_run(mdata, verbose=False)
 # Get HTML representation of mudata
 with mudata.set_options(display_style="html", display_html_expand=0b000):
     html_rep = mdata._repr_html_(expand=0b000)
-import collections
 mdata.mod = collections.OrderedDict(sorted(mdata.mod.items()))
 
 # Create Dash app
@@ -28,10 +28,6 @@ def summary_page():
         return html.Div(id='landing_page', className='section', style={'width': '50%', 'display': 'inline-block', 'vertical-align': 'top'}, children=[
             html.H2("Overview"),
             dash_dangerously_set_inner_html.DangerouslySetInnerHTML(html_rep),
-            #html.P(f"{len(mdata.mod)} AnnData’s analyzed: {', '.join(mdata.mod.keys())}"),
-            #html.P(f"Number of cells in each AnnData: {summary_dict['n_cells']}"),
-            #html.P("Number of programs analyzed per modality:"),
-            #html.Ul([html.Li(f"{mod}: {summary_dict[mod]['n_programs']}") for mod in mdata.mod.keys()]),
         ])
 
 
