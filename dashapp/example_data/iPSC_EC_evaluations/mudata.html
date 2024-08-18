@@ -1,0 +1,183 @@
+<style>
+.hl-dim, .hl-size, .hl-values, .hl-types, .hl-dims {
+  color: #777777;
+}
+.hl-dim::before, .hl-size::before {
+  content: "\00a0\00a0\00a0";
+}
+.hl-values {
+  font-family: monospace;
+}
+.hl-file {
+  background-color: #EEEEEE;
+  border-radius: .5rem;
+  padding: .2rem .4rem;
+  color: #555555;
+}
+.hl-empty {
+  color: #999999;
+}
+.hl-import {
+  color: #777777;
+}
+.block-mod {
+  display: block;
+  margin: 0 2rem;
+}
+.title {
+  display: inline-block;
+  font-weight: 600;
+  color: #555555;
+}
+.title-mod {
+  font-size: 1.2rem;
+  color: #04b374;
+  padding: 0 .5rem;
+}
+.title-attr {
+  font-size: 1.0rem;
+  padding-top: .2rem;
+}
+summary {
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+details > summary::before {
+  content: '⊕';
+}
+details[open] > summary::before {
+  content: '⊖';
+}
+table tr {
+  background-color: transparent !important;
+}
+table tr:hover {
+  background-color: #04b37433 !important;
+}
+.col-index {
+  text-align: left !important;
+}
+.summary-mod {
+  margin-left: -2rem;
+}
+.summary-mod:hover {
+  background-color: #04b37411;
+}
+.summary-mod::before {
+  color: #04b374;
+  content: '●';
+}
+details[open] > .summary-mod::before {
+  content: '○';
+}
+</style><span>MuData object <span class='hl-dim'>92284 obs &times; 5511 var in 2 modalities</span></span><br><details><summary><div class='title title-attr'>Metadata</div><span class='hl-dim'>.obs</span><span class='hl-size'>14 elements</span></summary><div><table><tr>
+                                <td class='col-index'>rna:sample</td>  <td class='hl-types'>category</td>  <td class='hl-values'>D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>rna:species</td>  <td class='hl-types'>category</td>  <td class='hl-values'>hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>rna:gene_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>1903,2664,2147,2011,1441,1607,1385,3690,1348,1247,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>rna:tscp_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>3010,4710,3492,3286,2027,2616,2256,7268,2093,1934,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>rna:mread_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>4079,6401,4666,4432,2773,3499,3044,9975,2837,2533,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>rna:leiden</td>  <td class='hl-types'>category</td>  <td class='hl-values'>0,2,1,0,0,0,4,5,4,4,4,0,1,3,2,0,2,2,1,1,1,3,0,0,0,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>rna:n_counts</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>653.00,997.00,618.00,742.00,430.00,585.00,570.00,1...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>cNMF:sample</td>  <td class='hl-types'>category</td>  <td class='hl-values'>D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>cNMF:species</td>  <td class='hl-types'>category</td>  <td class='hl-values'>hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>cNMF:gene_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>1903,2664,2147,2011,1441,1607,1385,3690,1348,1247,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>cNMF:tscp_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>3010,4710,3492,3286,2027,2616,2256,7268,2093,1934,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>cNMF:mread_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>4079,6401,4666,4432,2773,3499,3044,9975,2837,2533,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>cNMF:leiden</td>  <td class='hl-types'>category</td>  <td class='hl-values'>0,2,1,0,0,0,4,5,4,4,4,0,1,3,2,0,2,2,1,1,1,3,0,0,0,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>cNMF:n_counts</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>653.00,997.00,618.00,742.00,430.00,585.00,570.00,1...</td>
+                            </tr></table></div></details><details><summary><div class='title title-attr'>Embeddings & mappings</div><span class='hl-dim'>.obsm</span><span class='hl-size'>2 elements</span></summary><div><table><tr>
+                                       <td class='col-index'>cNMF</td>  <td class='hl-types'>bool</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'></td>
+                                   </tr>
+<tr>
+                                       <td class='col-index'>rna</td>  <td class='hl-types'>bool</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'></td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Distances</div><span class='hl-dim'>.obsp</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No distances</span></details><div class='block-mod'><div><details><summary class='summary-mod'><div class='title title-mod'>cNMF</div><span class='hl-dim'>92284 &times 60</span></summary><span>AnnData object <span class='hl-dim'>92284 obs &times; 60 var</span></span><br><div class='title title-attr'>Matrix</div><span class='hl-dim'>.X</span><div>
+            <span class='hl-types'>float64</span> <span>&nbsp;&nbsp;&nbsp;<span class='hl-import'>numpy.</span>ndarray</span>
+         </table></div><details><summary><div class='title title-attr'>Layers</div><span class='hl-dim'>.layers</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No layers</span></details><details><summary><div class='title title-attr'>Metadata</div><span class='hl-dim'>.obs</span><span class='hl-size'>7 elements</span></summary><div><table><tr>
+                                <td class='col-index'>sample</td>  <td class='hl-types'>category</td>  <td class='hl-values'>D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>species</td>  <td class='hl-types'>category</td>  <td class='hl-values'>hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>gene_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>1903,2664,2147,2011,1441,1607,1385,3690,1348,1247,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>tscp_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>3010,4710,3492,3286,2027,2616,2256,7268,2093,1934,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>mread_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>4079,6401,4666,4432,2773,3499,3044,9975,2837,2533,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>leiden</td>  <td class='hl-types'>category</td>  <td class='hl-values'>0,2,1,0,0,0,4,5,4,4,4,0,1,3,2,0,2,2,1,1,1,3,0,0,0,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>n_counts</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>653.00,997.00,618.00,742.00,430.00,585.00,570.00,1...</td>
+                            </tr></table></div></details><details><summary><div class='title title-attr'>Embeddings</div><span class='hl-dim'>.obsm</span><span class='hl-size'>1 element</span></summary><div><table><tr>
+                                       <td class='col-index'>guide_assignment</td>  <td class='hl-types'>int64</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>1926 columns</td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Distances</div><span class='hl-dim'>.obsp</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No distances</span></details><details><summary><div class='title title-attr'>Miscellaneous</div><span class='hl-dim'>.uns</span><span class='hl-size'>3 elements</span></summary><div><table><tr>
+                                <td class='col-index'>guide_names</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>1926 elements</td>  <td class='hl-values'>ACAA1_-_38178575.23-P1P2,ACAA1_+_38178488.23-P1P2,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>guide_targets</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>1926 elements</td>  <td class='hl-values'>ACAA1,ACAA1,ACAA1,ACAA1,ACAA1,ACAA1,ACTL7B,ACTL7B,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>var_names</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>5451 elements</td>  <td class='hl-values'>SEMA3F,CFTR,CYP51A1,HECW1,KLHL13,CASP10,CFLAR,TFPI...</td>
+                            </tr></table></div></details></details></div></div><div class='block-mod'><div><details><summary class='summary-mod'><div class='title title-mod'>rna</div><span class='hl-dim'>92284 &times 5451</span></summary><span>AnnData object <span class='hl-dim'>92284 obs &times; 5451 var</span></span><br><div class='title title-attr'>Matrix</div><span class='hl-dim'>.X</span><div>
+            <span class='hl-types'>float32</span> <span>&nbsp;&nbsp;&nbsp;<span class='hl-import'>scipy.sparse._csr.</span>csr_matrix</span>
+         </table></div><details><summary><div class='title title-attr'>Layers</div><span class='hl-dim'>.layers</span><span class='hl-size'>1 element</span></summary><div><table><tr>
+                                       <td class='col-index'>norm10k</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>scipy.sparse._csr.</span>csr_matrix</td>  <td class='hl-dims'></td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Metadata</div><span class='hl-dim'>.obs</span><span class='hl-size'>7 elements</span></summary><div><table><tr>
+                                <td class='col-index'>sample</td>  <td class='hl-types'>category</td>  <td class='hl-values'>D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0,D0...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>species</td>  <td class='hl-types'>category</td>  <td class='hl-values'>hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,hg38,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>gene_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>1903,2664,2147,2011,1441,1607,1385,3690,1348,1247,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>tscp_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>3010,4710,3492,3286,2027,2616,2256,7268,2093,1934,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>mread_count</td>  <td class='hl-types'>int64</td>  <td class='hl-values'>4079,6401,4666,4432,2773,3499,3044,9975,2837,2533,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>leiden</td>  <td class='hl-types'>category</td>  <td class='hl-values'>0,2,1,0,0,0,4,5,4,4,4,0,1,3,2,0,2,2,1,1,1,3,0,0,0,...</td>
+                            </tr>
+<tr>
+                                <td class='col-index'>n_counts</td>  <td class='hl-types'>float32</td>  <td class='hl-values'>653.00,997.00,618.00,742.00,430.00,585.00,570.00,1...</td>
+                            </tr></table></div></details><details><summary><div class='title title-attr'>Embeddings</div><span class='hl-dim'>.obsm</span><span class='hl-size'>2 elements</span></summary><div><table><tr>
+                                       <td class='col-index'>X_pca</td>  <td class='hl-types'>float64</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>50 columns</td>
+                                   </tr>
+<tr>
+                                       <td class='col-index'>X_umap</td>  <td class='hl-types'>float32</td>  <td><span class='hl-import'>numpy.</span>ndarray</td>  <td class='hl-dims'>2 columns</td>
+                                   </tr></table></div></details><details><summary><div class='title title-attr'>Distances</div><span class='hl-dim'>.obsp</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No distances</span></details><details><summary><div class='title title-attr'>Miscellaneous</div><span class='hl-dim'>.uns</span><span class='hl-size'>0 elements</span></summary><span class='hl-empty'>No miscellaneous</span></details></details></div></div><br/>
