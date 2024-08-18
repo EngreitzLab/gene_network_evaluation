@@ -297,15 +297,17 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
                                                  '{}_kruskall_wallis_pval'.format(store_key)]]
         min_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)],
                                    index=mdata[prog_key].var.index,
-                                   columns=mdata[prog_key].uns['{}_association_categories'.format(categorical_key)])
-        results_df = results_df.merge(min_pval_df, left_index=True, right_index=True, 
-                                      suffixes=('','_{}_association_{}_min_pval'.format(store_key, test)))
+                                   columns=['{}_{}_association_{}_min_pval'.format(col, store_key, test) \
+                                            for col in mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]]
+                                   )
+        results_df = results_df.merge(min_pval_df, left_index=True, right_index=True)
         
         mean_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)],
                                    index=mdata[prog_key].var.index,
-                                   columns=mdata[prog_key].uns['{}_association_categories'.format(categorical_key)])
-        results_df = results_df.merge(mean_pval_df, left_index=True, right_index=True, 
-                                      suffixes=('','_{}_association_{}_mean_pval'.format(store_key, test)))
+                                   columns=['{}_{}_association_{}_mean_pval'.format(col, store_key, test) \
+                                            for col in mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]]
+                                   )
+        results_df = results_df.merge(mean_pval_df, left_index=True, right_index=True)
 
         posthoc_df = []
         dict_ = mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]

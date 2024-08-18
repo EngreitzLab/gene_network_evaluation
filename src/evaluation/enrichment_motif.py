@@ -118,7 +118,7 @@ def get_sequences(sequences_record, coords):
 # Score motif matches
 def perform_motif_match(sequences_record, motifs_record, coords,
                         motif_match_dict, gene_seq_num, output_loc, 
-                        motif_idx, gene_name):
+                        motif_idx, gene_name, use_previous=True):
     
     """
     Use FIMO to identify motif instances in sequences.
@@ -138,25 +138,30 @@ def perform_motif_match(sequences_record, motifs_record, coords,
     # Compute motif matching
     motif = motifs_record[motif_idx]
 
-    pattern_matches = {}
-    fimo = FIMO(both_strands=True)
-    pattern = fimo.score_motif(motif, gene_assoc_sequences, background)
-    
-    # Store in dataframe
-    motif_match_data_ = [[m.source.accession.decode(), m.start, m.stop, m.strand,
-                          m.score, m.pvalue, m.qvalue] for m in pattern.matched_elements]
+    # Load if already present
+    path_exists = os.path.exists(os.path.join(output_loc, '_'.join((gene_name, motif.accession.decode(),'.txt'))))
+    if path_exists and use_previous:
+        return
+    else:
+        pattern_matches = {}
+        fimo = FIMO(both_strands=True)
+        pattern = fimo.score_motif(motif, gene_assoc_sequences, background)
+        
+        # Store in dataframe
+        motif_match_data_ = [[m.source.accession.decode(), m.start, m.stop, m.strand,
+                            m.score, m.pvalue, m.qvalue] for m in pattern.matched_elements]
 
-    motif_match_df_ = pd.DataFrame(data=motif_match_data_, 
-                                columns=['seq_name', 'start', 'end', 
-                                         'strand', 'score', 'pvalue', 'qvalue'])
+        motif_match_df_ = pd.DataFrame(data=motif_match_data_, 
+                                    columns=['seq_name', 'start', 'end', 
+                                            'strand', 'score', 'pvalue', 'qvalue'])
 
-    motif_match_dict[(gene_name, motif.accession.decode())] = motif_match_df_
+        motif_match_dict[(gene_name, motif.accession.decode())] = motif_match_df_
 
-    if output_loc is not None and np.unique(motif_match_data_).shape[0]!=0:
-        motif_match_df_.to_csv(os.path.join(output_loc, '_'.join((gene_name, 
-                                                                 motif.accession.decode(),
-                                                                 '.txt'))), sep='\t',
-                                                                 index=False)
+        if output_loc is not None and np.unique(motif_match_data_).shape[0]!=0:
+            motif_match_df_.to_csv(os.path.join(output_loc, '_'.join((gene_name, 
+                                                                    motif.accession.decode(),
+                                                                    '.txt'))), sep='\t',
+                                                                    index=False)
 
 # Count up motif occurences per gene
 def compute_motif_instances(mdata, motif_match_df, sig=0.05, gene_names=None):
@@ -262,7 +267,8 @@ def compute_motif_enrichment_(mdata, motif_count_df, prog_key='prog',
 # Compute motif enrichment in enhancers or promoters associated with a gene
 def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=None, 
                              seq_file=None, coords_file=None, output_loc=None, sig=0.05, 
-                             num_genes=None, correlation='pearsonr', n_jobs=1, inplace=True, 
+                             num_genes=None, correlation='pearsonr', use_previous=True, 
+                             n_jobs=1, inplace=True, 
                              **kwargs):
     
     """
@@ -295,6 +301,8 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
         correlation: {'pearsonr','spearmanr','kendalltau'} (default: 'peasronsr')
             correlation type to use to compute motif enirchments.
             Use kendalltau when expecting enrichment/de-enrichment at both ends.
+        use_previous: bool (default: True)
+            if outplot is provided try to load motif matches from previous run.
         n_jobs: int (default: 1)
             number of threads to run processes on.
         inplace: Bool (default: True)
@@ -342,6 +350,8 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
     if output_loc is not None:
         try: os.makedirs(output_loc, exist_ok=True)
         except: raise ValueError('Output location does not exist.')
+    else:
+        use_previous=False
 
     # If num_genes specified then cannot be weighted
     if num_genes is None:
@@ -390,7 +400,8 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
                                                                gene_seq_num,
                                                                output_loc,
                                                                motif_idx, 
-                                                               gene_name) \
+                                                               gene_name,
+                                                               use_previous=use_previous) \
                                                                for motif_idx in tqdm(range(len(motifs_record)),
                                                                                      desc='Matching motifs to sequences',
                                                                                      unit='motifs') \
@@ -439,9 +450,13 @@ def compute_motif_enrichment(mdata, prog_key='prog', data_key='rna', motif_file=
                                                         left_index=True, 
                                                         right_index=True)
         motif_enrichment_df = motif_enrichment_df.reset_index()
+        motif_enrichment_df['program_name'] = motif_enrichment_df['index']
+        motif_enrichment_df.drop('index', axis=1, inplace=True)
+
+        motif_count_df.columns.name=''
 
         return (motif_match_df,
-                motif_count_df.loc[gene_names].values,
+                motif_count_df.loc[gene_names].dropna(),
                 motif_enrichment_df)                
 	
 if __name__=='__main__':
