@@ -1,8 +1,10 @@
 import os
 import dash
 import pickle
+import pandas as pd
 import dash_bootstrap_components as dbc
 from dash import html, dcc, callback, Input, Output
+from dash import dash_table
 from plot import scatterplot, barplot, lollipop_plot
 
 # Ouput directory
@@ -70,13 +72,6 @@ layout = dbc.Container([
                 ], width=12),
             ]),
 
-            dbc.Row([
-                dbc.Col([
-                    html.Label("Select a Term"),
-                    dcc.Dropdown(id='term-selector', options=[], value=None, className="mb-4"),
-                ], width=6),
-            ]),
-
             html.H3("GSEA Plot for Selected Term", className="mt-3 mb-3"),
             dcc.Graph(id='gsea-plot'),
         ]),
@@ -90,6 +85,8 @@ layout = dbc.Container([
                     html.Div(id='enriched-motifs-table', className="mb-4"),
                 ], width=12),
             ]),
+            html.H3("Motif Logo for selected motif", className="mt-3 mb-3"),
+            dcc.Graph(id='motif-logo'),
         ]),
 
         # Tab 4: Trait Enrichment
@@ -170,3 +167,203 @@ def update_plot(selected_run, selected_program, debug=True):
     )
 
     return fig
+
+
+# Callback for geneset enrichment table
+@callback(
+    Output('enriched-terms-table', 'children'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_enriched_terms_table(selected_run, selected_program, debug=True):
+    categorical_var = "program_name"
+    count_var = "Term"
+    sig_var = "FDR q-val"
+    sig_threshold = 0.25
+
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    # Retrieve the relevant data
+    data_to_plot = results['geneset_enrichments'].get(selected_run, pd.DataFrame())
+
+    # Make sure x-axis is string
+    data_to_plot['program_name'] = data_to_plot['program_name'].astype(str)
+
+    if data_to_plot.empty:
+        print("No data found for the selected run.")
+        return html.Div("No data available for the selected run and program.")
+
+    # Filter data for the selected program
+    data_to_plot = data_to_plot[data_to_plot[categorical_var] == selected_program]
+
+    if data_to_plot.empty:
+        print("No data found for the selected program.")
+        return html.Div("No enriched terms available for this program.")
+
+    # Filter data for significant terms
+    data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+
+    if data_to_plot.empty:
+        print("No significant terms found.")
+        return html.Div("No significant enriched terms found.")
+
+    # Create a DataTable
+    table = dash_table.DataTable(
+        id='enriched-terms-data-table',
+        columns=[{"name": col, "id": col} for col in data_to_plot.columns],
+        data=data_to_plot.to_dict('records'),
+        filter_action="native",  # Enables filtering
+        sort_action="native",    # Enables sorting
+        page_size=10,            # Number of rows per page
+        style_table={'overflowX': 'auto'},  # Scrollable horizontally if too wide
+        style_cell={
+            'textAlign': 'left',  # Align text to the left
+            'padding': '5px',
+        },
+        style_header={
+            'backgroundColor': 'rgb(230, 230, 230)',
+            'fontWeight': 'bold'
+        },
+        style_data_conditional=[
+            {
+                'if': {'filter_query': f'{{{sig_var}}} < {sig_threshold}', 'column_id': sig_var},
+                'backgroundColor': 'rgb(230, 240, 250)',
+                'color': 'black',
+            },
+        ],
+    )
+
+    return table
+
+# Callback for motif enrichment table
+@callback(
+    Output('enriched-motifs-table', 'children'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_enriched_motifs_table(selected_run, selected_program, debug=True):
+    categorical_var = "program_name"
+    count_var = "motif"
+    sig_var = "pval"
+    sig_threshold = 0.75
+
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    # Retrieve the relevant data
+    data_to_plot = results['motif_enrichments'].get(selected_run, pd.DataFrame())
+
+    # Make sure x-axis is string
+    data_to_plot['program_name'] = data_to_plot['program_name'].astype(str)
+
+    if data_to_plot.empty:
+        print("No data found for the selected run.")
+        return html.Div("No data available for the selected run and program.")
+
+    # Filter data for the selected program
+    data_to_plot = data_to_plot[data_to_plot[categorical_var] == selected_program]
+
+    if data_to_plot.empty:
+        print("No data found for the selected program.")
+        return html.Div("No enriched motifs available for this program.")
+
+    # Filter data for significant terms
+    data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+
+    if data_to_plot.empty:
+        print("No significant motifs found.")
+        return html.Div("No significant enriched motifs found.")
+
+    # Create a DataTable
+    table = dash_table.DataTable(
+        id='enriched-motifs-data-table',
+        columns=[{"name": col, "id": col} for col in data_to_plot.columns],
+        data=data_to_plot.to_dict('records'),
+        filter_action="native",  # Enables filtering
+        sort_action="native",    # Enables sorting
+        page_size=10,            # Number of rows per page
+        style_table={'overflowX': 'auto'},  # Scrollable horizontally if too wide
+        style_cell={
+            'textAlign': 'left',  # Align text to the left
+            'padding': '5px',
+        },
+        style_header={
+            'backgroundColor': 'rgb(230, 230, 230)',
+            'fontWeight': 'bold'
+        },
+        style_data_conditional=[
+            {
+                'if': {'filter_query': f'{{{sig_var}}} < {sig_threshold}', 'column_id': sig_var},
+                'backgroundColor': 'rgb(230, 240, 250)',
+                'color': 'black',
+            },
+        ],
+    )
+
+    return table
+
+
+# Callback for trait enrichment table
+@callback(
+    Output('enriched-traits-table', 'children'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_enriched_traits_table(selected_run, selected_program, debug=True):
+    categorical_var = "program_name"
+    count_var = "Term"
+    sig_var = "FDR q-val"
+    sig_threshold = 0.25
+
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    # Retrieve the relevant data
+    data_to_plot = results['trait_enrichments'].get(selected_run, pd.DataFrame())
+
+    # Make sure x-axis is string
+    data_to_plot['program_name'] = data_to_plot['program_name'].astype(str)
+
+    if data_to_plot.empty:
+        print("No data found for the selected run.")
+        return html.Div("No data available for the selected run and program.")
+
+    # Filter data for the selected program
+    data_to_plot = data_to_plot[data_to_plot[categorical_var] == selected_program]
+
+    if data_to_plot.empty:
+        print("No data found for the selected program.")
+        return html.Div("No enriched traits available for this program.")
+
+    # Filter data for significant terms
+    data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+
+    if data_to_plot.empty:
+        print("No significant traits found.")
+        return html.Div("No significant enriched traits found.")
+
+    # Create a DataTable
+    table = dash_table.DataTable(
+        id='enriched-traits-data-table',
+        columns=[{"name": col, "id": col} for col in data_to_plot.columns],
+        data=data_to_plot.to_dict('records'),
+        filter_action="native",  # Enables filtering
+        sort_action="native",    # Enables sorting
+        page_size=10,            # Number of rows per page
+        style_table={'overflowX': 'auto'},  # Scrollable horizontally if too wide
+        style_cell={
+            'textAlign': 'left',  # Align text to the left
+            'padding': '5px',
+        },
+        style_header={
+            'backgroundColor': 'rgb(230, 230, 230)',
+            'fontWeight': 'bold'
+        },
+        style_data_conditional=[
+            {
+                'if': {'filter_query': f'{{{sig_var}}} < {sig_threshold}', 'column_id': sig_var},
+                'backgroundColor': 'rgb(230, 240, 250)',
+                'color': 'black',
+            },
+        ],
+    )
+
+    return table

@@ -146,7 +146,6 @@ def lollipop_plot(
 
     # Add the vertical lines for the lollipops
     for i, row in data.iterrows():
-        print(i, line_colors[i])
         fig.add_shape(
             type="line",
             x0=row[x_column],
