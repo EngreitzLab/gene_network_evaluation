@@ -10,6 +10,7 @@ from utils import count, count_unique
 
 # Ouput directory
 path_pipeline_outs = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations"
+phewas_metadata = "/cellar/users/aklie/opt/gene_program_evaluation/smk/resources/OpenTargets_L2G_Filtered.csv.gz"
 data_key = "rna"
 
 dash.register_page(__name__, order=2)
@@ -105,7 +106,7 @@ layout = dbc.Container([
             dbc.Row([
                 dbc.Col([
                     html.H3("Phewas Plot"),
-                    dcc.Graph(id='phewas-plot'),
+                    dcc.Graph(id='phewas-plot-binary'),
                 ], width=12),
             ], className="mb-4"),
         ]),
@@ -308,4 +309,90 @@ def update_plot(selected_run, debug=True):
         y_axis_title='Count',
         show_xaxis_labels=False
     )
+    return fig
+
+
+import numpy as np
+def process_enrichment_data(enrich_res,
+                            metadata,
+                            pval_col="FDR q-val",
+                            enrich_geneset_id_col="Term",
+                            metadata_geneset_id_col="trait_efos",
+                            color_category_col="trait_category",
+                            program_name_col="program_name",
+                            annotation_cols=["trait_reported", "Lead_genes", "study_id", "pmid"]):
+
+    # Read in enrichment results
+    if isinstance(enrich_res, str):
+        enrich_df = pd.read_csv(enrich_res)
+    elif isinstance(enrich_res, pd.DataFrame):
+        enrich_df = enrich_res
+    else:
+        raise ValueError("enrich_res must be either a pandas DataFrame or a file path to a CSV file.")
+
+    if isinstance(metadata, str):
+        metadata_df = pd.read_csv(metadata, compression='gzip', low_memory=False)
+    elif isinstance(metadata, pd.DataFrame):
+        metadata_df = metadata
+    else:
+        raise ValueError("metadata must be either a pandas DataFrame or a file path to a CSV file.")
+
+    # Join the enrichment results and the metadata
+    enrich_ps = enrich_df.merge(metadata_df, left_on=enrich_geneset_id_col, right_on=metadata_geneset_id_col, how="left")
+
+    # Only keep the relevant columns
+    keep_cols = list([enrich_geneset_id_col, pval_col, metadata_geneset_id_col, color_category_col, program_name_col] + annotation_cols)
+    enrich_ps = enrich_ps[keep_cols]
+
+    # Sort by P-value
+    enrich_ps = enrich_ps.drop_duplicates().sort_values(by=[color_category_col, pval_col])
+
+    # If the input P-value == 0, then replace it with the lowest non-zero P-value in the dataframe
+    min_value = enrich_ps.query(f"`{pval_col}` > 0")[pval_col].min()
+
+    # Compute the -log(10) P-value and deal with edge-cases (e.g. P=0, P=1)
+    enrich_ps.loc[enrich_ps[pval_col] == 0, pval_col] = min_value  # Replace P=0 with min non-0 p-value
+    enrich_ps['-log10(p-value)'] = abs(-1 * np.log10(enrich_ps[pval_col]))
+
+    enrich_ps.reset_index(drop=True, inplace=True)
+
+    return enrich_ps
+
+
+@callback(
+    Output('phewas-plot-binary', 'figure'),
+    Input('run-selector', 'value')
+)
+def update_phewas_plot_binary(selected_run):
+
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['trait_enrichments'][selected_run]
+    data_to_plot = process_enrichment_data(
+        enrich_res=data_to_plot,
+        metadata=phewas_metadata,
+    )
+
+    fig = px.scatter(
+        data_to_plot.query("trait_category != 'measurement'"),
+        x='trait_reported',
+        y='-log10(p-value)',
+        color='trait_category',
+        title="Endothelial Cell Programs x GWAS Binary Outcome Enrichments",
+        hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
+    )
+
+    # Customize layout
+    fig.update_layout(
+        xaxis_title='trait_reported',
+        yaxis_title='-log10(p-value)',
+        yaxis=dict(tickformat=".1f"),
+        width=1000,
+        height=800,
+        xaxis_tickfont=dict(size=4)
+    )
+
+    # Add horizontal dashed line for significance threshold
+    fig.add_hline(y=-np.log10(0.05), line_dash="dash",
+                    annotation_text='Significance Threshold (0.05)', annotation_position="top right")
+
     return fig
