@@ -99,3 +99,19 @@ def process_enrichment_data(
     enrich_ps.reset_index(drop=True, inplace=True)
 
     return enrich_ps
+
+
+def filter_and_count(
+    data, 
+    categorical_var, 
+    count_var,
+    sig_var, 
+    sig_threshold
+):
+    filtered_data = data[data[sig_var] < sig_threshold]
+    count_df = count(categorical_var=categorical_var, count_var=count_var, dataframe=filtered_data)
+    unique_data = filtered_data.sort_values(by=sig_var)
+    unique_data = unique_data.drop_duplicates(subset=count_var)
+    unique_df = count_unique(categorical_var=categorical_var, count_var=count_var, dataframe=unique_data)
+    unique_df = unique_df.sort_values(count_var, ascending=False)
+    return count_df, unique_df

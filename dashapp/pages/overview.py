@@ -7,43 +7,33 @@ import mudata
 import os
 import pandas as pd
 from plot import scatterplot
+import diskcache
 
-# Ouput directory
-path_pipeline_outs = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations"
-data_key = "rna"
 
-dash.register_page(__name__, order=0)
+# Register the page
+dash.register_page(__name__, order=0, path='/')
 
-# Grab html rep from dcc.Store
-mudata.set_options(display_style="html", display_html_expand=0b000)
-html_rep = dcc.Store(id="mdata", data="")
+# Get the app and cache
+app = dash.get_app()
+cache = diskcache.Cache("./.cache")
+results = cache.get("results")
 
-# Load in mudata html rep from ./mudata.html
-with open(os.path.join(path_pipeline_outs, "mudata.html"), "r") as f:
-    html_rep = f.read()
+# Grab from the cache
+html_rep = results["mdata"]
+obsms = results["obsms"]
 
-# Load in dim reduction .tsvs if it exists (for all files with .tsv extension)
-dim_reduce = {}
-for file in os.listdir(path_pipeline_outs):
-    if file.endswith(".tsv"):
-        obsm_key = file.split(".")[0]
-        
-        # Load in tsv
-        df = pd.read_csv(os.path.join(path_pipeline_outs, file), sep="\t")
-        
-        # Store in dim_reduce
-        dim_reduce[obsm_key] = df
 
 # Get the columns that don't have the selected dim reduction prefix
-default_dim_reduction = 'X_umap' if 'X_umap' in dim_reduce else list(dim_reduce.keys())[0]
-no_reduce_columns = [col for col in dim_reduce[default_dim_reduction].columns if not col.startswith(default_dim_reduction)]
-default_covariate = 'rna:leiden' if 'rna:leiden' in dim_reduce[default_dim_reduction] else no_reduce_columns[0]
+default_dim_reduction = 'X_umap' if 'X_umap' in obsms else list(obsms.keys())[0]
+no_reduce_columns = [col for col in obsms[default_dim_reduction].columns if not col.startswith(default_dim_reduction)]
+default_covariate = 'sample' if 'sample' in obsms[default_dim_reduction] else no_reduce_columns[0]
 
 # Create the layout using tabs for each section
 layout = dbc.Container([
     html.H1("Overview", className="mb-4"),
 
     dcc.Tabs([
+        
         # Tab 1: mdata HTML Representation
         dcc.Tab(label='mdata Overview', children=[
             html.H2("mdata Overview", className="mt-4 mb-3"),
@@ -54,13 +44,14 @@ layout = dbc.Container([
         # Tab 2: Dimensionality Reduction Visualization
         dcc.Tab(label='Dimensionality Reduction', children=[
             html.H2("Dimensionality Reduction", className="mt-4 mb-3"),
+            
             # Dropdowns for selecting dim reduction and covariate
             dbc.Row([
                 dbc.Col([
                     html.Label("Select Dimensionality Reduction"),
                     dcc.Dropdown(
                         id='dim-reduction-selector',
-                        options=[{'label': key, 'value': key} for key in dim_reduce.keys()],
+                        options=[{'label': key, 'value': key} for key in obsms.keys()],
                         value=default_dim_reduction,
                         clearable=False
                     )
@@ -113,7 +104,7 @@ def update_covariate_options(selected_dim_reduction):
         return []
     
     # Get all the covariates from the dataframe that are not prefixed with selected_dim_reduction
-    covariate_options = [{'label': col, 'value': col} for col in dim_reduce[selected_dim_reduction].columns if not col.startswith(selected_dim_reduction)]
+    covariate_options = [{'label': col, 'value': col} for col in obsms[selected_dim_reduction].columns if not col.startswith(selected_dim_reduction)]
     return covariate_options
 
 import numpy as np
@@ -144,7 +135,7 @@ def update_dim_reduction_plot(selected_dim_reduction, selected_covariate):
         return go.Figure(), html.Div()  # Return an empty figure and legend placeholder
 
     # Extract the relevant data for plotting (they will be selected_dim_reduction_0 and selected_dim_reduction_1)
-    data = dim_reduce[selected_dim_reduction][[f'{selected_dim_reduction}_0', f'{selected_dim_reduction}_1', selected_covariate]]
+    data = obsms[selected_dim_reduction][[f'{selected_dim_reduction}_0', f'{selected_dim_reduction}_1', selected_covariate]]
     data.columns = ['X', 'Y', selected_covariate]
 
     # Map covariate categories to more colors

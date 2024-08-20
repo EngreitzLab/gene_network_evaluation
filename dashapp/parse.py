@@ -101,7 +101,7 @@ def parse_trait_enrichments(subdirs):
     for subdir in subdirs:
         try:
             run_name = os.path.basename(subdir)
-            trait_enrichment_file = os.path.join(subdir, "trait_enrichment.txt")
+            trait_enrichment_file = os.path.join(subdir, "trait_enrichment_processed.txt")
             trait_enrichment_df = pd.read_csv(trait_enrichment_file, sep="\t")
             trait_enrichments[run_name] = trait_enrichment_df
         except FileNotFoundError:

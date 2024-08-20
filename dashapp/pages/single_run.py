@@ -4,23 +4,21 @@ import pickle
 from dash import html, dcc, callback, Input, Output
 import dash_bootstrap_components as dbc
 import plotly.express as px
+import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 from plot import scatterplot, barplot
-from utils import count, count_unique, process_enrichment_data
+from utils import filter_and_count
+import diskcache
 
-
-# Ouput directory
-path_pipeline_outs = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations"
-phewas_metadata = "/cellar/users/aklie/opt/gene_program_evaluation/smk/resources/OpenTargets_L2G_Filtered.csv.gz"
-data_key = "rna"
 
 # Register the page
-dash.register_page(__name__, order=2)
+dash.register_page(__name__, order=1)
 
-# Load results from pickle
-with open(os.path.join(path_pipeline_outs, "results.pkl"), "rb") as f:
-    results = pickle.load(f)
+# Get the app and cache
+app = dash.get_app()
+cache = diskcache.Cache("./.cache")
+results = cache.get("results")
 
 # Get the first data type and its corresponding second-level keys as default
 default_data_type = list(results.keys())[0]
@@ -45,42 +43,46 @@ layout = dbc.Container([
     # Tabs for different sections
     dcc.Tabs([
 
-        # Tab for Goodness of Fit
+        # 1. Tab for Goodness of Fit
         dcc.Tab(label='Goodness of Fit', children=[
             html.H2("Goodness of Fit", className="mt-3 mb-3"),
             
-            # Explained Variance Per Component and Unique Genesets Enriched
+            # Explained Variance Per Program and Number of Genesets Enriched Per Program
             dbc.Row([
                 dbc.Col([
-                    html.H3("Explained Variance Per Component"),
+                    html.H3("Explained Variance Per Program"),
                     dcc.Graph(id='explained-variance-plot'),
                 ], width=6),
 
                 dbc.Col([
-                    html.H3("Unique Genesets Enriched"),
+                    html.H3("Number of Genesets Enriched Per Program"),
                     dcc.Graph(id='num-enriched-genesets'),
                 ], width=6),
             ], className="mb-4"),
 
-            # Unique Motifs Enriched and Unique Traits Enriched
+            # Number of Motifs Enriched Per Program and Number of Traits Enriched Per Program
             dbc.Row([
                 dbc.Col([
-                    html.H3("Unique Motifs Enriched"),
+                    html.H3("Number of Motifs Enriched Per Program"),
                     dcc.Graph(id='num-enriched-motifs'),
                 ], width=6),
 
                 dbc.Col([
-                    html.H3("Unique Traits Enriched"),
+                    html.H3("Number of Traits Enriched Per Program"),
                     dcc.Graph(id='num-enriched-traits'),
                 ], width=6),
             ], className="mb-4"),
 
-            # Perturbation Associations
-            html.H3("Perturbation Associations", className="mt-4"),
-            dcc.Graph(id='num-perturbation-associations'),
+            # Number of Perturbation Associations Per Program
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Number of Perturbation Associations Per Program", className="mt-4"),
+                    dcc.Graph(id='num-perturbation-associations'),
+                ], width=6),
+            ], className="mb-4"),
         ]),
 
-        # Tab for Covariate Association
+        # 2. Tab for Covariate Association
         dcc.Tab(label='Covariate Association', children=[
             html.H2("Covariate Association", className="mt-3 mb-3"),
 
@@ -106,30 +108,19 @@ layout = dbc.Container([
             ], className="mb-4"),
         ]),
 
-        dcc.Tab(label='Perturbation Association', children=[
-            html.H2("Perturbation Association", className="mt-3 mb-3"),
-            
-            dbc.Row([
-                dbc.Col([
-                    html.H3("Perturbation Association Plot"),
-                    dcc.Graph(id='perturbation-association-plot'),
-                ], width=12),
-            ], className="mb-4"),
-        ]),
-
         dcc.Tab(label='Trait Enrichment', children=[
             html.H2("Trait Enrichment", className="mt-3 mb-3"),
 
             dbc.Row([
                 dbc.Col([
-                    html.H3("Phewas Plot"),
-                    dcc.Graph(id='phewas-plot-binary-plot'),
+                    html.H3("GEP x GWAS Binary Outcome Enrichments"),
+                    dcc.Graph(id='phewas-binary-plot'),
                 ], width=12),
             ], className="mb-4"),
 
             dbc.Row([
                 dbc.Col([
-                    html.H3("Phewas Plot"),
+                    html.H3("GEP x GWAS Continuous Outcome Enrichments"),
                     dcc.Graph(id='phewas-continuous-plot'),
                 ], width=12),
             ], className="mb-4"),
@@ -142,16 +133,20 @@ layout = dbc.Container([
     Output('explained-variance-plot', 'figure'),
     [Input('run-selector', 'value')]
 )
-def update_explained_variance_plot(selected_run, debug=False):
+def update_explained_variance_plot(
+    selected_run, 
+    debug=False,
+    categorical_var = "program_name",
+    ):
 
     if debug:
-        print(f"Selected run: {selected_run}")
+        print(f"Selected run for explained variance plot: {selected_run}")
 
     # Assuming we want to plot something from the selected run
     data_to_plot = results['explained_variance_ratios'][selected_run]  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
-    data_to_plot['program_name'] = data_to_plot['program_name'].astype(str)
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
 
     # Example plot using Plotly (replace with your actual plotting code)
     fig = scatterplot(
@@ -165,87 +160,54 @@ def update_explained_variance_plot(selected_run, debug=False):
     return fig
 
 
+
 @callback(
     Output('num-enriched-genesets', 'figure'),
     [Input('run-selector', 'value')]
 )
 def update_num_enriched_genesets_plot(
     selected_run, 
-    debug=False
-):
-    categorical_var = "program_name"
-    count_var = "Term"
-    sig_var = "FDR q-val"
+    debug=True,
+    unique=False,
+    categorical_var = "program_name",
+    count_var = "Term",
+    sig_var = "FDR q-val",
     sig_threshold = 0.25
+):
 
     if debug:
-        print(f"Selected run: {selected_run}")
+        print(f"Selected run for gene set enrichment plot: {selected_run}")
+        print(f"Filtering gene set enrichments with {sig_var} < {sig_threshold}")
+        print(f"Counting unique {count_var} enriched for each {categorical_var}")
 
     # Assuming we want to plot something from the selected run
     data_to_plot = results['geneset_enrichments'][selected_run]  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
-    data_to_plot['program_name'] = data_to_plot['program_name'].astype(str)
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
 
-    filtered_data = data_to_plot[data_to_plot[sig_var] < sig_threshold]
-
-    # Get the count of all gene sets passing the FDR q-value cutoff for each program
-    count_df = count(categorical_var=categorical_var, count_var=count_var, dataframe=filtered_data)
-
-    # Get the count of unique gene sets passing the FDR q-value cutoff for each program
-    unique_data = filtered_data.sort_values(by=sig_var)
-    unique_data = unique_data.drop_duplicates(subset=count_var)
-    unique_df = count_unique(categorical_var=categorical_var, count_var=count_var, dataframe=unique_data)
-    unique_df = unique_df.sort_values(count_var, ascending=False)
-
-    # Example plot using Plotly (replace with your actual plotting code)
-    fig = barplot(
-        data=unique_df,
-        x_column='program_name',
-        y_column='Term',
-        title='',
-        x_axis_title='Program',
-        y_axis_title='Count',
-        show_xaxis_labels=False
+    # Filter data
+    count_df, unique_df = filter_and_count(
+        data=data_to_plot,
+        categorical_var=categorical_var,
+        count_var=count_var,
+        sig_var=sig_var,
+        sig_threshold=sig_threshold
     )
-    return fig
 
-@callback(
-    Output('num-enriched-motifs', 'figure'),
-    [Input('run-selector', 'value')]
-)
-def update_num_enriched_motifs_plot(
-    selected_run, 
-    debug=False
-):
-    categorical_var = "program_name"
-    count_var = "motif"
-    sig_var = "pval"
-    sig_threshold = 0.75
+    # Choose whether to plot all gene sets or only unique gene sets
+    if unique:
+        data_to_plot = unique_df
+    else:
+        data_to_plot = count_df
 
     if debug:
-        print(f"Selected run: {selected_run}")
-
-    # Assuming we want to plot something from the selected run
-    data_to_plot = results['motif_enrichments'][selected_run]  # Adjust to your actual plot logic
-
-    # Make sure x-axis is string
-    data_to_plot['program_name'] = data_to_plot['program_name'].astype(str)
-
-    filtered_data = data_to_plot[data_to_plot[sig_var] < sig_threshold]
-
-    # Get the count of all gene sets passing the FDR q-value cutoff for each program
-    count_df = count(categorical_var=categorical_var, count_var=count_var, dataframe=filtered_data)
-
-    # Get the count of unique gene sets passing the FDR q-value cutoff for each program
-    unique_data = filtered_data.sort_values(by=sig_var)
-    unique_data = unique_data.drop_duplicates(subset=count_var)
-    unique_df = count_unique(categorical_var=categorical_var, count_var=count_var, dataframe=unique_data)
-    unique_df = unique_df.sort_values(count_var, ascending=False)
+        print(f"Counts of gene sets enriched: {data_to_plot}")
 
     # Example plot using Plotly (replace with your actual plotting code)
+    fig = go.Figure(layout=dict(template='plotly'))
     fig = barplot(
-        data=count_df,
+        data=data_to_plot,
         x_column=categorical_var,
         y_column=count_var,
         title='',
@@ -253,6 +215,65 @@ def update_num_enriched_motifs_plot(
         y_axis_title='Count',
         show_xaxis_labels=False
     )
+
+    return fig
+
+
+@callback(
+    Output('num-enriched-motifs', 'figure'),
+    [Input('run-selector', 'value')]
+)
+def update_num_enriched_motifs_plot(
+    selected_run, 
+    debug=True,
+    unique=False,
+    categorical_var = "program_name",
+    count_var = "motif",
+    sig_var = "pval",
+    sig_threshold = 0.75
+):
+
+    if debug:
+        print(f"Selected run for motif enrichment plot: {selected_run}")
+        print(f"Filtering motif enrichments with {sig_var} < {sig_threshold}")
+        print(f"Counting unique {count_var} enriched for each {categorical_var}")
+    
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['motif_enrichments'][selected_run]  # Adjust to your actual plot logic
+
+    # Make sure x-axis is string
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
+
+    # Filter data
+    count_df, unique_df = filter_and_count(
+        data=data_to_plot,
+        categorical_var=categorical_var,
+        count_var=count_var,
+        sig_var=sig_var,
+        sig_threshold=sig_threshold
+    )
+
+    # Choose whether to plot all gene sets or only unique gene sets
+    if unique:
+        data_to_plot = unique_df
+    else:
+        data_to_plot = count_df
+
+    if debug:
+        print(f"Counts of motifs enriched: {data_to_plot}")
+
+    # Example plot using Plotly (replace with your actual plotting code)
+    fig = go.Figure(layout=dict(template='plotly'))
+    fig = barplot(
+        data=data_to_plot,
+        x_column=categorical_var,
+        y_column=count_var,
+        title='',
+        x_axis_title='Program',
+        y_axis_title='Count',
+        show_xaxis_labels=False
+    )
+
     return fig
 
 
@@ -262,36 +283,47 @@ def update_num_enriched_motifs_plot(
 )
 def update_num_enriched_traits_plot(
     selected_run, 
-    debug=False
-):
-    categorical_var = "program_name"
-    count_var = "Term"
-    sig_var = "FDR q-val"
+    debug=True,
+    unique=False,
+    categorical_var = "program_name",
+    count_var = "trait_reported",
+    sig_var = "FDR q-val",
     sig_threshold = 0.25
-
+):
+    
     if debug:
-        print(f"Selected run: {selected_run}")
+        print(f"Selected run for trait enrichment plot: {selected_run}")
+        print(f"Filtering trait enrichments with {sig_var} < {sig_threshold}")
+        print(f"Counting unique {count_var} enriched for each {categorical_var}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['trait_enrichments'][selected_run]
+    data_to_plot = results['trait_enrichments'][selected_run]  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
-    data_to_plot['program_name'] = data_to_plot['program_name'].astype(str)
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
 
-    filtered_data = data_to_plot[data_to_plot[sig_var] < sig_threshold]
-    
-    # Get the count of all gene sets passing the FDR q-value cutoff for each program
-    count_df = count(categorical_var=categorical_var, count_var=count_var, dataframe=filtered_data)
+    # Filter data
+    count_df, unique_df = filter_and_count(
+        data=data_to_plot,
+        categorical_var=categorical_var,
+        count_var=count_var,
+        sig_var=sig_var,
+        sig_threshold=sig_threshold
+    )
 
-    # Get the count of unique gene sets passing the FDR q-value cutoff for each program
-    unique_data = filtered_data.sort_values(by=sig_var)
-    unique_data = unique_data.drop_duplicates(subset=count_var)
-    unique_df = count_unique(categorical_var=categorical_var, count_var=count_var, dataframe=unique_data)
-    unique_df = unique_df.sort_values(count_var, ascending=False)
+    # Choose whether to plot all gene sets or only unique gene sets
+    if unique:
+        data_to_plot = unique_df
+    else:
+        data_to_plot = count_df
+
+    if debug:
+        print(f"Counts of traits enriched: {data_to_plot}")
 
     # Example plot using Plotly (replace with your actual plotting code)
+    fig = go.Figure(layout=dict(template='plotly'))
     fig = barplot(
-        data=count_df,
+        data=data_to_plot,
         x_column=categorical_var,
         y_column=count_var,
         title='',
@@ -299,6 +331,7 @@ def update_num_enriched_traits_plot(
         y_axis_title='Count',
         show_xaxis_labels=False
     )
+
     return fig
 
 
@@ -308,15 +341,18 @@ def update_num_enriched_traits_plot(
 )
 def update_num_perturbation_associations_plot(
     selected_run, 
-    debug=False
-):
-    categorical_var = "program"
-    count_var = "guide_name"
-    sig_var = "pval"
+    debug=True,
+    unique=False,
+    categorical_var = "program",
+    count_var = "guide_name",
+    sig_var = "pval",
     sig_threshold = 0.25
-
+):
+        
     if debug:
-        print(f"Selected run: {selected_run}")
+        print(f"Selected run for perturbation association plot: {selected_run}")
+        print(f"Filtering perturbation associations with {sig_var} < {sig_threshold}")
+        print(f"Counting unique {count_var} enriched for each {categorical_var}")
 
     # Assuming we want to plot something from the selected run
     data_to_plot = results['perturbation_associations'][selected_run]
@@ -324,20 +360,28 @@ def update_num_perturbation_associations_plot(
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
 
-    filtered_data = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+    # Filter data
+    count_df, unique_df = filter_and_count(
+        data=data_to_plot,
+        categorical_var=categorical_var,
+        count_var=count_var,
+        sig_var=sig_var,
+        sig_threshold=sig_threshold
+    )
 
-    # Get the count of all gene sets passing the FDR q-value cutoff for each program
-    count_df = count(categorical_var=categorical_var, count_var=count_var, dataframe=filtered_data)
+    # Choose whether to plot all gene sets or only unique gene sets
+    if unique:
+        data_to_plot = unique_df
+    else:
+        data_to_plot = count_df
 
-    # Get the count of unique gene sets passing the FDR q-value cutoff for each program
-    unique_data = filtered_data.sort_values(by=sig_var)
-    unique_data = unique_data.drop_duplicates(subset=count_var)
-    unique_df = count_unique(categorical_var=categorical_var, count_var=count_var, dataframe=unique_data)
-    unique_df = unique_df.sort_values(count_var, ascending=False)
+    if debug:
+        print(f"Counts of perturbation associations: {data_to_plot}")
 
     # Example plot using Plotly (replace with your actual plotting code)
+    fig = go.Figure(layout=dict(template='plotly'))
     fig = barplot(
-        data=count_df,
+        data=data_to_plot,
         x_column=categorical_var,
         y_column=count_var,
         title='',
@@ -345,38 +389,7 @@ def update_num_perturbation_associations_plot(
         y_axis_title='Count',
         show_xaxis_labels=False
     )
-    return fig
-
-
-@callback(
-    Output('perturbation-association-plot', 'figure'),
-    [Input('run-selector', 'value')]
-)
-def update_perturbation_association_plot(
-    selected_run, 
-    debug=False
-):
-    if debug:
-        print(f"Selected run: {selected_run}")
-
-    # Assuming we want to plot something from the selected run
-    data_to_plot = results['perturbation_associations'][selected_run]
-
-    # Make sure x-axis is string
-    data_to_plot['program'] = data_to_plot['program'].astype(str)
-
-    # -log10 transform p-values
-    data_to_plot['-log10(pval)'] = -np.log10(data_to_plot['pval'])
-
-    # Example plot using Plotly (replace with your actual plotting code)
-    fig = scatterplot(
-        data=data_to_plot,
-        x_column='program',
-        y_column='-log10(pval)',
-        title='',
-        x_axis_title='Program',
-        y_axis_title='-log10(p-value)',
-    )
+    
     return fig
 
 
@@ -388,17 +401,13 @@ def update_phewas_binary_plot(selected_run):
 
     # Assuming we want to plot something from the selected run
     data_to_plot = results['trait_enrichments'][selected_run]
-    data_to_plot = process_enrichment_data(
-        enrich_res=data_to_plot,
-        metadata=phewas_metadata,
-    )
 
     fig = px.scatter(
         data_to_plot.query("trait_category != 'measurement'"),
         x='trait_reported',
         y='-log10(p-value)',
         color='trait_category',
-        title="Endothelial Cell Programs x GWAS Binary Outcome Enrichments",
+        title="",
         hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
     )
 
@@ -409,12 +418,17 @@ def update_phewas_binary_plot(selected_run):
         yaxis=dict(tickformat=".1f"),
         width=1000,
         height=800,
-        xaxis_tickfont=dict(size=4)
+        xaxis_tickfont=dict(size=4),
+        plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
     )
 
     # Add horizontal dashed line for significance threshold
-    fig.add_hline(y=-np.log10(0.05), line_dash="dash",
-                    annotation_text='Significance Threshold (0.05)', annotation_position="top right")
+    fig.add_hline(
+        y=-np.log10(0.05), 
+        line_dash="dash",
+        annotation_text='Significance Threshold (0.05)', 
+        annotation_position="top right"
+    )
 
     return fig
 
@@ -427,17 +441,13 @@ def update_phewas_continuous_plot(selected_run):
 
     # Assuming we want to plot something from the selected run
     data_to_plot = results['trait_enrichments'][selected_run]
-    data_to_plot = process_enrichment_data(
-        enrich_res=data_to_plot,
-        metadata=phewas_metadata,
-    )
 
     fig = px.scatter(
         data_to_plot.query("trait_category == 'measurement'"),
         x='trait_reported',
         y='-log10(p-value)',
         color='trait_category',
-        title="Endothelial Cell Programs x GWAS Continuous Outcome Enrichments",
+        title="",
         hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
     )
 
@@ -448,7 +458,8 @@ def update_phewas_continuous_plot(selected_run):
         yaxis=dict(tickformat=".1f"),
         width=1000,
         height=800,
-        xaxis_tickfont=dict(size=4)
+        xaxis_tickfont=dict(size=4),
+        plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
     )
 
     # Add horizontal dashed line for significance threshold
