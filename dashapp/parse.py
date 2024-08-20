@@ -46,6 +46,28 @@ def parse_loadings(mdata, data_key="rna"):
     return loadings
 
 
+def parse_obs(mdata, data_key="rna"):
+    obs = {}
+    for key in mdata.mod.keys():
+        if key != data_key:
+            obs[key] = mdata.mod[key].obs
+    return obs
+
+
+def parse_obs_memberships(mdata, data_key="rna"):
+    obs_memberships = {}
+    for key in mdata.mod.keys():
+        if key != data_key:
+            obs_memberships[key] = pd.DataFrame(
+                data=mdata.mod[key].X,
+                index=mdata.mod[key].obs_names,
+                columns=mdata.mod[key].var_names
+            )
+            obs_memberships[key].index.name = "obs_name"
+            obs_memberships[key].columns.name = "program_name"
+    return obs_memberships
+
+
 def parse_geneset_enrichments(subdirs):
     geneset_enrichments = {}
     for subdir in subdirs:
@@ -110,6 +132,8 @@ def parse(
     methods, n_components = parse_methods(mdata, data_key)
     explained_variance_ratios, cumulative_explained_variance = parse_explained_variance(subdirs)
     loadings = parse_loadings(mdata, data_key)
+    obs = parse_obs(mdata, data_key)
+    obs_memberships = parse_obs_memberships(mdata, data_key)
     geneset_enrichments = parse_geneset_enrichments(subdirs)
     motif_enrichments = parse_motif_enrichments(subdirs)
     trait_enrichments = parse_trait_enrichments(subdirs)
@@ -120,6 +144,8 @@ def parse(
         "explained_variance_ratios": explained_variance_ratios,
         "cumulative_explained_variance": cumulative_explained_variance,
         "loadings": loadings,
+        "obs": obs,
+        "obs_memberships": obs_memberships,
         "geneset_enrichments": geneset_enrichments,
         "motif_enrichments": motif_enrichments,
         "trait_enrichments": trait_enrichments,

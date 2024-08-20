@@ -1,170 +1,61 @@
+import os
+import sys
+import pickle
 import dash
 from dash import Dash, html, dcc, Input, Output
-import dash_dangerously_set_inner_html
-from data_processing import parse_mdata_summary, parse_mdata_cross_run, extract_total_unique_counts
-from layout import create_scatter_layout, create_filtered_barplot_layout, create_filtered_stacked_barplot_layout
-import dash_bootstrap_components as dbc
 import mudata
+import dash_bootstrap_components as dbc
+import pandas as pd
 import collections
+from parse import parse
+from utils import infer_dashboard_type
 
+# Ouput directory
+path_pipeline_outs = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations"
+data_key = "rna"
 
-# Load mudata
-mdata = mudata.read_h5mu("./example_data/Endothelial/cNMF_evaluation_dashapp_data_small.h5mu")
-summary_dict = parse_mdata_summary(mdata, verbose=False)
-cross_run_dict = parse_mdata_cross_run(mdata, verbose=False)
+# Load mdata
+try:
+    path_mdata = os.path.join(path_pipeline_outs, "cNMF_60_0.2_gene_names.h5mu")
+    mdata = mudata.read_h5mu(path_mdata)
+    mdata.mod = collections.OrderedDict(sorted(mdata.mod.items()))
+    anndata_keys = list(mdata.mod.keys())
+    prog_keys = [key for key in anndata_keys if key != data_key]
+    with mudata.set_options(display_style="html", display_html_expand=0b000):
+        html_rep = mdata._repr_html_(expand=0b000)
+    with open(os.path.join(path_pipeline_outs, "mudata.html"), "w") as f:
+        f.write(html_rep)
+    for obsm_key in mdata[data_key].obsm:
+        cols = [f"{obsm_key}_{i}" for i in range(2)]
+        rows = mdata[data_key].obs_names
+        df = pd.DataFrame(mdata[data_key].obsm[obsm_key][:, :2], columns=cols, index=rows)
+        for col in mdata.obs.columns:
+            if pd.api.types.is_categorical_dtype(mdata.obs[col]):
+                df[col] = mdata.obs[col].values
+        df.to_csv(os.path.join(path_pipeline_outs, f"{obsm_key}.tsv"), sep="\t", index=True)
+except:
+    print("Could not load mdata")
+    sys.exit(1)
 
-# Get HTML representation of mudata
-with mudata.set_options(display_style="html", display_html_expand=0b000):
-    html_rep = mdata._repr_html_(expand=0b000)
-mdata.mod = collections.OrderedDict(sorted(mdata.mod.items()))
+# Get all subdirectories of the pipeline outputs
+subdirs = [x[0] for x in os.walk(path_pipeline_outs)][1:]
+
+# Parse and save as pickle
+results = parse(mdata, subdirs, data_key)
+with open(os.path.join(path_pipeline_outs, "results.pkl"), "wb") as f:
+    pickle.dump(results, f)
 
 # Create Dash app
-app = Dash(__name__, use_pages=True, pages_folder="", external_stylesheets=[dbc.themes.SPACELAB])
+app = Dash(__name__, use_pages=True, external_stylesheets=[dbc.themes.SPACELAB], suppress_callback_exceptions=True)
 app.title = "Gene Program Evaluation Dashboard v0.0.1"
 
-# Summary page function: TODO move to pages/summary.py
-def summary_page():
-    with mudata.set_options(display_style="html", display_html_expand=0b000):
-        return html.Div(id='landing_page', className='section', style={'width': '50%', 'display': 'inline-block', 'vertical-align': 'top'}, children=[
-            html.H2("Overview"),
-            dash_dangerously_set_inner_html.DangerouslySetInnerHTML(html_rep),
-        ])
+# Dashboard 
+dashboard_type = infer_dashboard_type(prog_keys)
+print(f"Dashboard type: {dashboard_type}")
 
-
-# Cross run analysis: TODO move to pages/cross_run_analysis.py
-totals = extract_total_unique_counts(cross_run_dict, summary_dict)
-def cross_run_analysis():
-    return html.Div(id='single_run_analysis', className='section', style={'width': '50%', 'display': 'inline-block', 'vertical-align': 'top'}, children=[
-        html.H2("Cross Run Analysis"),
-        html.Div([
-            html.H2("Total Unique GSEA Terms enriched"),
-            create_scatter_layout(
-                data=totals,
-                x_column='n_programs',
-                y_column='enrichment_gsea',
-                title='',
-                x_axis_title='Number of Programs',
-                y_axis_title='Unique GSEA Terms',
-                id_suffix='gsea-cross_run',
-            )
-        ], style={'width': '100%', 'paddingBottom': '20px'}),
-        html.Div([
-            html.H2("Total Unique Motif Enrichment"),
-            create_scatter_layout(
-                data=totals,
-                x_column='n_programs',
-                y_column='enrichment_motif',
-                title='',
-                x_axis_title='Number of Programs',
-                y_axis_title='Unique Motif Enrichment',
-                id_suffix='motif-cross_run',
-            )
-        ], style={'width': '100%', 'paddingBottom': '20px'}),
-        html.Div([
-            html.H2("Total Unique GWAS Terms enriched"),
-            create_scatter_layout(
-                data=totals,
-                x_column='n_programs',
-                y_column='enrichment_gwas',
-                title='',
-                x_axis_title='Number of Programs',
-                y_axis_title='Unique GWAS Terms',
-                id_suffix='gwas-cross_run',
-            )
-        ], style={'width': '100%', 'paddingBottom': '20px'})
-    ])
-
-# Single run analysis: TODO move to pages/single_run_analysis.py
-# TODO: make dropdown to select run --> currently failing to register filter barplot callback
-# TODO: add in Narges's plots
-curr_run = cross_run_dict["cNMF"]
-def single_run_analysis():
-    return html.Div(id='cross_run_analysis', className='section', style={'width': '50%', 'display': 'inline-block', 'vertical-align': 'top'}, children=[
-        html.H2("Single Run Analysis"),
-        html.P("Description: Analyze individual runs."),
-        html.Div([
-            html.H2("Explained Variance"),
-            create_scatter_layout(
-                data=curr_run["explained_variance"],
-                x_column='ProgramID',
-                y_column='VarianceExplained',
-                title='',
-                x_axis_title='Component',
-                y_axis_title='Variance Explained (R²)',
-                id_suffix='explained-variance'
-            )
-        ], style={'width': '100%', 'paddingBottom': '20px'}),
-
-        html.Div([
-            html.H2("Unique GSEA Terms enriched"),
-            create_filtered_barplot_layout(
-                app=app,
-                data=curr_run["enrichment_gsea"],
-                x_column='ProgramID',
-                y_column='ID',
-                filter_column='qvalue',
-                starting_filter_value=0.05,
-                title='',
-                x_axis_title='Program',
-                y_axis_title='Count',
-                id_suffix='gsea-single_run',
-                show_xaxis_labels=False
-            )
-        ], style={'width': '100%', 'paddingBottom': '20px'}),
-
-        html.Div([
-            html.H2("Motif Enrichment"),
-            create_filtered_stacked_barplot_layout(
-                app=app,
-                data=curr_run["enrichment_motif"],
-                x_column='ProgramID',
-                y_column='TFMotif',
-                stack_column='EPType',
-                filter_column='FDR',
-                starting_filter_value=0.05,
-                title='',
-                x_axis_title='Program',
-                y_axis_title='Count',
-                id_suffix='motif-single_run',
-                show_xaxis_labels=False
-            )
-        ], style={'width': '100%', 'paddingBottom': '20px'}),
-
-        html.Div([
-            html.H2("Unique GWAS Terms enriched"),
-            create_filtered_barplot_layout(
-                app=app,
-                data=curr_run["enrichment_gwas"],
-                x_column='ProgramID',
-                y_column='Term',
-                filter_column='Adjusted_P-value',
-                starting_filter_value=0.05,
-                title='',
-                x_axis_title='Program',
-                y_axis_title='Count',
-                id_suffix='gwas-single_run',
-                show_xaxis_labels=False
-            )
-        ], style={'width': '100%', 'paddingBottom': '20px'})
-    ])
-
-# Program analysis: TODO move to pages/program_analysis.py
-# TODO: add in single program plots and tables
-def program_analysis():
-    return html.Div(id='program_analysis', className='section', style={'width': '50%', 'display': 'inline-block', 'vertical-align': 'top'}, children=[
-        html.H2("Program Analysis"),
-        html.P("Description: Analyze individual programs."),
-        html.P("This section will contain detailed analysis for a selected program.")
-    ])
-
-
-# Register pages
-dash.register_page("Overview", path="/", layout=summary_page(), title="Overview",name="Overview")
-dash.register_page("Cross Run Analysis", path="/cross-run", layout=cross_run_analysis(), title="Cross Run Analysis", name="Cross Run Analysis")
-dash.register_page("Single Run Analysis", path="/single-run", layout=single_run_analysis(), title="Single Run Analysis", name="Single Run Analysis")
-dash.register_page("Program Analysis", path="/program-analysis", layout=program_analysis(), title="Program Analysis", name="Program Analysis")
-page_order = ["Overview", "Cross Run Analysis", "Single Run Analysis", "Program Analysis"]
-dash.page_registry = {key: dash.page_registry[key] for key in page_order}
+# If the dashboard type is single_run, then we want to remove pages.cross_run
+if dashboard_type == "single_run":
+    del dash.page_registry["pages.cross_run"]
 
 # Create sidebar for page navigation
 sidebar = dbc.Nav(
@@ -181,7 +72,8 @@ sidebar = dbc.Nav(
     pills=True,
     className="sidebar",
 )
-app.layout = app.layout = dbc.Container([
+
+app.layout = dbc.Container([
     dbc.Row([
         dbc.Col(html.Div("Gene Program Evaluation Dashboard v0.0.1",
                          style={'fontSize':50, 'textAlign':'center'}))

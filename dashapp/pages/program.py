@@ -5,7 +5,7 @@ import pandas as pd
 import dash_bootstrap_components as dbc
 from dash import html, dcc, callback, Input, Output
 from dash import dash_table
-from plot import scatterplot, barplot, lollipop_plot
+from plot import scatterplot, barplot, lollipop_plot, boxplot
 
 # Ouput directory
 path_pipeline_outs = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations"
@@ -104,11 +104,11 @@ layout = dbc.Container([
             dcc.Graph(id='phewas-plot'),
         ]),
 
-        # Tab 5: Differential Topic Association
-        dcc.Tab(label='Differential Topic Association', children=[
-            html.H2("Differential Topic Association Analysis", className="mt-4 mb-3"),
-            html.P("Volcano plot for one vs. rest comparison", className="mb-3"),
-            dcc.Graph(id='volcano-plot'),
+        # Tab 5: Categorical Association
+        dcc.Tab(label='Categorical Association', children=[
+            html.H2("Categorical Association Analysis", className="mt-4 mb-3"),
+            html.P("Boxplot", className="mb-3"),
+            dcc.Graph(id='covariate-association-plot'),
         ]),
 
         # Tab 6: Perturbation
@@ -367,3 +367,29 @@ def update_enriched_traits_table(selected_run, selected_program, debug=True):
     )
 
     return table
+
+
+# Callback for covariate association plot
+@callback(
+    Output('covariate-association-plot', 'figure'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_covariate_association_plot(selected_run, selected_program, debug=True):
+
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    curr_obs = results['obs'][selected_run]
+    curr_obs_membership = results['obs_memberships'][selected_run]
+    concat_df = pd.concat([curr_obs_membership[selected_program], curr_obs["sample"]], axis=1)
+    
+    fig = boxplot(
+        concat_df, 
+        x_column=selected_program, 
+        y_column="sample", 
+        title="",
+        x_axis_title=selected_program,
+        y_axis_title="Sample",
+    )
+
+    return fig

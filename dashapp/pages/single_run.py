@@ -4,15 +4,18 @@ import pickle
 from dash import html, dcc, callback, Input, Output
 import dash_bootstrap_components as dbc
 import plotly.express as px
+import numpy as np
 import pandas as pd
 from plot import scatterplot, barplot
-from utils import count, count_unique
+from utils import count, count_unique, process_enrichment_data
+
 
 # Ouput directory
 path_pipeline_outs = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations"
 phewas_metadata = "/cellar/users/aklie/opt/gene_program_evaluation/smk/resources/OpenTargets_L2G_Filtered.csv.gz"
 data_key = "rna"
 
+# Register the page
 dash.register_page(__name__, order=2)
 
 # Load results from pickle
@@ -23,6 +26,7 @@ with open(os.path.join(path_pipeline_outs, "results.pkl"), "rb") as f:
 default_data_type = list(results.keys())[0]
 default_run = list(results[default_data_type].keys())[0]
 
+# Create layout
 layout = dbc.Container([
     html.H1("Single Run Analysis", className="mb-4"),
 
@@ -40,9 +44,12 @@ layout = dbc.Container([
 
     # Tabs for different sections
     dcc.Tabs([
+
+        # Tab for Goodness of Fit
         dcc.Tab(label='Goodness of Fit', children=[
             html.H2("Goodness of Fit", className="mt-3 mb-3"),
             
+            # Explained Variance Per Component and Unique Genesets Enriched
             dbc.Row([
                 dbc.Col([
                     html.H3("Explained Variance Per Component"),
@@ -55,6 +62,7 @@ layout = dbc.Container([
                 ], width=6),
             ], className="mb-4"),
 
+            # Unique Motifs Enriched and Unique Traits Enriched
             dbc.Row([
                 dbc.Col([
                     html.H3("Unique Motifs Enriched"),
@@ -67,10 +75,12 @@ layout = dbc.Container([
                 ], width=6),
             ], className="mb-4"),
 
+            # Perturbation Associations
             html.H3("Perturbation Associations", className="mt-4"),
-            dcc.Graph(id='perturbation-associations'),
+            dcc.Graph(id='num-perturbation-associations'),
         ]),
 
+        # Tab for Covariate Association
         dcc.Tab(label='Covariate Association', children=[
             html.H2("Covariate Association", className="mt-3 mb-3"),
 
@@ -98,6 +108,13 @@ layout = dbc.Container([
 
         dcc.Tab(label='Perturbation Association', children=[
             html.H2("Perturbation Association", className="mt-3 mb-3"),
+            
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Perturbation Association Plot"),
+                    dcc.Graph(id='perturbation-association-plot'),
+                ], width=12),
+            ], className="mb-4"),
         ]),
 
         dcc.Tab(label='Trait Enrichment', children=[
@@ -106,7 +123,14 @@ layout = dbc.Container([
             dbc.Row([
                 dbc.Col([
                     html.H3("Phewas Plot"),
-                    dcc.Graph(id='phewas-plot-binary'),
+                    dcc.Graph(id='phewas-plot-binary-plot'),
+                ], width=12),
+            ], className="mb-4"),
+
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Phewas Plot"),
+                    dcc.Graph(id='phewas-continuous-plot'),
                 ], width=12),
             ], className="mb-4"),
         ]),
@@ -118,7 +142,7 @@ layout = dbc.Container([
     Output('explained-variance-plot', 'figure'),
     [Input('run-selector', 'value')]
 )
-def update_plot(selected_run, debug=True):
+def update_explained_variance_plot(selected_run, debug=False):
 
     if debug:
         print(f"Selected run: {selected_run}")
@@ -145,7 +169,10 @@ def update_plot(selected_run, debug=True):
     Output('num-enriched-genesets', 'figure'),
     [Input('run-selector', 'value')]
 )
-def update_plot(selected_run, debug=True):
+def update_num_enriched_genesets_plot(
+    selected_run, 
+    debug=False
+):
     categorical_var = "program_name"
     count_var = "Term"
     sig_var = "FDR q-val"
@@ -187,7 +214,10 @@ def update_plot(selected_run, debug=True):
     Output('num-enriched-motifs', 'figure'),
     [Input('run-selector', 'value')]
 )
-def update_plot(selected_run, debug=True):
+def update_num_enriched_motifs_plot(
+    selected_run, 
+    debug=False
+):
     categorical_var = "program_name"
     count_var = "motif"
     sig_var = "pval"
@@ -230,7 +260,10 @@ def update_plot(selected_run, debug=True):
     Output('num-enriched-traits', 'figure'),
     [Input('run-selector', 'value')]
 )
-def update_plot(selected_run, debug=True):
+def update_num_enriched_traits_plot(
+    selected_run, 
+    debug=False
+):
     categorical_var = "program_name"
     count_var = "Term"
     sig_var = "FDR q-val"
@@ -270,10 +303,13 @@ def update_plot(selected_run, debug=True):
 
 
 @callback(
-    Output('perturbation-associations', 'figure'),
+    Output('num-perturbation-associations', 'figure'),
     [Input('run-selector', 'value')]
 )
-def update_plot(selected_run, debug=True):
+def update_num_perturbation_associations_plot(
+    selected_run, 
+    debug=False
+):
     categorical_var = "program"
     count_var = "guide_name"
     sig_var = "pval"
@@ -312,58 +348,43 @@ def update_plot(selected_run, debug=True):
     return fig
 
 
-import numpy as np
-def process_enrichment_data(enrich_res,
-                            metadata,
-                            pval_col="FDR q-val",
-                            enrich_geneset_id_col="Term",
-                            metadata_geneset_id_col="trait_efos",
-                            color_category_col="trait_category",
-                            program_name_col="program_name",
-                            annotation_cols=["trait_reported", "Lead_genes", "study_id", "pmid"]):
+@callback(
+    Output('perturbation-association-plot', 'figure'),
+    [Input('run-selector', 'value')]
+)
+def update_perturbation_association_plot(
+    selected_run, 
+    debug=False
+):
+    if debug:
+        print(f"Selected run: {selected_run}")
 
-    # Read in enrichment results
-    if isinstance(enrich_res, str):
-        enrich_df = pd.read_csv(enrich_res)
-    elif isinstance(enrich_res, pd.DataFrame):
-        enrich_df = enrich_res
-    else:
-        raise ValueError("enrich_res must be either a pandas DataFrame or a file path to a CSV file.")
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['perturbation_associations'][selected_run]
 
-    if isinstance(metadata, str):
-        metadata_df = pd.read_csv(metadata, compression='gzip', low_memory=False)
-    elif isinstance(metadata, pd.DataFrame):
-        metadata_df = metadata
-    else:
-        raise ValueError("metadata must be either a pandas DataFrame or a file path to a CSV file.")
+    # Make sure x-axis is string
+    data_to_plot['program'] = data_to_plot['program'].astype(str)
 
-    # Join the enrichment results and the metadata
-    enrich_ps = enrich_df.merge(metadata_df, left_on=enrich_geneset_id_col, right_on=metadata_geneset_id_col, how="left")
+    # -log10 transform p-values
+    data_to_plot['-log10(pval)'] = -np.log10(data_to_plot['pval'])
 
-    # Only keep the relevant columns
-    keep_cols = list([enrich_geneset_id_col, pval_col, metadata_geneset_id_col, color_category_col, program_name_col] + annotation_cols)
-    enrich_ps = enrich_ps[keep_cols]
-
-    # Sort by P-value
-    enrich_ps = enrich_ps.drop_duplicates().sort_values(by=[color_category_col, pval_col])
-
-    # If the input P-value == 0, then replace it with the lowest non-zero P-value in the dataframe
-    min_value = enrich_ps.query(f"`{pval_col}` > 0")[pval_col].min()
-
-    # Compute the -log(10) P-value and deal with edge-cases (e.g. P=0, P=1)
-    enrich_ps.loc[enrich_ps[pval_col] == 0, pval_col] = min_value  # Replace P=0 with min non-0 p-value
-    enrich_ps['-log10(p-value)'] = abs(-1 * np.log10(enrich_ps[pval_col]))
-
-    enrich_ps.reset_index(drop=True, inplace=True)
-
-    return enrich_ps
+    # Example plot using Plotly (replace with your actual plotting code)
+    fig = scatterplot(
+        data=data_to_plot,
+        x_column='program',
+        y_column='-log10(pval)',
+        title='',
+        x_axis_title='Program',
+        y_axis_title='-log10(p-value)',
+    )
+    return fig
 
 
 @callback(
-    Output('phewas-plot-binary', 'figure'),
+    Output('phewas-binary-plot', 'figure'),
     Input('run-selector', 'value')
 )
-def update_phewas_plot_binary(selected_run):
+def update_phewas_binary_plot(selected_run):
 
     # Assuming we want to plot something from the selected run
     data_to_plot = results['trait_enrichments'][selected_run]
@@ -378,6 +399,45 @@ def update_phewas_plot_binary(selected_run):
         y='-log10(p-value)',
         color='trait_category',
         title="Endothelial Cell Programs x GWAS Binary Outcome Enrichments",
+        hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
+    )
+
+    # Customize layout
+    fig.update_layout(
+        xaxis_title='trait_reported',
+        yaxis_title='-log10(p-value)',
+        yaxis=dict(tickformat=".1f"),
+        width=1000,
+        height=800,
+        xaxis_tickfont=dict(size=4)
+    )
+
+    # Add horizontal dashed line for significance threshold
+    fig.add_hline(y=-np.log10(0.05), line_dash="dash",
+                    annotation_text='Significance Threshold (0.05)', annotation_position="top right")
+
+    return fig
+
+
+@callback(
+    Output('phewas-continuous-plot', 'figure'),
+    Input('run-selector', 'value')
+)
+def update_phewas_continuous_plot(selected_run):
+
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['trait_enrichments'][selected_run]
+    data_to_plot = process_enrichment_data(
+        enrich_res=data_to_plot,
+        metadata=phewas_metadata,
+    )
+
+    fig = px.scatter(
+        data_to_plot.query("trait_category == 'measurement'"),
+        x='trait_reported',
+        y='-log10(p-value)',
+        color='trait_category',
+        title="Endothelial Cell Programs x GWAS Continuous Outcome Enrichments",
         hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
     )
 

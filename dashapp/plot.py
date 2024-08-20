@@ -75,6 +75,7 @@ def scatterplot(
     
     return fig
 
+
 def barplot(
     data: pd.DataFrame,
     x_column: str,
@@ -128,6 +129,7 @@ def barplot(
         xaxis=dict(showticklabels=show_xaxis_labels)
     )
     return fig
+
 
 def lollipop_plot(
     data: pd.DataFrame,
@@ -236,4 +238,59 @@ def stacked_barplot(
         xaxis=dict(showticklabels=show_xaxis_labels)
     )
 
+    return fig
+
+
+def boxplot(
+    data: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    title: str,
+    x_axis_title: str = None,
+    y_axis_title: str = None,
+    show_xaxis_labels: bool = True
+):
+    """Create a layout for a box plot.
+
+    Parameters
+    ----------
+    app : Dash
+        The Dash app instance.
+    data : pd.DataFrame
+        DataFrame containing the data for the plot.
+    x_column : str
+        The column to use for the x-axis.
+    y_column : str
+        The column to use for the y-axis.
+    filter_column : str
+        The column to apply the filter on.
+    starting_filter_value : float
+        Initial filter value.
+    title : str
+        Title of the plot.
+    x_axis_title : str, optional
+        Title for the x-axis.
+    y_axis_title : str, optional
+        Title for the y-axis.
+    id_suffix : str, optional
+        Suffix to add to the id of the input and output components to ensure uniqueness.
+    show_xaxis_labels : bool, optional
+        Whether to show x-axis labels.
+
+    Returns
+    -------
+    html.Div
+        A Div containing the filter controls and box plot.
+    """
+    fig = px.box(
+        data,
+        x=x_column,
+        y=y_column,
+        template='plotly_white'
+    ).update_layout(
+        title=title,
+        xaxis_title=x_axis_title if x_axis_title else x_column,
+        yaxis_title=y_axis_title if y_axis_title else y_column,
+        xaxis=dict(showticklabels=show_xaxis_labels)
+    )
     return fig

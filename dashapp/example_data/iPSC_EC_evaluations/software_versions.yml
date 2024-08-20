@@ -1,0 +1,17 @@
+inference_software_versions:
+  cnmf: 0.0.q
+  numpy: 1.20.2
+  pandas: 1.2.4
+evaluation_software_versions:
+  gene_program_evaluation: 0.0.1
+  mudata: 0.0.1
+  joblib: 1.0.1
+  scipy: 1.6.2
+  numpy: 1.20.2
+  pandas: 1.2.4
+  scikit-learn: 0.24.2
+  scikit-posthocs: 0.6.6
+  seaborn: 0.11.1
+  gseapy: 0.10.1
+  pymemesuite: 0.0.1
+  google-cloud-bigquery: 2.26.0
