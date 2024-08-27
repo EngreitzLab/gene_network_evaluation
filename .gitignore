@@ -2,7 +2,7 @@
 *.snakemake
 archive/
 
-dashapp/example_data/**/*.h5mu
+dashapp/examples/**/*.h5mu
 
 archive/
 **/resources/*
