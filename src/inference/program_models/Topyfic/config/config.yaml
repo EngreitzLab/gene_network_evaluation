@@ -4,15 +4,15 @@ names: ['parse', '10x']
 
 count_adata:
   parse:
-    /Users/nargesrezaie/Documents/MortazaviLab/Topyfic/workflow/snakemake/resources/Bridge_LeftCortex_Parse_harmony_annotated_Topyfic_regGene.h5ad
+    snakemake/resources/Bridge_LeftCortex_Parse_harmony_annotated_Topyfic_regGene.h5ad
   10x:
-    /Users/nargesrezaie/Documents/MortazaviLab/Topyfic/workflow/snakemake/resources/Bridge_LeftCortex_10x_harmony_annotated_Topyfic_regGene.h5ad
+    snakemake/resources/Bridge_LeftCortex_10x_harmony_annotated_Topyfic_regGene.h5ad
 
-n_topics: [5, 10] #, 15, 20, 25, 30, 35, 40, 45, 50]
+n_topics: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
 
 organism: mouse # human or mouse
 
-workdir: /Users/nargesrezaie/Documents/MortazaviLab/Topyfic/workflow/snakemake/results/
+workdir: snakemake/results/
 
 train:
   n_runs: 100
