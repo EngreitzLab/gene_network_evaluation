@@ -22,7 +22,6 @@ results = cache.get("results")
 html_rep = results["mdata"]
 obsms = results["obsms"]
 
-
 # Get the columns that don't have the selected dim reduction prefix
 default_dim_reduction = 'X_umap' if 'X_umap' in obsms else list(obsms.keys())[0]
 no_reduce_columns = [col for col in obsms[default_dim_reduction].columns if not col.startswith(default_dim_reduction)]
@@ -71,7 +70,7 @@ layout = dbc.Container([
             dbc.Row([
                 # Plot occupies half the space
                 dbc.Col([
-                    dcc.Graph(id='dim-reduction-scatter', className="mt-3"),
+                    dcc.Graph(id='overview-dim-reduction-scatter', className="mt-3"),
                 ], width=6),  # Half the width
                 
                 # Legend occupies the other half
@@ -126,7 +125,7 @@ def map_categories_to_colors(categories):
 
 # Callback to update the scatter plot and legend based on selected dim reduction and covariate
 @dash.callback(
-    [Output('dim-reduction-scatter', 'figure'),
+    [Output('overview-dim-reduction-scatter', 'figure'),
      Output('legend', 'children')],
     [Input('dim-reduction-selector', 'value'), Input('covariate-selector', 'value')]
 )

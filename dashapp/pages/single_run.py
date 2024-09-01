@@ -160,7 +160,6 @@ def update_explained_variance_plot(
     return fig
 
 
-
 @callback(
     Output('num-enriched-genesets', 'figure'),
     [Input('run-selector', 'value')]
@@ -170,9 +169,9 @@ def update_num_enriched_genesets_plot(
     debug=True,
     unique=False,
     categorical_var = "program_name",
-    count_var = "Term",
-    sig_var = "FDR q-val",
-    sig_threshold = 0.25
+    count_var = "term",
+    sig_var = "adj_pval",
+    sig_threshold = 0.05
 ):
 
     if debug:
@@ -230,7 +229,7 @@ def update_num_enriched_motifs_plot(
     categorical_var = "program_name",
     count_var = "motif",
     sig_var = "pval",
-    sig_threshold = 0.75
+    sig_threshold = 0.05
 ):
 
     if debug:
@@ -287,8 +286,8 @@ def update_num_enriched_traits_plot(
     unique=False,
     categorical_var = "program_name",
     count_var = "trait_reported",
-    sig_var = "FDR q-val",
-    sig_threshold = 0.25
+    sig_var = "adj_pval",
+    sig_threshold = 0.05
 ):
     
     if debug:
@@ -343,8 +342,8 @@ def update_num_perturbation_associations_plot(
     selected_run, 
     debug=True,
     unique=False,
-    categorical_var = "program",
-    count_var = "guide_name",
+    categorical_var = "program_name",
+    count_var = "target_name",
     sig_var = "pval",
     sig_threshold = 0.25
 ):
@@ -405,16 +404,24 @@ def update_phewas_binary_plot(selected_run):
     fig = px.scatter(
         data_to_plot.query("trait_category != 'measurement'"),
         x='trait_reported',
-        y='-log10(p-value)',
+        y='-log10(adj_pval)',
         color='trait_category',
         title="",
-        hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
+        hover_data=[
+            "program_name", 
+            "trait_reported", 
+            "trait_category", 
+            "adj_pval", 
+            "genes", 
+            "study_id", 
+            "pmid"
+        ]
     )
 
     # Customize layout
     fig.update_layout(
         xaxis_title='trait_reported',
-        yaxis_title='-log10(p-value)',
+        yaxis_title='-log10(adj_pval)',
         yaxis=dict(tickformat=".1f"),
         width=1000,
         height=800,
@@ -445,16 +452,24 @@ def update_phewas_continuous_plot(selected_run):
     fig = px.scatter(
         data_to_plot.query("trait_category == 'measurement'"),
         x='trait_reported',
-        y='-log10(p-value)',
+        y='-log10(adj_pval)',
         color='trait_category',
         title="",
-        hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
+        hover_data=[
+            "program_name", 
+            "trait_reported", 
+            "trait_category", 
+            "adj_pval", 
+            "genes", 
+            "study_id", 
+            "pmid"
+        ]
     )
 
     # Customize layout
     fig.update_layout(
         xaxis_title='trait_reported',
-        yaxis_title='-log10(p-value)',
+        yaxis_title='-log10(adj_pval)',
         yaxis=dict(tickformat=".1f"),
         width=1000,
         height=800,
@@ -463,7 +478,11 @@ def update_phewas_continuous_plot(selected_run):
     )
 
     # Add horizontal dashed line for significance threshold
-    fig.add_hline(y=-np.log10(0.05), line_dash="dash",
-                    annotation_text='Significance Threshold (0.05)', annotation_position="top right")
+    fig.add_hline(
+        y=-np.log10(0.05), 
+        line_dash="dash",
+        annotation_text='Significance Threshold (0.05)', 
+        annotation_position="top right"
+    )
 
     return fig

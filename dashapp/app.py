@@ -15,10 +15,12 @@ from uuid import uuid4
 from parse import parse
 from utils import infer_dashboard_type
 
+
 def load_config(config_path):
     with open(config_path, 'r') as config_file:
         return yaml.safe_load(config_file)
     
+
 def create_dash_app(config):
     
     # Setup cache
@@ -32,7 +34,7 @@ def create_dash_app(config):
     @cache.memoize()
     def load_and_parse_data(
         path_mdata,
-        path_pipeline_outs,
+        path_evaluation_outs,
         data_key="rna",
         categorical_keys=[],
     ):
@@ -41,12 +43,12 @@ def create_dash_app(config):
             # Load mdata
             mdata = mudata.read_h5mu(path_mdata)
             mdata.mod = collections.OrderedDict(sorted(mdata.mod.items()))
-
-            # Get subdirectories
-            subdirs = [x[0] for x in os.walk(path_pipeline_outs)][1:]
             
             # Parse data
-            results = parse(mdata, subdirs, data_key)
+            results = parse(mdata, path_evaluation_outs, data_key)
+            print('here')
+            print(path_evaluation_outs)
+            print(results['explained_variance_ratios'])
             
             # Add MuData HTML representation
             with mudata.set_options(display_style="html", display_html_expand=0b000):
@@ -75,14 +77,14 @@ def create_dash_app(config):
 
         
     # Parse config for paths
-    path_out = config["path_out"]
+    path_evaluation_outs = config["path_evaluation_outs"]
     path_mdata = config["path_mdata"]
+    path_report_out = config["path_report_out"]
     data_key = config["data_key"]
     categorical_keys = config["categorical_keys"]
-    os.makedirs(path_out, exist_ok=True)
     
     # Set up logging to print to console and also to file in path_out (evaluation_pipeline.log) with overwrite
-    log_path = os.path.join(path_out, 'reports_pipeline.log')
+    log_path = os.path.join(path_report_out, 'reports_pipeline.log')
     if os.path.exists(log_path):
         os.remove(log_path)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[
@@ -91,25 +93,23 @@ def create_dash_app(config):
     ])
 
     # Log configuration
-    logging.info(f"Configuration: {config}")
+    for key, value in config.items():
+        logging.info(f"{key}: {value}")
 
     # Load and parse data
     results = load_and_parse_data(
         path_mdata=path_mdata,
-        path_pipeline_outs=path_out,
+        path_evaluation_outs=path_evaluation_outs,
         data_key=data_key,
         categorical_keys=categorical_keys
     )
+    
     cache.set('results', results)
     print(f"Loaded main data: {results.keys()}")
     
     # Get program keys from methods in results
     prog_keys = list(results["methods"].keys())
     print(f"Program keys: {prog_keys}")
-
-    # Get all subdirectories of the pipeline outputs
-    subdirs = [x[0] for x in os.walk(path_out)][1:]
-    print(f"Subdirectories: {subdirs}")
 
     # Dashboard 
     dashboard_type = infer_dashboard_type(prog_keys)
@@ -124,10 +124,6 @@ def create_dash_app(config):
         suppress_callback_exceptions=True
     )
     app.title = "Gene Program Evaluation Dashboard v0.0.1"
-
-    # If the dashboard type is single_run, then we want to remove pages.cross_run
-    if dashboard_type == "single_run":
-        del dash.page_registry["pages.cross_run"]
 
     # Create sidebar for page navigation
     sidebar = dbc.Nav(
@@ -183,5 +179,7 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     config = load_config(args.config)
+    path_report_out = config["path_report_out"]
+    os.makedirs(path_report_out, exist_ok=True)
     app = create_dash_app(config)
     app.run_server(debug=True, host='0.0.0.0', port=8050)

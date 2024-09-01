@@ -17,18 +17,19 @@ def parse_methods(mdata, data_key="rna"):
     return methods, n_components
 
 
-def parse_explained_variance(subdirs):
+def parse_explained_variance(dirs):
     explained_variance_ratios = {}
     cumulative_explained_variance = {}
-    for subdir in subdirs:
+    for dir in dirs:
         try:
-            run_name = os.path.basename(subdir)
-            df = pd.read_csv(os.path.join(subdir, "explained_variance_ratio.txt"), sep="\t")
+            run_name = os.path.basename(dir)
+            explained_variance_ratio_file = os.path.join(dir, "explained_variance_ratio.txt")
+            df = pd.read_csv(explained_variance_ratio_file, sep="\t")
             df.columns = ["program_name", "explained_variance_ratio"]
             explained_variance_ratios[run_name] = df
             cumulative_explained_variance[run_name] = df["explained_variance_ratio"].sum()
         except FileNotFoundError:
-            print(f"File not found: {subdir}")
+            print(f"File not found: {explained_variance_ratio_file}")
     return explained_variance_ratios, cumulative_explained_variance
 
 
@@ -68,12 +69,12 @@ def parse_obs_memberships(mdata, data_key="rna"):
     return obs_memberships
 
 
-def parse_geneset_enrichments(subdirs):
+def parse_geneset_enrichments(dirs):
     geneset_enrichments = {}
-    for subdir in subdirs:
+    for dir in dirs:
         try:
-            run_name = os.path.basename(subdir)
-            gene_set_enrichment_file = os.path.join(subdir, "geneset_enrichment.txt")
+            run_name = os.path.basename(dir)
+            gene_set_enrichment_file = os.path.join(dir, "geneset_enrichment.txt")
             gene_set_enrichment_df = pd.read_csv(gene_set_enrichment_file, sep="\t")
             geneset_enrichments[run_name] = gene_set_enrichment_df
         except FileNotFoundError:
@@ -82,12 +83,12 @@ def parse_geneset_enrichments(subdirs):
     return geneset_enrichments
 
 
-def parse_motif_enrichments(subdirs):
+def parse_motif_enrichments(dirs):
     motif_enrichments = {}
-    for subdir in subdirs:
+    for dir in dirs:
         try:
-            run_name = os.path.basename(subdir)
-            motif_enrichment_file = os.path.join(subdir, "motif_enrichment.txt")
+            run_name = os.path.basename(dir)
+            motif_enrichment_file = os.path.join(dir, "motif_enrichment.txt")
             motif_enrichment_df = pd.read_csv(motif_enrichment_file, sep="\t")
             motif_enrichments[run_name] = motif_enrichment_df
         except FileNotFoundError:
@@ -96,12 +97,12 @@ def parse_motif_enrichments(subdirs):
     return motif_enrichments
 
 
-def parse_trait_enrichments(subdirs):
+def parse_trait_enrichments(dirs):
     trait_enrichments = {}
-    for subdir in subdirs:
+    for dir in dirs:
         try:
-            run_name = os.path.basename(subdir)
-            trait_enrichment_file = os.path.join(subdir, "trait_enrichment_processed.txt")
+            run_name = os.path.basename(dir)
+            trait_enrichment_file = os.path.join(dir, "trait_enrichment_processed.txt")
             trait_enrichment_df = pd.read_csv(trait_enrichment_file, sep="\t")
             trait_enrichments[run_name] = trait_enrichment_df
         except FileNotFoundError:
@@ -110,12 +111,12 @@ def parse_trait_enrichments(subdirs):
     return trait_enrichments
 
 
-def parse_perturbation_associations(subdirs):
+def parse_perturbation_associations(dirs):
     perturbation_associations = {}
-    for subdir in subdirs:
+    for dir in dirs:
         try:
-            run_name = os.path.basename(subdir)
-            perturbation_association_file = os.path.join(subdir, "perturbation_association_results.txt")
+            run_name = os.path.basename(dir)
+            perturbation_association_file = os.path.join(dir, "perturbation_association_results.txt")
             perturbation_association_df = pd.read_csv(perturbation_association_file, sep="\t")
             perturbation_associations[run_name] = perturbation_association_df
         except FileNotFoundError:
@@ -126,18 +127,19 @@ def parse_perturbation_associations(subdirs):
 
 def parse(
     mdata,
-    subdirs,
+    dirs,
     data_key="rna",
 ):
+    print(f"jere are the dirs: {dirs}")
     methods, n_components = parse_methods(mdata, data_key)
-    explained_variance_ratios, cumulative_explained_variance = parse_explained_variance(subdirs)
+    explained_variance_ratios, cumulative_explained_variance = parse_explained_variance(dirs)
     loadings = parse_loadings(mdata, data_key)
     obs = parse_obs(mdata, data_key)
     obs_memberships = parse_obs_memberships(mdata, data_key)
-    geneset_enrichments = parse_geneset_enrichments(subdirs)
-    motif_enrichments = parse_motif_enrichments(subdirs)
-    trait_enrichments = parse_trait_enrichments(subdirs)
-    perturbation_associations = parse_perturbation_associations(subdirs)
+    geneset_enrichments = parse_geneset_enrichments(dirs)
+    motif_enrichments = parse_motif_enrichments(dirs)
+    trait_enrichments = parse_trait_enrichments(dirs)
+    perturbation_associations = parse_perturbation_associations(dirs)
     return {
         "methods": methods,
         "n_components": n_components,

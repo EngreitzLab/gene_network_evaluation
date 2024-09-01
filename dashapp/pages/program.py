@@ -10,6 +10,9 @@ from dash import DiskcacheManager
 import diskcache
 import plotly.express as px
 import numpy as np
+import plotly.graph_objects as go
+from dash import Output, Input, State
+ANNOTATIONS_FILE = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations/annotations.csv"
 
 
 # Register the page
@@ -28,6 +31,14 @@ default_run = list(results[default_data_type].keys())[0]
 programs = sorted(list(results[default_data_type][default_run]["program_name"].astype(str).unique()))
 default_program = programs[0]
 
+# Get the columns that don't have the selected dim reduction prefix
+obsms = results["obsms"]
+default_dim_reduction = 'X_umap' if 'X_umap' in obsms else list(obsms.keys())[0]
+no_reduce_columns = [col for col in obsms[default_dim_reduction].columns if not col.startswith(default_dim_reduction)]
+default_covariate = 'sample' if 'sample' in obsms[default_dim_reduction] else no_reduce_columns[0]
+print(f"Default covariate: {default_covariate}")
+
+# Create the layout using tabs for each section
 layout = dbc.Container([
     
     # Title
@@ -86,13 +97,20 @@ layout = dbc.Container([
                     dcc.Input(
                         id='enriched-terms-threshold',
                         type='number',
-                        value=0.25,
+                        value=0.05,
                         min=0,
                         max=1,
                         step=0.01,
                         placeholder="Enter significance threshold"
                     ),
                     html.Div(id='enriched-terms-table', className="mb-4"),
+                ], width=12),
+            ]),
+
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Volcano Plot of Terms"),
+                    dcc.Graph(id='volcano-plot-terms'),
                 ], width=12),
             ]),
         ]),
@@ -106,13 +124,20 @@ layout = dbc.Container([
                     dcc.Input(
                         id='enriched-motifs-threshold',
                         type='number',
-                        value=0.25,
+                        value=0.05,
                         min=0,
                         max=1,
                         step=0.01,
                         placeholder="Enter significance threshold"
                     ),
                     html.Div(id='enriched-motifs-table', className="mb-4"),
+                ], width=12),
+            ]),
+
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Volcano Plot of Motifs"),
+                    dcc.Graph(id='volcano-plot-motifs'),
                 ], width=12),
             ]),
             html.H3("Motif Logo for selected motif", className="mt-3 mb-3"),
@@ -128,7 +153,7 @@ layout = dbc.Container([
                     dcc.Input(
                         id='enriched-traits-threshold',
                         type='number',
-                        value=0.25,
+                        value=0.05,
                         min=0,
                         max=1,
                         step=0.01,
@@ -138,26 +163,101 @@ layout = dbc.Container([
                 ], width=12),
             ]),
             
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Volcano Plot of Traits"),
+                    dcc.Graph(id='volcano-plot-traits'),
+                ], width=12),
+            ]),
+
             html.H3("Phewas Plot for Selected Program", className="mt-3 mb-3"),
             dcc.Graph(id='phewas-binary-program-plot'),
+
+            html.H3("Phewas Plot for Continuous Traits", className="mt-3 mb-3"),
+            dcc.Graph(id='phewas-continuous-program-plot'),
         ]),
 
         # Tab 5: Categorical Association
         dcc.Tab(label='Categorical Association', children=[
             html.H2("Categorical Association Analysis", className="mt-4 mb-3"),
-            html.P("Boxplot", className="mb-3"),
-            dcc.Graph(id='categegotical-association-program-plot'),
+            
+            # Dropdown for selecting covariate
+            dbc.Row([
+                dbc.Col([
+                    html.Label("Select Covariate"),
+                    dcc.Dropdown(
+                        id='program-covariate-selector',
+                        options=["sample"],  # Will be populated based on dim reduction
+                        value=default_covariate,
+                        clearable=False
+                    )
+                ], width=6),
+            ], className="mb-4"),
+
+            # Boxplot
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Boxplot of Categorical Association"),
+                    dcc.Graph(id='categorical-association-program-plot'),
+                ], width=12),
+            ]),
+
+            # Dropdowns for selecting dim reduction
+            dbc.Col([
+                    html.Label("Select Dimensionality Reduction"),
+                    dcc.Dropdown(
+                        id='program-dim-reduction-selector',
+                        options=[{'label': key, 'value': key} for key in obsms.keys()],
+                        value=default_dim_reduction,
+                        clearable=False
+                    )
+                ], width=6),
+
+            # Scatter plot and legend side by side
+            dbc.Row([
+                # Plot occupies half the space
+                dbc.Col([
+                    html.H3("Scatter Plot of Dimensionality Reduction"),
+                    dcc.Graph(id='program-dim-reduction-scatter', className="mt-3"),
+                ], width=6),  # Half the width
+                # Same plot but with selected covariate
+                dbc.Col([
+                    html.H3("Scatter Plot of Dimensionality Reduction with Covariate"),
+                    dcc.Graph(id='program-dim-reduction-covariate-scatter', className="mt-3"),
+                ], width=6),  # Half the width
+            ]),
         ]),
 
         # Tab 6: Perturbation
-        dcc.Tab(label='Perturbation', children=[
-            html.H2("Perturbation", className="mt-4 mb-3"),
-            html.P("Add any perturbation analysis here.", className="mb-3"),
-            dcc.Graph(id='perturbation-plot'),
+        dcc.Tab(label='Perturbation Association', children=[
+            html.H2("Perturbation Association Results", className="mt-4 mb-3"),
+
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Table of Associated Perturbations"),
+                    dcc.Input(
+                        id='perturbation-threshold',
+                        type='number',
+                        value=0.05,
+                        min=0,
+                        max=1,
+                        step=0.01,
+                        placeholder="Enter significance threshold"
+                    ),
+                    html.Div(id='perturbation-table', className="mb-4"),
+                ], width=12),
+            ]),
+
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Volcano Plot of Perturbations"),
+                    dcc.Graph(id='volcano-plot-perturbations'),
+                ], width=12),
+            ]),
         ]),
 
         # Tab 7: Annotations
-        dcc.Tab(label='Annotations', children=[
+        dcc.Tab(label='Add annotations', children=[
             html.H2("Type in Annotation", className="mt-4 mb-3"),
             dbc.Row([
                 dbc.Col([
@@ -175,11 +275,12 @@ layout = dbc.Container([
                 ], width=12),
             ]),
         ]),
+
     ])
 ], fluid=True, className="p-4")
 
 
-
+# Callback for gene loadings plot
 @callback(
     Output('gene-loadings-plot', 'figure'),
     [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('gene-loadings-n', 'value')]
@@ -227,9 +328,9 @@ def update_enriched_terms_table(
     selected_run, 
     selected_program, 
     sig_threshold,
-    debug=True,
+    debug=False,
     categorical_var = "program_name",
-    sig_var = "FDR q-val",
+    sig_var = "adj_pval",
 ):  
 
     if debug:
@@ -246,6 +347,9 @@ def update_enriched_terms_table(
 
     # Filter data for significant terms
     data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+
+    # Sort data by adj_pval
+    data_to_plot = data_to_plot.sort_values(by=sig_var)
 
     if data_to_plot.empty:
         print("No significant terms found.")
@@ -271,6 +375,46 @@ def update_enriched_terms_table(
     )
 
     return table
+
+
+# Callback for volcano plot of terms
+@callback(
+    Output('volcano-plot-terms', 'figure'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_volcano_plot_terms(
+    selected_run,
+    selected_program,
+    categorical_var = "term",
+    sig_var = "adj_pval",
+    debug=False,
+):
+
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['geneset_enrichments'][selected_run]
+
+    # Filter data for the selected program
+    data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
+
+    # -log10 transform adj_pvals
+    data_to_plot[f'-log10({sig_var})'] = -np.log10(data_to_plot[sig_var])
+    
+    # Make sure x-axis is string
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
+
+    # Example plot using Plotly (replace with your actual plotting code)
+    fig = scatterplot(data=data_to_plot,
+        x_column=categorical_var,
+        y_column=f'-log10({sig_var})',
+        title='',
+        x_axis_title=categorical_var,
+        y_axis_title=f'-log10({sig_var})',
+    )
+    return fig
+
 
 # Callback for motif enrichment table
 @callback(
@@ -300,6 +444,9 @@ def update_enriched_motifs_table(
 
     # Filter data for significant terms
     data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+    
+    # Sort data by adj_pval
+    data_to_plot = data_to_plot.sort_values(by=sig_var)
 
     if data_to_plot.empty:
         print("No significant motifs found.")
@@ -327,6 +474,46 @@ def update_enriched_motifs_table(
     return table
 
 
+# Callback for volcano plot of motifs
+@callback(
+    Output('volcano-plot-motifs', 'figure'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_volcano_plot_motifs(
+    selected_run,
+    selected_program,
+    categorical_var = "motif",
+    sig_var = "pval",
+    debug=False,
+):
+
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['motif_enrichments'][selected_run]
+
+    # Filter data for the selected program
+    data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
+
+    # -log10 transform adj_pvals
+    data_to_plot[f'-log10({sig_var})'] = -np.log10(data_to_plot[sig_var])
+
+    # Make sure x-axis is string
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
+
+    # Example plot using Plotly (replace with your actual plotting code)
+    fig = scatterplot(
+        data=data_to_plot,
+        x_column=categorical_var,
+        y_column=f'-log10({sig_var})',
+        title='',
+        x_axis_title=categorical_var,
+        y_axis_title=f'-log10({sig_var})',
+    )
+    return fig
+
+
 # Callback for trait enrichment table
 @callback(
     Output('enriched-traits-table', 'children'),
@@ -337,8 +524,8 @@ def update_enriched_traits_table(
     selected_program,
     sig_threshold,
     categorical_var = "program_name",
-    sig_var = "FDR q-val",
-    debug=True,
+    sig_var = "adj_pval",
+    debug=False,
 ):
 
     if debug:
@@ -355,6 +542,9 @@ def update_enriched_traits_table(
 
     # Filter data for significant terms
     data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+
+    # Sort data by adj_pval
+    data_to_plot = data_to_plot.sort_values(by=sig_var)
 
     if data_to_plot.empty:
         print("No significant traits found.")
@@ -382,6 +572,47 @@ def update_enriched_traits_table(
     return table
 
 
+# Callback for volcano plot of traits
+@callback(
+    Output('volcano-plot-traits', 'figure'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_volcano_plot_traits(
+    selected_run,
+    selected_program,
+    categorical_var = "trait_reported",
+    sig_var = "adj_pval",
+    debug=False,
+):
+
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['trait_enrichments'][selected_run]
+
+    # Filter data for the selected program
+    data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
+
+    # -log10 transform adj_pvals
+    data_to_plot[f'-log10({sig_var})'] = -np.log10(data_to_plot[sig_var])
+
+    # Make sure x-axis is string
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
+
+    # Example plot using Plotly (replace with your actual plotting code)
+    fig = scatterplot(
+        data=data_to_plot,
+        x_column=categorical_var,
+        y_column=f'-log10({sig_var})',
+        title='',
+        x_axis_title=categorical_var,
+        y_axis_title=f'-log10({sig_var})',
+    )
+    return fig
+
+
+# Callback for phewas binary plot
 @callback(
     Output('phewas-binary-program-plot', 'figure'),
     [Input('run-selector', 'value'), Input('program-selector', 'value')]
@@ -404,16 +635,16 @@ def update_phewas_binary_plot(
     fig = px.scatter(
         data_to_plot.query("trait_category != 'measurement'"),
         x='trait_reported',
-        y='-log10(p-value)',
+        y='-log10(adj_pval)',
         color='trait_category',
         title="",
-        hover_data=["program_name", "trait_reported", "trait_category", "FDR q-val", "Lead_genes", "study_id", "pmid"]
+        hover_data=["program_name", "trait_reported", "trait_category", "adj_pval", "genes", "study_id", "pmid"]
     )
 
     # Customize layout
     fig.update_layout(
         xaxis_title='trait_reported',
-        yaxis_title='-log10(p-value)',
+        yaxis_title='-log10(adj_pval)',
         yaxis=dict(tickformat=".1f"),
         width=1000,
         height=800,
@@ -432,80 +663,294 @@ def update_phewas_binary_plot(
     return fig
 
 
-# Callback for covariate association plot
+# Callback for phewas continuous plot
 @callback(
-    Output('categegotical-association-program-plot', 'figure'),
+    Output('phewas-continuous-program-plot', 'figure'),
     [Input('run-selector', 'value'), Input('program-selector', 'value')]
 )
-def update_covariate_association_plot(selected_run, selected_program, debug=True):
+def update_phewas_continuous_plot(
+    selected_run,
+    selected_program,
+    debug=False,
+):
+    
+        # Assuming we want to plot something from the selected run
+        data_to_plot = results['trait_enrichments'][selected_run]
+    
+        # Filter data for the selected program
+        data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
+    
+        # Filter data for continuous traits
+        data_to_plot = data_to_plot.query("trait_category == 'measurement'")
+    
+        fig = px.scatter(
+            data_to_plot,
+            x='trait_reported',
+            y='-log10(adj_pval)',
+            color='trait_category',
+            title="",
+            hover_data=["program_name", "trait_reported", "trait_category", "adj_pval", "genes", "study_id", "pmid"]
+        )
+    
+        # Customize layout
+        fig.update_layout(
+            xaxis_title='trait_reported',
+            yaxis_title='-log10(adj_pval)',
+            yaxis=dict(tickformat=".1f"),
+            width=1000,
+            height=800,
+            xaxis_tickfont=dict(size=4),
+            plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
+        )
+    
+        # Add horizontal dashed line for significance threshold
+        fig.add_hline(
+            y=-np.log10(0.05), 
+            line_dash="dash",
+            annotation_text='Significance Threshold (0.05)', 
+            annotation_position="top right"
+        )
+    
+        return fig
+
+
+# Callback for covariate association plot
+@callback(
+    Output('categorical-association-program-plot', 'figure'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('program-covariate-selector', 'value')]
+)
+def update_covariate_association_plot(
+    selected_run, 
+    selected_program, 
+    selected_covariate, 
+    debug=False
+):
 
     if debug:
-        print(f"Selected run: {selected_run}, program: {selected_program}")
+        print(f"Selected run: {selected_run}, program: {selected_program}, covariate: {selected_covariate}")
 
+    if selected_covariate is None:
+        return go.Figure()
+    
     curr_obs = results['obs'][selected_run]
     curr_obs_membership = results['obs_memberships'][selected_run]
-    concat_df = pd.concat([curr_obs_membership[selected_program], curr_obs["sample"]], axis=1)
+    concat_df = pd.concat([curr_obs_membership[selected_program], curr_obs[selected_covariate]], axis=1)
     
     fig = boxplot(
         concat_df, 
         x_column=selected_program, 
-        y_column="sample", 
+        y_column=selected_covariate, 
         title="",
         x_axis_title="Cell membership value",
-        y_axis_title="Sample",
+        y_axis_title=selected_covariate,
     )
 
     return fig
 
 
+# Callback to update the scatter plot and legend based on selected dim reduction and covariate
 @callback(
-    Output('perturbation-plot', 'figure'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+    Output('program-dim-reduction-scatter', 'figure'),
+    [Input('program-dim-reduction-selector', 'value'), Input('run-selector', 'value'), Input('program-selector', 'value')]
 )
-def update_perturbation_association_plot(
-    selected_run, 
-    selected_program=None,
-    categorical_var = "program",
-    sig_var = "pval",
-    sig_threshold = 0.25,
+def update_program_dim_reduction_plot(
+    selected_dim_reduction,
+    selected_run,
+    selected_program,
     debug=False
 ):
+    
     if debug:
-        print(f"Selected run: {selected_run}", f"Selected program: {selected_program}", f"Sig threshold: {sig_threshold}")
+        print(f"Selected dim reduction: {selected_dim_reduction}, selected run: {selected_run}, selected program: {selected_program}")
 
-    # Assuming we want to plot something from the selected run
-    data_to_plot = results['perturbation_associations'][selected_run]
+    if selected_dim_reduction is None:
+        return go.Figure(), html.Div()  # Return an empty figure and legend placeholder
+
+    # Get vector of continuous values for the program membership
+    curr_obs = results['obs'][selected_run]
+    print(curr_obs)
+    curr_obs_membership = results['obs_memberships'][selected_run][selected_program]
+    print(f"Current obs membership: {curr_obs_membership}")
+
+    # Extract the relevant data for plotting (they will be selected_dim_reduction_0 and selected_dim_reduction_1)
+    data = obsms[selected_dim_reduction][[f'{selected_dim_reduction}_0', f'{selected_dim_reduction}_1']]
+    data.columns = ['X', 'Y']
+
+    # Plot using the scatterplot function
+    fig = scatterplot(
+        data=data,
+        x_column="X",
+        y_column="Y",
+        sorted=False,
+        title='',
+        x_axis_title=f'{selected_dim_reduction}1',
+        y_axis_title=f'{selected_dim_reduction}2',
+        colors=curr_obs_membership
+    )
+    
+    return fig
+
+
+# Callback to update the scatter plot and legend based on selected dim reduction and covariate
+import numpy as np
+import matplotlib.pyplot as plt
+tab20 = plt.get_cmap('tab20').colors
+
+# Generate a larger categorical colormap using matplotlib
+def generate_large_colormap(num_colors):
+    cmap = plt.get_cmap('tab20b', num_colors)
+    colors = [f'rgba({int(r*255)}, {int(g*255)}, {int(b*255)}, 0.8)' for r, g, b, _ in cmap(np.linspace(0, 1, num_colors))]
+    return colors
+
+# Helper function to map categories to colors
+def map_categories_to_colors(categories):
+    unique_categories = sorted(categories.unique())
+    colors = generate_large_colormap(len(unique_categories))
+    color_map = {category: color for category, color in zip(unique_categories, colors)}
+    return categories.map(color_map).tolist(), color_map
+
+@callback(
+    Output('program-dim-reduction-covariate-scatter', 'figure'),
+    [Input('program-dim-reduction-selector', 'value'), Input('run-selector', 'value'), Input('program-covariate-selector', 'value')]
+)
+def update_program_dim_reduction_covariate_plot(
+    selected_dim_reduction,
+    selected_run,
+    selected_covariate,
+    debug=True
+):
+    
+    if debug:
+        print(f"Selected dim reduction: {selected_dim_reduction}, selected run: {selected_run}, selected covariate: {selected_covariate}")
+
+    if selected_dim_reduction is None or selected_covariate is None:
+        return go.Figure(), html.Div()
+    
+    # Extract the relevant data for plotting (they will be selected_dim_reduction_0 and selected_dim_reduction_1)
+    data = obsms[selected_dim_reduction][[f'{selected_dim_reduction}_0', f'{selected_dim_reduction}_1', selected_covariate]]
+    data.columns = ['X', 'Y', selected_covariate]
+
+    # Map covariate categories to more colors
+    colors, color_map = map_categories_to_colors(data[selected_covariate])
+
+    # Plot using the scatterplot function
+    fig = scatterplot(
+        data=data,
+        x_column="X",
+        y_column="Y",
+        sorted=False,
+        title='',
+        x_axis_title=f'{selected_dim_reduction}1',
+        y_axis_title=f'{selected_dim_reduction}2',
+        colors=colors
+    )
+
+    return fig
+
+
+# Callback for perturbation table
+@callback(
+    Output('perturbation-table', 'children'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('perturbation-threshold', 'value')]
+)
+def update_perturbation_table(
+    selected_run, 
+    selected_program, 
+    sig_threshold,
+    debug=True,
+    categorical_var = "target_name",
+    sig_var = "pval",
+):
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}, sig_threshold: {sig_threshold}")
+
+    # Retrieve the relevant data
+    data_to_plot = results['perturbation_associations'].get(selected_run, pd.DataFrame())
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
 
     # Filter data for the selected program
-    data_to_plot = data_to_plot[data_to_plot[categorical_var] == selected_program]
+    data_to_plot = data_to_plot[data_to_plot['program_name'].astype(str) == selected_program]
 
     # Filter data for significant terms
     data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+    
+    # Sort data by adj_pval
+    data_to_plot = data_to_plot.sort_values(by=sig_var)
 
     if data_to_plot.empty:
         print("No significant perturbation associations found.")
         return html.Div("No significant perturbation associations found.")
 
-    # -log10 transform p-values
-    data_to_plot['-log10(pval)'] = -np.log10(data_to_plot['pval'])
+    # Create a DataTable
+    table = dash_table.DataTable(
+        id='perturbation-data-table',
+        columns=[{"name": col, "id": col} for col in data_to_plot.columns],
+        data=data_to_plot.to_dict('records'),
+        filter_action="native",  # Enables filtering
+        sort_action="native",    # Enables sorting
+        page_size=10,            # Number of rows per page
+        style_table={'overflowX': 'auto'},  # Scrollable horizontally if too wide
+        style_cell={
+            'textAlign': 'left',  # Align text to the left
+            'padding': '5px',
+        },
+        style_header={
+            'backgroundColor': 'rgb(230, 230, 230)',
+            'fontWeight': 'bold'
+        },
+    )
+
+    return table
+
+
+# Callback for perturbation association plot
+@callback(
+    Output('volcano-plot-perturbations', 'figure'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+)
+def update_perturbation_association_plot(
+    selected_run, 
+    selected_program,
+    categorical_var = "target_name",
+    sig_var = "pval",
+    sig_threshold = 0.05,
+    debug=True
+):
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}")
+
+    # Retrieve the relevant data
+    data_to_plot = results['perturbation_associations'].get(selected_run, pd.DataFrame())
+
+    # Make sure x-axis is string
+    data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
+
+    # Filter data for the selected program
+    data_to_plot = data_to_plot[data_to_plot['program_name'].astype(str) == selected_program]
+
+    # -log10 transform adj_pvals
+    data_to_plot[f'-log10({sig_var})'] = -np.log10(data_to_plot[sig_var])
+
+    # Filter data for significant terms
+    data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+
+    # Sort data by adj_pval
+    data_to_plot = data_to_plot.sort_values(by=sig_var)
 
     # Example plot using Plotly (replace with your actual plotting code)
     fig = scatterplot(
         data=data_to_plot,
-        x_column='program',
-        y_column='-log10(pval)',
-        sorted=True,
+        x_column=categorical_var,
+        y_column=f'-log10({sig_var})',
         title='',
-        x_axis_title='Program',
-        y_axis_title='-log10(p-value)',
+        x_axis_title=categorical_var,
+        y_axis_title=f'-log10({sig_var})',
     )
+
     return fig
 
-from dash import Output, Input, State
-ANNOTATIONS_FILE = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations/annotations.csv"
 
 @app.callback(
     Output('annotation-save-status', 'children'),

@@ -7,14 +7,16 @@ from ipywidgets import interact, Dropdown, Output, VBox
 import pandas as pd
 import numpy as np
 
-def process_enrichment_data(enrich_res,
-                            metadata,
-                            pval_col="P-value",
-                            enrich_geneset_id_col="Term",
-                            metadata_geneset_id_col="trait_efos",
-                            color_category_col="trait_category",
-                            program_name_col="program_name",
-                            annotation_cols=["trait_reported", "Genes", "study_id", "pmid"]):
+def process_enrichment_data(
+    enrich_res,
+    metadata,
+    pval_col="P-value",
+    enrich_geneset_id_col="Term",
+    metadata_geneset_id_col="trait_efos",
+    color_category_col="trait_category",
+    program_name_col="program_name",
+    annotation_cols=["trait_reported", "Genes", "study_id", "pmid"]
+):
 
     # Read in enrichment results
     if isinstance(enrich_res, str):
@@ -46,7 +48,7 @@ def process_enrichment_data(enrich_res,
 
     # Compute the -log(10) P-value and deal with edge-cases (e.g. P=0, P=1)
     enrich_ps.loc[enrich_ps[pval_col] == 0, pval_col] = min_value  # Replace P=0 with min non-0 p-value
-    enrich_ps['-log10(p-value)'] = abs(-1 * np.log10(enrich_ps[pval_col]))
+    enrich_ps[f'-log10({pval_col})'] = abs(-1 * np.log10(enrich_ps[pval_col]))
 
     enrich_ps.reset_index(drop=True, inplace=True)
 
