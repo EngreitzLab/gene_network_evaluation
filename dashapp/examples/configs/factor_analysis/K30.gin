@@ -1,3 +1,0 @@
-run_factor_analysis_:
-	n_components = 30
-	random_state = 1234

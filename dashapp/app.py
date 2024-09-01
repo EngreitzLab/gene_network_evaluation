@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+import logging
 import argparse
 import collections
 import mudata
@@ -33,14 +34,14 @@ def create_dash_app(config):
         path_mdata,
         path_pipeline_outs,
         data_key="rna",
-        categorical_keys=["sample"],
+        categorical_keys=[],
     ):
         try:
-            print(categorical_keys)
+            
             # Load mdata
             mdata = mudata.read_h5mu(path_mdata)
             mdata.mod = collections.OrderedDict(sorted(mdata.mod.items()))
-            
+
             # Get subdirectories
             subdirs = [x[0] for x in os.walk(path_pipeline_outs)][1:]
             
@@ -50,10 +51,8 @@ def create_dash_app(config):
             # Add MuData HTML representation
             with mudata.set_options(display_style="html", display_html_expand=0b000):
                 html_rep = mdata._repr_html_(expand=0b000)
-            with open(os.path.join(path_pipeline_outs, "mudata.html"), "w") as f:
-                f.write(html_rep)
             results["mdata"] = html_rep
-
+            
             # Add obsm data
             obsms = {}
             for obsm_key in mdata[data_key].obsm:
@@ -61,7 +60,6 @@ def create_dash_app(config):
                 rows = mdata[data_key].obs_names
                 df = pd.DataFrame(mdata[data_key].obsm[obsm_key][:, :2], columns=cols, index=rows)
                 for col in mdata.mod[data_key].obs.columns:
-                    print(col)
                     if col in categorical_keys:
                         if pd.api.types.is_categorical_dtype(mdata[data_key].obs[col]):
                             df[col] = mdata[data_key].obs[col].values
@@ -76,14 +74,29 @@ def create_dash_app(config):
             sys.exit(1)
 
         
-    # Parse config
-    path_mdata = config["output_loc"]
-    path_pipeline_outs = config["workdir"]
+    # Parse config for paths
+    path_out = config["path_out"]
+    path_mdata = config["path_mdata"]
     data_key = config["data_key"]
     categorical_keys = config["categorical_keys"]
+    os.makedirs(path_out, exist_ok=True)
+    
+    # Set up logging to print to console and also to file in path_out (evaluation_pipeline.log) with overwrite
+    log_path = os.path.join(path_out, 'reports_pipeline.log')
+    if os.path.exists(log_path):
+        os.remove(log_path)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[
+        logging.FileHandler(log_path, mode='w'),
+        logging.StreamHandler()
+    ])
+
+    # Log configuration
+    logging.info(f"Configuration: {config}")
+
+    # Load and parse data
     results = load_and_parse_data(
         path_mdata=path_mdata,
-        path_pipeline_outs=path_pipeline_outs,
+        path_pipeline_outs=path_out,
         data_key=data_key,
         categorical_keys=categorical_keys
     )
@@ -95,7 +108,7 @@ def create_dash_app(config):
     print(f"Program keys: {prog_keys}")
 
     # Get all subdirectories of the pipeline outputs
-    subdirs = [x[0] for x in os.walk(path_pipeline_outs)][1:]
+    subdirs = [x[0] for x in os.walk(path_out)][1:]
     print(f"Subdirectories: {subdirs}")
 
     # Dashboard 

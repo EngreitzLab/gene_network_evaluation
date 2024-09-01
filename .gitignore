@@ -2,9 +2,8 @@
 *.snakemake
 archive/
 
-dashapp/examples/**/*.h5mu
-
 archive/
+dashapp/examples/
 **/resources/*
 !/resources/OpenTargets_L2G_noQC.csv.gz
 !/resources/OpenTargets_L2G_Filtered.csv.gz
