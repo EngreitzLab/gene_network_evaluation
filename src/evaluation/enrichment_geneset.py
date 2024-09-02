@@ -80,7 +80,7 @@ def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='r
     return loadings
 
 # Download geneset
-def get_geneset(organism='human', library='h.all', database='msigdb'):
+def get_geneset(organism='human', library='h.all', database='msigdb', min_size: int = 0, max_size: int = 2000):
 
     if database == 'msigdb':
         msig = Msigdb()
@@ -89,7 +89,7 @@ def get_geneset(organism='human', library='h.all', database='msigdb'):
         if gmt is None:
             raise ValueError('Library does not exist')
     elif database == 'enrichr':
-        gmt = gp.get_library(name=library, organism=organism.capitalize())
+        gmt = gp.get_library(name=library, organism=organism.capitalize(), min_size=min_size, max_size=max_size)
     return gmt
 
 # Run GSEAS
@@ -181,7 +181,7 @@ def insert_enrichment(mdata, df, library="GSEA", prog_key="prog",
 def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', prog_nam=None,
                                organism='human', library='Reactome_2022', method="gsea",
                                database='enrichr', n_jobs=1, inplace=False, user_geneset=None, 
-                               loading_rank_thresh=500, **kwargs):
+                               loading_rank_thresh=500, min_size=0, max_size=2000, **kwargs):
 
     """
     Perform GSEA using loadings are preranked gene lists.
@@ -235,7 +235,7 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', prog_nam=
     if user_geneset is not None:
         geneset = user_geneset
     else:
-        geneset = get_geneset(organism, library, database)
+        geneset = get_geneset(organism, library, database, min_size=min_size, max_size=max_size)
      
     #get the gene loadings for each program
     loadings = get_program_gene_loadings(mdata, prog_key=prog_key, prog_nam=prog_nam, 

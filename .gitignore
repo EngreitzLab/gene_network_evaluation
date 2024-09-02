@@ -4,6 +4,7 @@ archive/
 
 archive/
 dashapp/examples/
+dashapp/scratch/
 **/resources/*
 !/resources/OpenTargets_L2G_noQC.csv.gz
 !/resources/OpenTargets_L2G_Filtered.csv.gz

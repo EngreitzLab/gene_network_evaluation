@@ -82,6 +82,7 @@ def create_dash_app(config):
     path_report_out = config["path_report_out"]
     data_key = config["data_key"]
     categorical_keys = config["categorical_keys"]
+    annotations_loc = config["annotations_loc"]
     
     # Set up logging to print to console and also to file in path_out (evaluation_pipeline.log) with overwrite
     log_path = os.path.join(path_report_out, 'reports_pipeline.log')
@@ -104,6 +105,15 @@ def create_dash_app(config):
         categorical_keys=categorical_keys
     )
     
+    # Add in path_report_out to results
+    results['path_report_out'] = path_report_out
+    results['path_mdata'] = path_mdata
+    results['path_evaluation_outs'] = path_evaluation_outs
+    results['data_key'] = data_key
+    results['categorical_keys'] = categorical_keys
+    results['annotations_loc'] = annotations_loc
+
+    # Cache results
     cache.set('results', results)
     print(f"Loaded main data: {results.keys()}")
     

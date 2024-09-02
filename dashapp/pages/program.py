@@ -12,7 +12,7 @@ import plotly.express as px
 import numpy as np
 import plotly.graph_objects as go
 from dash import Output, Input, State
-ANNOTATIONS_FILE = "/cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations/annotations.csv"
+import datetime
 
 
 # Register the page
@@ -22,6 +22,14 @@ dash.register_page(__name__, order=3)
 app = dash.get_app()
 cache = diskcache.Cache("./.cache")
 results = cache.get("results")
+
+# Get
+path_report_out = results["path_report_out"]
+path_mdata = results["path_mdata"]
+path_evaluation_outs = results["path_evaluation_outs"]
+data_key = results["data_key"]
+categorical_keys = results["categorical_keys"]
+annotations_loc = results["annotations_loc"]
 
 # Get the first data type and its corresponding second-level keys as default
 default_data_type = "explained_variance_ratios"
@@ -952,6 +960,7 @@ def update_perturbation_association_plot(
     return fig
 
 
+# Callback to save annotations
 @app.callback(
     Output('annotation-save-status', 'children'),
     Input('submit-annotation', 'n_clicks'),
@@ -963,18 +972,17 @@ def save_annotation(n_clicks, selected_program, annotation_text):
         return ""
     
     # Read the existing annotations file
-    if os.path.exists(ANNOTATIONS_FILE):
-        df = pd.read_csv(ANNOTATIONS_FILE)
+    annotations_file = os.path.join(path_report_out, annotations_loc)
+    if os.path.exists(annotations_file):
+        df = pd.read_csv(annotations_file)
     else:
-        df = pd.DataFrame(columns=['Program', 'Annotation'])
+        df = pd.DataFrame(columns=['Program', 'Annotation', 'TimeStamp'])
     
-    # Update or append the annotation
-    if selected_program in df['Program'].values:
-        df.loc[df['Program'] == selected_program, 'Annotation'] = annotation_text
-    else:
-        df = pd.concat([df, pd.DataFrame({'Program': [selected_program], 'Annotation': [annotation_text]})])
+    # Append the annotation
+    new_row = {'Program': selected_program, 'Annotation': annotation_text, 'TimeStamp': datetime.datetime.now()}
+    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     
     # Save the updated DataFrame back to the CSV file
-    df.to_csv(ANNOTATIONS_FILE, index=False)
+    df.to_csv(annotations_file, index=False)
     
     return f"Annotation for '{selected_program}' has been saved."
