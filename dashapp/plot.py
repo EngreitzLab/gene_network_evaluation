@@ -13,7 +13,8 @@ def scatterplot(
     y_axis_title: str = None,
     cumulative: bool = False,
     show_xaxis_labels: bool = False,
-    colors: list = None  # New parameter for optional colors
+    colors: list = None,  # New parameter for optional colors
+    size: int = 8
 ):
     """Create a scatter plot layout in Dash using Plotly.
 
@@ -59,7 +60,7 @@ def scatterplot(
             mode='markers',
             marker=dict(
                 color=colors if colors is not None else 'blue',  # Use passed colors or default to blue
-                size=8
+                size=size
             )
         )
     )

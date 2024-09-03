@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from utils import load_config
 
 
 def parse_methods(mdata, data_key="rna"):
@@ -125,12 +126,25 @@ def parse_perturbation_associations(dirs):
     return perturbation_associations
 
 
+def parse_software_versions(dirs):
+    software_versions = {}
+    for dir in dirs:
+        try:
+            run_name = os.path.basename(dir)
+            software_versions_file = os.path.join(dir, "software_versions.yml")
+            software_versions_df = load_config(software_versions_file)
+            software_versions[run_name] = software_versions_df
+        except FileNotFoundError:
+            print(f"File not found: {software_versions_file}")
+            continue
+    return software_versions
+
+
 def parse(
     mdata,
     dirs,
     data_key="rna",
 ):
-    print(f"jere are the dirs: {dirs}")
     methods, n_components = parse_methods(mdata, data_key)
     explained_variance_ratios, cumulative_explained_variance = parse_explained_variance(dirs)
     loadings = parse_loadings(mdata, data_key)
@@ -140,6 +154,7 @@ def parse(
     motif_enrichments = parse_motif_enrichments(dirs)
     trait_enrichments = parse_trait_enrichments(dirs)
     perturbation_associations = parse_perturbation_associations(dirs)
+    software_versions = parse_software_versions(dirs)
     return {
         "methods": methods,
         "n_components": n_components,
@@ -152,4 +167,5 @@ def parse(
         "motif_enrichments": motif_enrichments,
         "trait_enrichments": trait_enrichments,
         "perturbation_associations": perturbation_associations,
+        "software_version": software_versions,
     }

@@ -6,7 +6,7 @@ import dash_bootstrap_components as dbc
 from dash import html, dcc, callback, Input, Output
 from dash import dash_table
 from plot import scatterplot, barplot, lollipop_plot, boxplot
-from dash import DiskcacheManager
+from utils import map_categories_to_colors
 import diskcache
 import plotly.express as px
 import numpy as np
@@ -28,7 +28,6 @@ path_report_out = results["path_report_out"]
 path_mdata = results["path_mdata"]
 path_evaluation_outs = results["path_evaluation_outs"]
 data_key = results["data_key"]
-categorical_keys = results["categorical_keys"]
 annotations_loc = results["annotations_loc"]
 
 # Get the first data type and its corresponding second-level keys as default
@@ -39,12 +38,15 @@ default_run = list(results[default_data_type].keys())[0]
 programs = sorted(list(results[default_data_type][default_run]["program_name"].astype(str).unique()))
 default_program = programs[0]
 
-# Get the columns that don't have the selected dim reduction prefix
+# Grab the dimensionality reduction data and categorical keys
 obsms = results["obsms"]
-default_dim_reduction = 'X_umap' if 'X_umap' in obsms else list(obsms.keys())[0]
-no_reduce_columns = [col for col in obsms[default_dim_reduction].columns if not col.startswith(default_dim_reduction)]
-default_covariate = 'sample' if 'sample' in obsms[default_dim_reduction] else no_reduce_columns[0]
-print(f"Default covariate: {default_covariate}")
+default_obsm = 'X_umap' if 'X_umap' in obsms else list(obsms.keys())[0]
+
+# Get the columns that don't have the selected dim reduction prefix
+categorical_keys = results["categorical_keys"]
+continuous_keys = results["continuous_keys"]
+covariate_keys = categorical_keys + continuous_keys
+default_covariate = categorical_keys[0] if categorical_keys else None
 
 # Create the layout using tabs for each section
 layout = dbc.Container([
@@ -195,7 +197,7 @@ layout = dbc.Container([
                     html.Label("Select Covariate"),
                     dcc.Dropdown(
                         id='program-covariate-selector',
-                        options=["sample"],  # Will be populated based on dim reduction
+                        options=[{'label': key, 'value': key} for key in covariate_keys],
                         value=default_covariate,
                         clearable=False
                     )
@@ -216,7 +218,7 @@ layout = dbc.Container([
                     dcc.Dropdown(
                         id='program-dim-reduction-selector',
                         options=[{'label': key, 'value': key} for key in obsms.keys()],
-                        value=default_dim_reduction,
+                        value=default_obsm,
                         clearable=False
                     )
                 ], width=6),
@@ -776,9 +778,7 @@ def update_program_dim_reduction_plot(
 
     # Get vector of continuous values for the program membership
     curr_obs = results['obs'][selected_run]
-    print(curr_obs)
     curr_obs_membership = results['obs_memberships'][selected_run][selected_program]
-    print(f"Current obs membership: {curr_obs_membership}")
 
     # Extract the relevant data for plotting (they will be selected_dim_reduction_0 and selected_dim_reduction_1)
     data = obsms[selected_dim_reduction][[f'{selected_dim_reduction}_0', f'{selected_dim_reduction}_1']]
@@ -800,23 +800,6 @@ def update_program_dim_reduction_plot(
 
 
 # Callback to update the scatter plot and legend based on selected dim reduction and covariate
-import numpy as np
-import matplotlib.pyplot as plt
-tab20 = plt.get_cmap('tab20').colors
-
-# Generate a larger categorical colormap using matplotlib
-def generate_large_colormap(num_colors):
-    cmap = plt.get_cmap('tab20b', num_colors)
-    colors = [f'rgba({int(r*255)}, {int(g*255)}, {int(b*255)}, 0.8)' for r, g, b, _ in cmap(np.linspace(0, 1, num_colors))]
-    return colors
-
-# Helper function to map categories to colors
-def map_categories_to_colors(categories):
-    unique_categories = sorted(categories.unique())
-    colors = generate_large_colormap(len(unique_categories))
-    color_map = {category: color for category, color in zip(unique_categories, colors)}
-    return categories.map(color_map).tolist(), color_map
-
 @callback(
     Output('program-dim-reduction-covariate-scatter', 'figure'),
     [Input('program-dim-reduction-selector', 'value'), Input('run-selector', 'value'), Input('program-covariate-selector', 'value')]
@@ -835,8 +818,9 @@ def update_program_dim_reduction_covariate_plot(
         return go.Figure(), html.Div()
     
     # Extract the relevant data for plotting (they will be selected_dim_reduction_0 and selected_dim_reduction_1)
-    data = obsms[selected_dim_reduction][[f'{selected_dim_reduction}_0', f'{selected_dim_reduction}_1', selected_covariate]]
-    data.columns = ['X', 'Y', selected_covariate]
+    data = obsms[selected_dim_reduction][[f'{selected_dim_reduction}_0', f'{selected_dim_reduction}_1']]
+    data.columns = ['X', 'Y']
+    data[selected_covariate] = results["obs"][selected_covariate]
 
     # Map covariate categories to more colors
     colors, color_map = map_categories_to_colors(data[selected_covariate])

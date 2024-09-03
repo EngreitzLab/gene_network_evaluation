@@ -1,7 +1,14 @@
 from typing import List, Dict
 import re
+import yaml
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+
+
+def load_config(config_path):
+    with open(config_path, 'r') as config_file:
+        return yaml.safe_load(config_file)
 
 
 def count(categorical_var, count_var, dataframe):
@@ -115,3 +122,18 @@ def filter_and_count(
     unique_df = count_unique(categorical_var=categorical_var, count_var=count_var, dataframe=unique_data)
     unique_df = unique_df.sort_values(count_var, ascending=False)
     return count_df, unique_df
+
+
+# Generate a larger categorical colormap using matplotlib
+def generate_large_colormap(num_colors):
+    cmap = plt.get_cmap('tab20b', num_colors)
+    colors = [f'rgba({int(r*255)}, {int(g*255)}, {int(b*255)}, 0.8)' for r, g, b, _ in cmap(np.linspace(0, 1, num_colors))]
+    return colors
+
+
+# Helper function to map categories to colors
+def map_categories_to_colors(categories):
+    unique_categories = sorted(categories.unique())
+    colors = generate_large_colormap(len(unique_categories))
+    color_map = {category: color for category, color in zip(unique_categories, colors)}
+    return categories.map(color_map).tolist(), color_map
