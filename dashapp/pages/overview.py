@@ -72,12 +72,12 @@ layout = dbc.Container([
         
         # Dimensionality Reduction Plot
         dbc.Col([
-            #dcc.Graph(id='dim-reduction-plot', className="mt-3"),
+            dcc.Graph(id='dim-reduction-plot', className="mt-3"),
         ], width=6),  # Larger area for plot
         
         # Legend occupies some
         dbc.Col([
-            #html.Div(id='legend', className="mt-3")
+            html.Div(id='legend', className="mt-3")
         ], width=2),
         
         # Barplot/Histogram
@@ -157,7 +157,7 @@ def update_dim_reduction_plot(
     selected_covariate,
     size=1,
     debug=True,
-    static=True
+    static=False
 ):
 
     if debug:
