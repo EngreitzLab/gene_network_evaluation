@@ -3,7 +3,7 @@ import dash_bootstrap_components as dbc
 from dash import html, dcc, callback, Input, Output, dash_table
 import plotly.graph_objects as go
 import diskcache
-from plot import map_categories_to_colors, scatterplot, scatterplot_static
+from plot import map_categories_to_colors, fig_to_uri, scatterplot, scatterplot_static
 import matplotlib.pyplot as plt
 import yaml
 
@@ -48,17 +48,6 @@ layout = dbc.Container([
     # Covariate and obsm dropdowns at the top
     dbc.Row([
 
-        # Covariate dropdown
-        dbc.Col([
-            html.Label("Select Covariate"),
-            dcc.Dropdown(
-                id='covariate-selector',
-                options=[{'label': key, 'value': key} for key in covariate_keys],
-                value=default_covariate,
-                clearable=False
-            )
-        ], width=6),
-
         # Obsm dropdown
         dbc.Col([
             html.Label("Select Dimensionality Reduction"),
@@ -69,25 +58,32 @@ layout = dbc.Container([
                 clearable=False
             )
         ], width=6),
+
+        # Covariate dropdown
+        dbc.Col([
+            html.Label("Select Covariate"),
+            dcc.Dropdown(
+                id='covariate-selector',
+                options=[{'label': key, 'value': key} for key in covariate_keys],
+                value=default_covariate,
+                clearable=False
+            )
+        ], width=6),
+        
     ], className="mb-4"),
 
-    # Main
+    # Main images
     dbc.Row([
         
         # Dimensionality Reduction Plot
         dbc.Col([
-            dcc.Graph(id='dim-reduction-plot', className="mt-3"),
+            html.Div([html.Img(id='dim-reduction-plot', className="mt-3")])
         ], width=6),  # Larger area for plot
-        
-        # Legend occupies some
-        dbc.Col([
-            html.Div(id='legend', className="mt-3")
-        ], width=2),
         
         # Barplot/Histogram
         dbc.Col([
             dcc.Graph(id='covariate-distribution', className="mt-3"),
-        ], width=4),
+        ], width=6),
 
     ], className="mb-4"),
 
@@ -95,6 +91,7 @@ layout = dbc.Container([
     dbc.Row([
         dbc.Col([
             html.H3("Evaluation Parameters", className="mt-4"),
+            html.P("The following parameters were used for the evaluation of gene programs."),
             dcc.Markdown(
                 f"```yaml\n{evaluation_yaml}\n```", 
                 style={
@@ -112,7 +109,8 @@ layout = dbc.Container([
     # Software versions
     dbc.Row([
         dbc.Col([
-            html.H3("Package versions for evaluation", className="mt-4"),
+            html.H3("Package versions used for evaluation", className="mt-4"),
+            html.P("The following packages and versions were used for the evaluation of each set of gene programs."),
             dcc.Markdown(
                 f"```yaml\n{software_versions_yaml}\n```",
                 style={
@@ -126,13 +124,13 @@ layout = dbc.Container([
             )
         ], width=12),
     ]),
+
 ], fluid=True, className="p-4")
 
 
 # Callback to update the scatter plot and legend based on selected dim reduction and covariate
 @callback(
-    [Output('dim-reduction-plot', 'figure'),
-     Output('legend', 'children')],
+    Output('dim-reduction-plot', 'src'),
     [Input('dim-reduction-selector', 'value'), 
      Input('covariate-selector', 'value')]
 )
@@ -174,7 +172,7 @@ def update_dim_reduction_plot(
     else:
         colors = data[selected_covariate]
         categorical_color_map = None
-        continuous_color_map = None
+        continuous_color_map = "viridis"
         if debug:
             print(f"Continuous covariate: {selected_covariate}")
             print(f"Colors: {colors[:5]}")
@@ -182,8 +180,13 @@ def update_dim_reduction_plot(
 
     if static:
 
+        if debug:
+            print("Generating static plot using matplotlib")
+
         # Plot using static matplotlib function
-        fig = scatterplot_static(
+        fig, ax = plt.subplots()
+        scatterplot_static(
+            ax=ax,
             data=data,
             x_column="X",
             y_column="Y",
@@ -195,16 +198,23 @@ def update_dim_reduction_plot(
             cmap=continuous_color_map,
             size=size,
         )
-        
-        # add legend to the plot
-        if selected_covariate in categorical_keys:
-            fig.legend(handles=[plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=label) for label, color in categorical_color_map.items()])
+
+        # Make selected covariate is continuous, add in a colorbar
+        if continuous_color_map:
+            cbar = plt.colorbar(ax.collections[0], ax=ax)
+            cbar.set_label(selected_covariate)
+
+        # Save the figure to a temporary file
+        fig = fig_to_uri(fig)
 
         # Return the figure and an empty Div
-        return fig, html.Div()
+        return fig
     
     else:
         
+        if debug:
+            print(f"Plotting {data.shape[0]} cells with dynamic plotly")
+
         # Plot using dynamic plotly function
         fig = scatterplot(
             data=data,
@@ -288,7 +298,7 @@ def update_covariate_distribution_plot(
         )
 
         fig.update_layout(
-            title=f"Distribution of {selected_covariate}",
+            title=f"",
             xaxis_title=selected_covariate,
             yaxis_title="Count",
             plot_bgcolor='white',

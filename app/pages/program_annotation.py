@@ -5,7 +5,7 @@ import pandas as pd
 import dash_bootstrap_components as dbc
 from dash import html, dcc, callback, Input, Output
 from dash import dash_table
-from plot import scatterplot, barplot, lollipop_plot, boxplot
+from plot import scatterplot, volcano_plot, lollipop_plot, boxplot
 from utils import map_categories_to_colors
 import diskcache
 import plotly.express as px
@@ -35,7 +35,10 @@ default_data_type = "explained_variance_ratios"
 default_run = list(results[default_data_type].keys())[0]
 
 # Get the first program from the data type and run as default
+# if the programs are numbers sort them in numerical order
 programs = sorted(list(results[default_data_type][default_run]["program_name"].astype(str).unique()))
+if programs[0].isdigit():
+    programs = sorted(programs, key=int)
 default_program = programs[0]
 
 # Grab the dimensionality reduction data and categorical keys
@@ -53,6 +56,13 @@ layout = dbc.Container([
     
     # Title
     html.H1("Program Analysis", className="mb-4"),
+    html.P("This page is designed for analysis and annotation of individual programs. "
+           "It provide several layers of information about the program, "
+           "including the genes at the top of the loadings, the enriched gene sets, "
+           "the enriched motifs, the enriched traits, the perturbation associations, "
+           "and the categorical associations, which can aid in the annotation of the program. "
+           "The 'Add Annotations' tab allows you to add notes or comments to the program. "
+           "That are saved and can be viewed later.", className="mb-4"),
 
     # Dropdown to select the run
     dbc.Row([
@@ -83,8 +93,11 @@ layout = dbc.Container([
 
         # Tab 1: Gene Loadings
         dcc.Tab(label='Gene Loadings', children=[
-            html.H2("Gene Loadings", className="mt-4 mb-3"),
-            html.P("Scatter plot showing top genes by loading for this program. Consider adding links to external gene resources.", className="mb-3"),
+            html.H2("Gene loadings for selected program", className="mt-4 mb-3"),
+            html.P("This tab provides a look at the top gene loadings for the selected program. "
+                   "Use the input box to specify the number of genes you want to display.", className="mb-4"),
+
+            # Input for number of genes to display
             dcc.Input(
                 id='gene-loadings-n',
                 type='number',
@@ -94,16 +107,23 @@ layout = dbc.Container([
                 step=1,
                 placeholder="Enter number of genes to display"
             ),
+
+            # gene loadings plot
             dcc.Graph(id='gene-loadings-plot'),
+            
+            # gene loadings table
+            html.Div(id='gene-loadings-table', className="mb-4"),
         ]),
 
         # Tab 2: Gene Set Enrichment
         dcc.Tab(label='Gene Set Enrichment', children=[
-            html.H2("Gene Set Enrichment Results", className="mt-4 mb-3"),
+            html.H2("Enriched terms for selected program", className="mt-4 mb-3"),
+            html.P("This tab provides a look at the enriched gene sets for the selected program. "
+                   "Use the input box to specify the significance threshold you want to use.", className="mb-4"),
             
             dbc.Row([
                 dbc.Col([
-                    html.H3("Table of Enriched Terms"),
+                    html.H3("Enriched gene sets"),
                     dcc.Input(
                         id='enriched-terms-threshold',
                         type='number',
@@ -119,7 +139,12 @@ layout = dbc.Container([
 
             dbc.Row([
                 dbc.Col([
-                    html.H3("Volcano Plot of Terms"),
+                    html.H3("Volcano plot of gene set enrichment"),
+                    html.P("This plot depicts statistical significance of gene sets in the program. "
+                           "on the y-axis and the effect size on the x-axis. The effect size calculation "
+                           "is dependent on the method used for the enrichment analysis. If GSEA was used, "
+                           "the effect size is the normalized enrichment score (NES). If a Fisher's exact test "
+                            "was used, the effect size is the odds ratio."),
                     dcc.Graph(id='volcano-plot-terms'),
                 ], width=12),
             ]),
@@ -127,10 +152,13 @@ layout = dbc.Container([
 
         # Tab 3: Motif Enrichment
         dcc.Tab(label='Motif Enrichment', children=[
-            html.H2("Motif Enrichment Results", className="mt-4 mb-3"),
+            html.H2("Enriched motifs in promoters/enhancers of genes in selected program", className="mt-4 mb-3"),
+            html.P("This tab provides a look at the enriched motifs for the selected program. "
+                   "Use the input box to specify the significance threshold you want to use.", className="mb-4"),
+
             dbc.Row([
                 dbc.Col([
-                    html.H3("Table of Enriched Motifs"),
+                    html.H3("Enriched motifs"),
                     dcc.Input(
                         id='enriched-motifs-threshold',
                         type='number',
@@ -319,7 +347,7 @@ def update_gene_loadings_plot(
         data=data_to_plot,
         x_column='gene_name',
         y_column='loadings',
-        title='Gene Loadings for Selected Program',
+        title='',
         x_axis_title='Gene',
         y_axis_title='Loadings',
         marker_colors=marker_colors,
@@ -327,6 +355,48 @@ def update_gene_loadings_plot(
     )
 
     return fig
+
+
+# Callback for gene loadings table
+@callback(
+    Output('gene-loadings-table', 'children'),
+    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('gene-loadings-n', 'value')]
+)
+def update_gene_loadings_table(
+    selected_run, 
+    selected_program, 
+    n,
+    debug=False,
+):
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}, n: {n}")
+
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results["loadings"][selected_run].loc[selected_program].to_frame(name="loadings").reset_index()
+
+    # Select top n genes by loading
+    data_to_plot = data_to_plot.sort_values(by="loadings", ascending=False).head(n).reset_index(drop=True)
+
+    # Create a DataTable
+    table = dash_table.DataTable(
+        id='gene-loadings-data-table',
+        columns=[{"name": col, "id": col} for col in data_to_plot.columns],
+        data=data_to_plot.to_dict('records'),
+        filter_action="native",  # Enables filtering
+        sort_action="native",    # Enables sorting
+        page_size=10,            # Number of rows per page
+        style_table={'overflowX': 'auto'},  # Scrollable horizontally if too wide
+        style_cell={
+            'textAlign': 'left',  # Align text to the left
+            'padding': '5px',
+        },
+        style_header={
+            'backgroundColor': 'rgb(230, 230, 230)',
+            'fontWeight': 'bold'
+        },
+    )
+
+    return table
 
 
 # Callback for geneset enrichment table
@@ -397,6 +467,10 @@ def update_volcano_plot_terms(
     selected_program,
     categorical_var = "term",
     sig_var = "adj_pval",
+    sig_threshold = 0.05,
+    effect_size_var = "effect_size",
+    effect_size_threshold = 1,
+    hover_data=["program_name", "term", "adj_pval"],
     debug=False,
 ):
 
@@ -415,14 +489,20 @@ def update_volcano_plot_terms(
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
 
-    # Example plot using Plotly (replace with your actual plotting code)
-    fig = scatterplot(data=data_to_plot,
-        x_column=categorical_var,
-        y_column=f'-log10({sig_var})',
-        title='',
-        x_axis_title=categorical_var,
-        y_axis_title=f'-log10({sig_var})',
+    # -log10 significance threshold
+    sig_treshold = -np.log10(sig_threshold)
+    sig_var = f'-log10({sig_var})'
+
+    # Plot volcano plot
+    fig = volcano_plot(
+        data=data_to_plot,
+        effect_size_var=effect_size_var,
+        sig_var=sig_var,
+        sig_threshold=sig_treshold,
+        effect_size_threshold=effect_size_threshold,
+        hover_data=hover_data,
     )
+
     return fig
 
 
@@ -494,6 +574,10 @@ def update_volcano_plot_motifs(
     selected_program,
     categorical_var = "motif",
     sig_var = "pval",
+    sig_threshold = 0.05,
+    effect_size_var = "stat",
+    effect_size_threshold = 1,
+    hover_data=["program_name", "motif", "pval", "stat"],
     debug=False,
 ):
 
@@ -512,15 +596,20 @@ def update_volcano_plot_motifs(
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
 
-    # Example plot using Plotly (replace with your actual plotting code)
-    fig = scatterplot(
+    # -log10 significance threshold
+    sig_treshold = -np.log10(sig_threshold)
+    sig_var = f'-log10({sig_var})'
+
+    # Plot volcano plot
+    fig = volcano_plot(
         data=data_to_plot,
-        x_column=categorical_var,
-        y_column=f'-log10({sig_var})',
-        title='',
-        x_axis_title=categorical_var,
-        y_axis_title=f'-log10({sig_var})',
+        effect_size_var=effect_size_var,
+        sig_var=sig_var,
+        sig_threshold=sig_treshold,
+        effect_size_threshold=effect_size_threshold,
+        hover_data=hover_data,
     )
+
     return fig
 
 

@@ -18,22 +18,6 @@ def parse_methods(mdata, data_key="rna"):
     return methods, n_components
 
 
-def parse_explained_variance(dirs):
-    explained_variance_ratios = {}
-    cumulative_explained_variance = {}
-    for dir in dirs:
-        try:
-            run_name = os.path.basename(dir)
-            explained_variance_ratio_file = os.path.join(dir, "explained_variance_ratio.txt")
-            df = pd.read_csv(explained_variance_ratio_file, sep="\t")
-            df.columns = ["program_name", "explained_variance_ratio"]
-            explained_variance_ratios[run_name] = df
-            cumulative_explained_variance[run_name] = df["explained_variance_ratio"].sum()
-        except FileNotFoundError:
-            print(f"File not found: {explained_variance_ratio_file}")
-    return explained_variance_ratios, cumulative_explained_variance
-
-
 def parse_loadings(mdata, data_key="rna"):
     loadings = {}
     for key in mdata.mod.keys():
@@ -68,6 +52,36 @@ def parse_obs_memberships(mdata, data_key="rna"):
             obs_memberships[key].index.name = "obs_name"
             obs_memberships[key].columns.name = "program_name"
     return obs_memberships
+
+
+def parse_explained_variance(dirs):
+    explained_variance_ratios = {}
+    cumulative_explained_variance = {}
+    for dir in dirs:
+        try:
+            run_name = os.path.basename(dir)
+            explained_variance_ratio_file = os.path.join(dir, "explained_variance_ratio.txt")
+            df = pd.read_csv(explained_variance_ratio_file, sep="\t")
+            df.columns = ["program_name", "explained_variance_ratio"]
+            explained_variance_ratios[run_name] = df
+            cumulative_explained_variance[run_name] = df["explained_variance_ratio"].sum()
+        except FileNotFoundError:
+            print(f"File not found: {explained_variance_ratio_file}")
+    return explained_variance_ratios, cumulative_explained_variance
+
+
+def parse_categprocal_associations(dirs):
+    categorical_associations = {}
+    for dir in dirs:
+        try:
+            run_name = os.path.basename(dir)
+            categorical_association_file = os.path.join(dir, "categorical_association_results.txt")
+            categorical_association_df = pd.read_csv(categorical_association_file, sep="\t")
+            categorical_associations[run_name] = categorical_association_df
+        except FileNotFoundError:
+            print(f"File not found: {categorical_association_file}")
+            continue
+    return categorical_associations
 
 
 def parse_geneset_enrichments(dirs):
@@ -146,10 +160,11 @@ def parse(
     data_key="rna",
 ):
     methods, n_components = parse_methods(mdata, data_key)
-    explained_variance_ratios, cumulative_explained_variance = parse_explained_variance(dirs)
     loadings = parse_loadings(mdata, data_key)
     obs = parse_obs(mdata, data_key)
     obs_memberships = parse_obs_memberships(mdata, data_key)
+    explained_variance_ratios, cumulative_explained_variance = parse_explained_variance(dirs)
+    categorical_associations = parse_categprocal_associations(dirs)
     geneset_enrichments = parse_geneset_enrichments(dirs)
     motif_enrichments = parse_motif_enrichments(dirs)
     trait_enrichments = parse_trait_enrichments(dirs)
@@ -158,11 +173,12 @@ def parse(
     return {
         "methods": methods,
         "n_components": n_components,
-        "explained_variance_ratios": explained_variance_ratios,
         "cumulative_explained_variance": cumulative_explained_variance,
         "loadings": loadings,
         "obs": obs,
         "obs_memberships": obs_memberships,
+        "explained_variance_ratios": explained_variance_ratios,
+        "categorical_associations": categorical_associations,
         "geneset_enrichments": geneset_enrichments,
         "motif_enrichments": motif_enrichments,
         "trait_enrichments": trait_enrichments,

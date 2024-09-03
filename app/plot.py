@@ -1,10 +1,15 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-import io
+import numpy as np
 import base64
 import matplotlib.pyplot as plt
 import matplotlib
+from io import BytesIO
+from scipy import stats
+from statsmodels.stats.multitest import fdrcorrection
+import seaborn as sns
+
 
 
 def generate_large_colormap(num_colors):
@@ -49,6 +54,34 @@ def map_categories_to_colors(
     return categories.map(color_map).tolist(), color_map
 
 
+def fig_to_uri(in_fig, close_all=True, **save_args):
+    """
+    Save a figure as a URI
+    
+    Parameters
+    ----------
+    in_fig : matplotlib.figure.Figure
+        The input figure
+    close_all : bool
+        Whether to close all figures
+    save_args : dict
+        Additional arguments to pass to savefig
+    
+    Returns
+    -------
+    str
+        URI of the figure
+    """
+    out_img = BytesIO()
+    in_fig.savefig(out_img, format='png', **save_args)
+    if close_all:
+        in_fig.clf()
+        plt.close('all')
+    out_img.seek(0)  # rewind file
+    encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
+    return "data:image/png;base64,{}".format(encoded)
+
+
 def scatterplot(
     data: pd.DataFrame,
     x_column: str,
@@ -60,7 +93,7 @@ def scatterplot(
     cumulative: bool = False,
     show_xaxis_labels: bool = False,
     colors: list = None,  # New parameter for optional colors
-    size: int = 8
+    size: int = 1
 ):
     """Create a scatter plot layout in Dash using Plotly.
 
@@ -124,6 +157,7 @@ def scatterplot(
 
 
 def scatterplot_static(
+    ax: plt.Axes,
     data: pd.DataFrame,
     x_column: str,
     y_column: str,
@@ -137,9 +171,11 @@ def scatterplot_static(
     colors: list = None,  # New parameter for optional colors
     cmap: str = None,
     size: int = 1,
-    save_as_base64: bool = False
 ):
     """Generate a static scatter plot using Matplotlib."""
+
+    # Give white background
+    ax.set_facecolor('white')
 
     # Compute cumulative values
     if cumulative:
@@ -150,17 +186,13 @@ def scatterplot_static(
     y_data = data.sort_values(y_column, ascending=cumulative)[y_column] if sorted else data[y_column]
 
     # Plot
-    fig, ax = plt.subplots()
-    scatter = ax.scatter(
+    ax.scatter(
         x_data,
         y_data,
         c=colors,
         s=size,
         cmap=cmap
     )
-
-    if cmap:
-        fig.colorbar(scatter, ax=ax)
 
     # remove the top and right spines from plot
     ax.spines['top'].set_visible(False)
@@ -172,22 +204,7 @@ def scatterplot_static(
         ax.set_xticks([])
     if not show_yaxis_labels:
         ax.set_yticks([])
-    
-    # Save the plot to a BytesIO object
-    if save_as_base64:
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png')
-        plt.close(fig)
-        buf.seek(0)
-        
-        # Encode the plot as a base64 string
-        img_base64 = base64.b64encode(buf.read()).decode('ascii')
-        
-        return f"data:image/png;base64,{img_base64}"
-    
-    else:
-        return fig
-    
+
 
 def barplot(
     data: pd.DataFrame,
@@ -407,3 +424,131 @@ def boxplot(
         xaxis=dict(showticklabels=show_xaxis_labels)
     )
     return fig
+
+
+def volcano_plot(
+    data: pd.DataFrame,
+    effect_size_var: str,
+    sig_var: str,
+    sig_threshold: float,
+    effect_size_threshold: float,
+    hover_data: list = None
+):
+    
+    # Plot volcano plot
+    fig = px.scatter(
+        data,
+        x=effect_size_var,
+        y=sig_var,
+        title="",
+        hover_data=hover_data
+    )
+
+    # Customize layout
+    fig.update_layout(
+        xaxis_title=effect_size_var,
+        yaxis_title=sig_var,
+        yaxis=dict(tickformat=".1f"),
+        width=1000,
+        height=800,
+        xaxis_tickfont=dict(size=4),
+        plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
+    )
+
+    # Add horizontal dashed line for significance threshold (make it red)
+    fig.add_hline(
+        y=-np.log10(sig_threshold),
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f'Significance Threshold ({sig_threshold})',
+        annotation_position="top right"
+    )
+
+    # Add vertical dashed lines for effect size threshold
+    fig.add_vline(
+        x=effect_size_threshold,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f'Effect Size Threshold ({effect_size_threshold})',
+        annotation_position="top right"
+    )
+
+    return fig
+
+
+def convertDatTraits(data):
+    """
+    get data trait module base on samples information
+
+    :return: a dataframe contains information in suitable format for plotting module trait relationship heatmap
+    :rtype: pandas dataframe
+    """
+    datTraits = pd.DataFrame(index=data.index)
+    for i in range(data.shape[1]):
+        data.iloc[:, i] = data.iloc[:, i].astype(str)
+        if len(np.unique(data.iloc[:, i])) == 2:
+            datTraits[data.columns[i]] = data.iloc[:, i]
+            org = np.unique(data.iloc[:, i]).tolist()
+            rep = list(range(len(org)))
+            datTraits.replace(to_replace=org, value=rep,
+                              inplace=True)
+        elif len(np.unique(data.iloc[:, i])) > 2:
+            for name in np.unique(data.iloc[:, i]):
+                datTraits[name] = data.iloc[:, i]
+                org = np.unique(data.iloc[:, i])
+                rep = np.repeat(0, len(org))
+                rep[np.where(org == name)] = 1
+                org = org.tolist()
+                rep = rep.tolist()
+                datTraits.replace(to_replace=org, value=rep, inplace=True)
+
+    return datTraits
+
+
+def plot_topic_trait_relationship_heatmap(
+        ax,
+        cell_topic_participation,
+        metaData,
+        covariates,
+    ):
+    """
+    plot topic-trait relationship heatmap
+    """
+    datTraits = convertDatTraits(metaData[covariates])
+    datTraits.index = cell_topic_participation.index
+
+    topicsTraitCor = pd.DataFrame(index=cell_topic_participation.columns,
+                                  columns=datTraits.columns,
+                                  dtype="float")
+    topicsTraitPvalue = pd.DataFrame(index=cell_topic_participation.columns,
+                                     columns=datTraits.columns,
+                                     dtype="float")
+    min_cell_participation = cell_topic_participation.min().min()
+    for i in cell_topic_participation.columns:
+        for j in datTraits.columns:
+            tmp = cell_topic_participation[
+                ~np.isclose(cell_topic_participation[i],
+                            min_cell_participation, atol=min_cell_participation)]
+            tmp = stats.spearmanr(tmp[i], datTraits.loc[tmp.index, j], alternative='greater')
+            topicsTraitCor.loc[i, j] = tmp[0]
+            topicsTraitPvalue.loc[i, j] = tmp[1]
+
+    topicsTraitCor.fillna(0.0, inplace=True)
+    topicsTraitPvalue.fillna(1.0, inplace=True)
+
+    for i in range(topicsTraitPvalue.shape[0]):
+        rejected, tmp = fdrcorrection(topicsTraitPvalue.iloc[i, :])
+        if not rejected.all():
+            topicsTraitPvalue.iloc[i, :] = tmp
+
+    xlabels = cell_topic_participation.columns
+    ylabels = datTraits.columns
+
+    sns.set(font_scale=1.5)
+    res = sns.heatmap(topicsTraitCor.T, cmap='RdBu_r',
+                        vmin=-1, vmax=1, ax=ax, annot_kws={'size': 12, "weight": "bold"},
+                        xticklabels=xlabels, yticklabels=ylabels)
+    res.set_xticklabels(res.get_xmajorticklabels(), fontsize=12, fontweight="bold", rotation=90)
+    res.set_yticklabels(res.get_ymajorticklabels(), fontsize=12, fontweight="bold")
+    plt.yticks(rotation=0)
+    ax.set_facecolor('white')

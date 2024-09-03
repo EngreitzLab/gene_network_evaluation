@@ -15,10 +15,11 @@ from tqdm.auto import tqdm
 import logging
 logging.basicConfig(level=logging.INFO)
 
-# Create custom geneset
+
 def create_geneset_dict(dataframe: pd.DataFrame, 
                         key_column='trait_efos', 
                         gene_column='gene_name'):
+    """Create custom geneset"""
 
     geneset_dict = {}
     for _, row in dataframe.iterrows():
@@ -27,8 +28,9 @@ def create_geneset_dict(dataframe: pd.DataFrame,
         geneset_dict.setdefault(key, []).append(gene)
     return geneset_dict
 
-# Match gene IDs with database
+
 def get_idconversion(var_names, organism='human'):
+    """Match gene IDs with database"""
 
     bm = Biomart()
     gene_names = []
@@ -56,8 +58,9 @@ def get_idconversion(var_names, organism='human'):
             gene_names = [name.upper() for name in var_names]
     return gene_names
 
-# Extract program loadings
+
 def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='rna', organism='human'):
+    """Get gene loadings for each program in the mudata object."""
 
     if 'var_names' in mdata[prog_key].uns.keys():
         gene_names = get_idconversion(mdata[prog_key].uns['var_names'], organism=organism)
@@ -79,9 +82,9 @@ def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='r
 
     return loadings
 
-# Download geneset
-def get_geneset(organism='human', library='h.all', database='msigdb', min_size: int = 0, max_size: int = 2000):
 
+def get_geneset(organism='human', library='h.all', database='msigdb', min_size: int = 0, max_size: int = 2000):
+    """Download gene set from MsigDB or Enrichr."""
     if database == 'msigdb':
         msig = Msigdb()
         dbver = '2023.2.Hs' if organism == 'human' else '2023.1.Mm'
@@ -92,35 +95,62 @@ def get_geneset(organism='human', library='h.all', database='msigdb', min_size: 
         gmt = gp.get_library(name=library, organism=organism.capitalize(), min_size=min_size, max_size=max_size)
     return gmt
 
-# Run GSEAS
-def perform_prerank(loadings, geneset, n_jobs=1, **kwargs):
 
-    # Defaults - pass kwargs if you want this done differently
-    #threads=4, min_size=5, max_size=1000, permutation_num=1000, 
-    #outdir=None, seed=0, verbose=True
+def perform_prerank(
+    loadings, 
+    geneset, 
+    n_jobs=1, 
+    low_cutoff=-np.inf,
+    hi_cutoff=np.inf,
+    **kwargs
+):
+    """Run GSEA prerank on each gene program in the loadings matrix.
+    
+    Parameters
+    ----------
+    loadings : pd.DataFrame
+        DataFrame of gene loadings for each gene program.
+    geneset : str
+        Name of the gene set to run GSEA on.
+    n_jobs : int
+        Number of parallel jobs to run.
+    min_value : float
+        Loadings must be strictly greater this value to be included in the analysis.
+    max_value : float
+        Loadings must be strictly less than this value to be included in the analysis.
+    """
 
     # Run GSEA prerank for each column of loadings (each cell program)
     pre_res = pd.DataFrame()
     for i in tqdm(loadings.columns, desc='Running GSEA', unit='programs'):
-        temp_res = gp.prerank(rnk=loadings[i], gene_sets=geneset, threads=n_jobs, **kwargs).res2d
 
+        # If low_cutoff or hi_cutoff is not -np.inf or np.inf, filter loadings
+        if low_cutoff != -np.inf or hi_cutoff != np.inf:
+            temp_loadings = loadings[i][(loadings[i] > low_cutoff) & (loadings[i] < hi_cutoff)]
+        else:
+            temp_loadings = loadings[i]
+            
+        # Run GSEA prerank
+        temp_res = gp.prerank(rnk=temp_loadings, gene_sets=geneset, threads=n_jobs, **kwargs).res2d
+
+        # Post-process results
         temp_res['Gene %'] = temp_res['Gene %'].apply(lambda x: float(x[:-1]))
         temp_res['tag_before'] = temp_res['Tag %'].apply(lambda x: int(x.split('/')[0]))
         temp_res['tag_after'] = temp_res['Tag %'].apply(lambda x: int(x.split('/')[1]))
         temp_res.drop(columns=['Tag %'], inplace=True)
-    
         if 'Name' in temp_res.columns and temp_res['Name'][0] == "prerank":
             temp_res['Name'] = i
-    
         temp_res.rename(columns={'Name': 'program_name'}, inplace=True)
         temp_res = temp_res.sort_values(['program_name', 'FDR q-val'])
         pre_res = pd.concat([pre_res, temp_res], ignore_index=True)
     
     return pre_res
 
+
 # TODO: ssGSEA using loading matrix -> get topic wise enrichment scores
 def perform_ssGSEA():
     raise NotImplementedError()
+
 
 def perform_fisher_enrich(loadings, geneset, loading_rank_thresh=500, **kwargs):
     
@@ -141,10 +171,11 @@ def perform_fisher_enrich(loadings, geneset, loading_rank_thresh=500, **kwargs):
     
     return enr_res
 
-# Insert geneset enrichment into mudata
+
 def insert_enrichment(mdata, df, library="GSEA", prog_key="prog",
                       geneset_index="Term", program_index="program_name",
                       varmap_name_prefix="gsea_varmap"):
+    """Insert geneset enrichment into mudata"""
     
     # Create a mudata key to column name mapping dictionary
     mudata_keys_dict = {}
@@ -177,6 +208,7 @@ def insert_enrichment(mdata, df, library="GSEA", prog_key="prog",
     # Add the varmap to the mudata object
     varmap_name = f"{varmap_name_prefix}_{library}"
     mdata[prog_key].uns[varmap_name] = all_progs_df.index
+
 
 def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', prog_nam=None,
                                organism='human', library='Reactome_2022', method="gsea",
@@ -254,6 +286,7 @@ def compute_geneset_enrichment(mdata, prog_key='prog', data_key='rna', prog_nam=
                                 varmap_name_prefix="gsea_varmap")
     if not inplace:
         return(pre_res)
+
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
