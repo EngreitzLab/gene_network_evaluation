@@ -1,7 +1,13 @@
 *.sif
 *.snakemake
+
+# examples
 examples/
+
+# app
 app/scratch/
+
+# resources
 **/resources/*
 !/resources/OpenTargets_L2G_noQC.csv.gz
 !/resources/OpenTargets_L2G_Filtered.csv.gz
