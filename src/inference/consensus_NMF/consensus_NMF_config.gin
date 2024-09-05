@@ -1,0 +1,11 @@
+run_consensus_NMF_:
+    K = 50
+    name='consensus_NMF'
+    components = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 200, 300]
+    n_iter = 10
+    seed = 14
+    density_thresholds = [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0]
+    num_highvar_genes = 2000
+    beta_loss = 'frobenius'
+    output_all_k = True
+    output_all_thresh = True
