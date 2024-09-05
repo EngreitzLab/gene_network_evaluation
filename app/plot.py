@@ -449,6 +449,7 @@ def volcano_plot(
         xaxis_title=effect_size_var,
         yaxis_title=sig_var,
         yaxis=dict(tickformat=".1f"),
+        xaxis=dict(tickformat=".1f"),
         width=1000,
         height=800,
         xaxis_tickfont=dict(size=4),
@@ -457,7 +458,7 @@ def volcano_plot(
 
     # Add horizontal dashed line for significance threshold (make it red)
     fig.add_hline(
-        y=-np.log10(sig_threshold),
+        y=sig_threshold,
         line_dash="dash",
         line_color="red",
         annotation_text=f'Significance Threshold ({sig_threshold})',

@@ -22,16 +22,16 @@ The following sections describe the key components of each step.
 #### Expected inputs and outputs of inference methods:
 Running the inference methods in this repository requires that the original single-cell data is stored in the MuData format. The format is described in detail in the [MuData documentation](https://mudata.readthedocs.io/en/latest/). The requirments for this MuData object are minimal:
 
-1. mdata.mod[data_key] - The original single-cell data should be stored in an AnnData object under a user specified key (e.g. 'rna').
+1. `mdata.mod[data_key]` - The original single-cell data should be stored in an AnnData object under a user specified key (e.g. `rna`).
     - The AnnData should contain a n_obs x n_vars `.X` matrix of single-cell data where n_obs is the number of cells and n_vars is the number of genes/peaks/features.
-    - The AnnData can also contain other layers with transformed data (e.g. normalized counts, log-transformed counts, etc.) in `.layers`. In fact this is recommended for most inference methods.
+    - The AnnData can also contain other layers with transformed data (e.g. normalized counts, log-transformed counts, etc.) in `.layers`. This is recommended for most inference methods.
     - Some additional inputs are required for running specific evaluations (e.g. guide assignments for Perturb-seq evaluations, enhancer-to-gene links for motif enrichment analysis). These are covered in the next section.
 
 Running the evaluations on gene programs in this repository requires that the inferred gene programs be added to *this same* MuData object. We require the following to be present:
 
-1. mdata.mod[data_key] - The original single-cell data should be stored in an AnnData object under a user specified key (e.g. 'rna').
+1. `mdata.mod[data_key]` - The original single-cell data should be stored in an AnnData object under a user specified key (e.g. 'rna').
     - This AnnData should be the unmodified object from above that was used to run the inference methods.
-2. mdata.mod[program_key] - The inferred gene programs should be stored in an AnnData object under a user specified key (e.g. 'cNMF').
+2. `mdata.mod[program_key]` - The inferred gene programs should be stored in an AnnData object under a user specified key (e.g. 'cNMF').
     - The AnnData should contain a n_obs x n_vars `.X` matrix where n_obs is the number of cells and n_vars is the number of gene programs inferred. These values are the program scores/loadings for each cell and is sometimes called a cell membership matrix.
     - The `.varm` of this AnnData should contain a key called `loadings` which is NumPy array of shape n_vars x n_features where n_features is the number of genes/peaks/features used for inference. This matrix contains the weights of each gene/peak/feature in each program and is sometimes called a gene loadings matrix.
     The `.uns` of this AnnData should contain a key called `var_names` which is a 1D NumPy array of containing the names of the genes/peaks/features used for inference.
@@ -96,7 +96,7 @@ TODO
 TODO
 
 ##### Variation across category levels
-TODO
+
 
 ##### Gene set enrichment
 TODO

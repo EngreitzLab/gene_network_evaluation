@@ -136,12 +136,30 @@ def main(config_path):
             mdata, 
             prog_key=prog_key,
             data_key=data_key,
-            **trait_enrichment_config,
+            gwas_data=trait_enrichment_config['gwas_data'],
+            prog_nam=trait_enrichment_config['prog_nam'],
+            library=trait_enrichment_config['library'],
+            n_jobs=trait_enrichment_config['n_jobs'],
+            inplace=trait_enrichment_config['inplace'],
+            key_column=trait_enrichment_config['key_column'],
+            gene_column=trait_enrichment_config['gene_column'],
+            method=trait_enrichment_config['method'],
+            loading_rank_thresh=trait_enrichment_config['loading_rank_thresh'],
         )
+        if trait_enrichment_config["method"] == "fisher":
+            pre_res_trait = pre_res_trait.rename(columns={"Term": "term", "P-value": "pval", "Adjusted P-value": "adj_pval", "Odds Ratio": "effect_size", "Genes": "genes"})
+        elif trati_enrichment_config["method"] == "gsea":
+            pre_res_trait = pre_res_trait.rename(columns={"Term": "term", "NOM p-val": "pval", "FDR q-val": "adj_pval", "NES": "effect_size", "Lead_genes": "genes"})
         pre_res_trait.to_csv(os.path.join(path_out, 'trait_enrichment.txt'), sep='\t', index=False)
         data = process_enrichment_data(
             enrich_res=pre_res_trait,
-            **trait_enrichment_config,
+            metadata=trait_enrichment_config['metadata'],
+            pval_col=trait_enrichment_config["pval_col"],
+            enrich_geneset_id_col=trait_enrichment_config["enrich_geneset_id_col"],
+            metadata_geneset_id_col=trait_enrichment_config["metadata_geneset_id_col"],
+            color_category_col=trait_enrichment_config["color_category_col"],
+            program_name_col=trait_enrichment_config["program_name_col"],
+            annotation_cols=trait_enrichment_config["annotation_cols"],
         )
         data.to_csv(os.path.join(path_out, "trait_enrichment_processed.txt"), sep='\t', index=False)
     else:

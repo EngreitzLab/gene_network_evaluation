@@ -3,13 +3,13 @@
 #SBATCH --job-name=evaluation_pipelines
 #SBATCH --output=logs/evaluation_pipelines_%A_%a.out
 #SBATCH --time=24:00:00
-#SBATCH --mem=16G
+#SBATCH --mem=64G
 #SBATCH --cpus-per-task=4
-#SBATCH --array=1-7
+#SBATCH --array=1-8%8
 
 #####
 # USAGE:
-# sbatch evaluation_pipelines.sh <config>
+# sbatch evaluation_pipelines.sh
 #####
 
 # Date
@@ -28,6 +28,7 @@ configs=(
     /cellar/users/aklie/opt/gene_program_evaluation/examples/evaluation/iPSC_EC/cNMF_300/evaluation_pipeline.yml
     /cellar/users/aklie/opt/gene_program_evaluation/examples/evaluation/iPSC_EC/cNMF_60/evaluation_pipeline.yml
     /cellar/users/aklie/opt/gene_program_evaluation/examples/evaluation/iPSC_EC/cNMF_200/evaluation_pipeline.yml
+    /cellar/users/aklie/opt/gene_program_evaluation/examples/evaluation/iPSC_EC/factor_analysis_100/evaluation_pipeline.yml
 )
 config=${configs[$SLURM_ARRAY_TASK_ID-1]}
 
