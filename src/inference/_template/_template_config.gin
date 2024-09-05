@@ -1,0 +1,5 @@
+run_program_inference_method_:
+    method_specific_param_1 = 30
+    method_specific_param_2 = ['A', 'B']
+    method_specific_param_3 = 'loss_func'
+    method_specific_param_4 = methodClass_instance()

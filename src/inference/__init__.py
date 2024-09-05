@@ -1,2 +1,3 @@
-from .program_models import *
-from .grn_models import *
+from .consensus_NMF import *
+from .factor_analysis import *
+from .linear_SCVI import *
