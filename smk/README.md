@@ -1,3 +1,6 @@
+# $$\color{red}\textbf{WORK} \space \textbf{IN} \space \textbf{PROGRESS}$$
+## The snakemake pipeline is a work in progress and may not work out of the box. 
+
 # Snakemake pipeline to perform gene program evaluation
 
 ## Roadmap
