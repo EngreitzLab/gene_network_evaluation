@@ -2,6 +2,8 @@
 *.snakemake
 archive/
 
+dashapp/example_data/**/*.h5mu
+
 archive/
 **/resources/*
 !/resources/OpenTargets_L2G_noQC.csv.gz
@@ -79,7 +81,8 @@ db.sqlite3-journal
 
 # Flask stuff:
 instance/
-.webassets-cache
+.webassets-
+cache/
 
 # Scrapy stuff:
 .scrapy
