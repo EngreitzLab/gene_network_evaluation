@@ -1,7 +1,7 @@
 import argparse
 import logging
 import os
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Literal
 
 import gseapy as gp
 import mudata
