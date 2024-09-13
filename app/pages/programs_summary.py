@@ -7,7 +7,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
-from plot import fig_to_uri, scatterplot, barplot, plot_topic_trait_relationship_heatmap
+from plot import fig_to_uri, scatterplot, barplot, heatmap, plot_topic_trait_relationship_heatmap
 from utils import filter_and_count
 import diskcache
 import matplotlib.pyplot as plt
@@ -44,7 +44,7 @@ layout = dbc.Container([
     html.H1("Programs Summary", className="mb-4"),
     html.P(
         "This page is designed to provide an overview of the evaluations run on a given set of programs. "
-        "It is broken up into three main sections: Goodness of Fit, Covariate Association, and Trait Enrichment. "
+        "It is broken up into three main sections: Goodness of Fit, Categorical Association, and Trait Enrichment. "
         "Goodness of Fit gives an overview of the number of enrichments and associations detected across programs at a user-defined significance threshold, "
         "and can be useful for determining if the value of k selected is appropriate for the data. "
         "Looking at covariate associations of programs can help identify if the programs are associated with technical or biological sources of variation. "
@@ -459,7 +459,7 @@ layout = dbc.Container([
             # Covariate dropdown
             dbc.Row([
                 dbc.Col([
-                    html.Label("Select Covariate"),
+                    html.Label("Select Categorical Covariate"),
                     dcc.Dropdown(
                         id='covariate-selector',
                         options=[{'label': covariate, 'value': covariate} for covariate in covariate_keys],
@@ -468,12 +468,12 @@ layout = dbc.Container([
                 ], width=6),
             ], className="mb-4"),
 
-            # Program trait correlation heatmap
+            # Program covariate correlation heatmap
             dbc.Row([
                 dbc.Col([
-                    html.H3("Program trait correlation"),
-                    html.P("This heatmap shows the correlations between programs and a passed in categorical trait."),
-                    html.Div([html.Img(id='program-trait-heatmap', className="mt-3")])
+                    html.H3("Categorical association heatmap"),
+                    html.P("This heatmap shows the correlations between programs and a passed in categorical covariate."),
+                    dcc.Graph(id='categorical_association-heatmap'),
                 ], width=12),
             ], className="mb-4"),
 
@@ -492,6 +492,27 @@ layout = dbc.Container([
             html.H2("Trait Enrichment", className="mt-3 mb-3"),
             html.P("This tab provides two PheWAS style plots for investigating the enrichment of gene programs with binary and continuous traits. "
                    "The x-axis represents the trait reported, the y-axis represents the -log10 adjusted p-value, and the color represents the trait category."),
+
+            # Dropdown to select the database next to dropdown to select the method in row before plots
+            dbc.Row([
+                dbc.Col([
+                    html.Label("Select Trait Database"),
+                    dcc.Dropdown(
+                        id='trait-database-phewas-selector',
+                        options=[{'label': database, 'value': database} for database in list(set(results['trait_enrichments'][default_run]['databases']))],
+                        value=list(set(results['trait_enrichments'][default_run]['databases']))[0]
+                    )
+                ], width=6),
+
+                dbc.Col([
+                    html.Label("Select Trait Enrichment Method"),
+                    dcc.Dropdown(
+                        id='trait-method-phewas-selector',
+                        options=[{'label': method, 'value': method} for method in list(set(results['trait_enrichments'][default_run]['methods']))],
+                        value=list(set(results['trait_enrichments'][default_run]['methods']))[0]
+                    )
+                ], width=6),
+            ], className="mb-4"),
 
             # Binary trait enrichment PheWAS plot
             dbc.Row([
@@ -577,7 +598,7 @@ def update_num_enriched_genesets_plot(
     categorical_var = "program_name",
     count_var = "term",
     sig_var = "adj_pval",
-    debug=True,
+    debug=False,
 ):
 
     if debug:
@@ -849,41 +870,52 @@ def update_num_perturbation_associations_plot(
 
 # Callback for program trait correlation heatmap
 @callback(
-    Output('program-trait-heatmap', 'src'),
+    Output('categorical_association-heatmap', 'figure'),
     [Input('run-selector', 'value'), Input('covariate-selector', 'value')]
 )
-def update_program_trait_heatmap(
+def update_categorical_association_heatmap(
     selected_run, 
     selected_covariate,
-    debug=True
+    debug=False
 ):
         
     if debug:
         print(f"Selected run for program trait heatmap: {selected_run}")
         print(f"Selected covariate for program trait heatmap: {selected_covariate}")
 
-    # Assuming we want to plot something from the selected run
-    obs = results["obs"]
-    unique_values = obs[selected_covariate].unique()
+    # 
+    precomputed_covariates = list(results["categorical_associations_posthoc"][selected_run].keys())
 
-    # Make sure x-axis is string
-    curr_obs_membership = results['obs_memberships'][selected_run]
-    n_programs = curr_obs_membership.shape[1]
+    if selected_covariate in precomputed_covariates:
+        print(f"Selected covariate {selected_covariate} found in precomputed covariates, plotting plotly heatmap")
+        categorical_association_posthoc = results["categorical_associations_posthoc"][selected_run][selected_covariate]
+        categorical_association_posthoc_stat = categorical_association_posthoc.filter(like="stat")
+        new_cols = categorical_association_posthoc_stat.columns.str.split(f"{categorical_keys[0]}_", n=1).str[1].str.rstrip("_stat").str.rsplit('_', n=1).str[0]
+        method = categorical_association_posthoc_stat.columns.str.split(f"{categorical_keys[0]}_", n=1).str[1].str.rstrip("_stat").str.rsplit('_', n=1).str[1].unique()[0]
+        categorical_association_posthoc_stat.columns = new_cols
+        categorical_association_posthoc_stat.index = categorical_association_posthoc["program_name"].astype(str).values
+        plot_data = categorical_association_posthoc_stat.T
 
-    # Create a figure
-    fig, ax = plt.subplots(figsize=(n_programs * 0.5, len(unique_values) * 1))
+        fig = heatmap(
+            data=plot_data,
+            x_name="Program",
+            y_name=selected_covariate,
+            z_name=method,
+            title="",
+            xaxis_title="Program",
+            yaxis_title=selected_covariate,
+            colorbar_title=method,
+            hovertemplate=f'<b>{selected_covariate}: %{{y}}</b><br><b>Program: %{{x}}</b><br><b>{method}: %{{z}}</b>',
+            zmin=-1,
+            zmax=1,
+            zmid=0,
+        )
 
-    # Example plot using Plotly (replace with your actual plotting code)
-    plot_topic_trait_relationship_heatmap(
-        ax,  
-        curr_obs_membership,
-        obs,
-        covariates=[selected_covariate],
-    )
-
-    # Save the plot to a temporary file
-    fig = fig_to_uri(fig)
-
+    else:
+        print(f"Selected covariate {selected_covariate} not found in categorical associations")
+        fig = go.Figure(layout=dict(template='plotly'))
+        fig.update_layout(title="Categorical association evaluation not run on selected covariate, no data to display")
+    
     return fig
 
 
@@ -895,81 +927,43 @@ def update_program_trait_heatmap(
 def update_categorical_association_volcano_plot(
     selected_run, 
     selected_covariate,
-    debug=True,
-    sig_var = "_kruskall_wallis_pval",
-    sig_threshold = 0.05,
-    effect_var = "_kruskall_wallis_stat",
-    effect_threshold = 0.5
-    
+    debug=False,
 ):
 
     if debug:
         print(f"Selected run for categorical association plot: {selected_run}")
         print(f"Selected covariate for categorical association plot: {selected_covariate}")    
 
-    # Check if the selected covariate is in the categorical associations, if it isn't return an empty figure with title
-    # "Categorical association evaluation not run on selected covariate, no data to display"
-    if f"{selected_covariate}{sig_var}" not in results['categorical_associations'][selected_run].columns:
+    # 
+    precomputed_covariates = list(results["categorical_associations_posthoc"][selected_run].keys())
+
+    if selected_covariate in precomputed_covariates:
+        print(f"Selected covariate {selected_covariate} found in precomputed covariates, plotting plotly heatmap")
+        categorical_association_posthoc = results["categorical_associations_posthoc"][selected_run][selected_covariate]
+        categorical_association_posthoc_stat = categorical_association_posthoc.filter(like="stat")
+        categorical_association_posthoc_stat.index = categorical_association_posthoc["program_name"].astype(str).values
+        method = categorical_association_posthoc_stat.columns.str.split(f"{categorical_keys[0]}_", n=1).str[1].str.rstrip("_stat").str.rsplit('_', n=1).str[1].unique()[0]
+        categorical_association_posthoc_stat_max = categorical_association_posthoc_stat.abs().max(axis=1)
+        plot_data = categorical_association_posthoc_stat_max.reset_index().rename(columns={"index": "program_name", 0: method}).sort_values(method, ascending=False)
+
+        fig = scatterplot(
+            data=plot_data,
+            x_column="program_name",
+            y_column=method,
+            title="",
+            x_axis_title="Program",
+            y_axis_title=method,
+            sorted=True,
+            cumulative=False,
+            show_xaxis_labels=False,
+            colors=None,
+            size=8,
+        )
+
+    else:
         print(f"Selected covariate {selected_covariate} not found in categorical associations")
         fig = go.Figure(layout=dict(template='plotly'))
         fig.update_layout(title="Categorical association evaluation not run on selected covariate, no data to display")
-        return fig
-
-    # Assuming we want to plot something from the selected run
-    data_to_plot = results['categorical_associations'][selected_run]
-    data_to_plot["program_name"] = results["obs_memberships"][selected_run].columns
-
-    # Filter data
-    effect_var = f"{selected_covariate}{effect_var}"
-    sig_var = f"{selected_covariate}{sig_var}"
-
-    # -log10 transform the p-values, add a small value to avoid log(0)
-    data_to_plot[f"-log10({sig_var})"] = -np.log10(data_to_plot[sig_var] + 1e-10)
-
-    if debug:
-        print(f"Data to plot: {data_to_plot}")
-
-    # Plot a volcano plot with the effect size on the x-axis and the -log10(p-value) on the y-axis
-    # Highlight those points that are significant and have a large effect size
-    fig = px.scatter(
-        data_to_plot,
-        x=effect_var,
-        y=f"-log10({sig_var})",
-        color=sig_var,
-        title="",
-        hover_data=[
-            "program_name",
-            effect_var,
-            sig_var
-        ]
-    )
-
-    # Customize layout
-    fig.update_layout(
-        xaxis_title='Effect Size',
-        yaxis_title='-log10(p-value)',
-        yaxis=dict(tickformat=".1f"),
-        width=1200,
-        height=600,
-        xaxis_tickfont=dict(size=4),
-        plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
-    )
-
-    # Add horizontal dashed line for significance threshold
-    fig.add_hline(
-        y=-np.log10(sig_threshold),
-        line_dash="dash",
-        annotation_text='Significance Threshold (0.05)',
-        annotation_position="top right"
-    )
-
-    # Add vertical dashed line for effect size threshold
-    fig.add_vline(
-        x=effect_threshold,
-        line_dash="dash",
-        annotation_text='Effect Size Threshold',
-        annotation_position="top right"
-    )
 
     return fig
 
@@ -977,12 +971,26 @@ def update_categorical_association_volcano_plot(
 # Callback for phewas binary plot
 @callback(
     Output('phewas-binary-plot', 'figure'),
-    Input('run-selector', 'value')
+    [
+        Input('run-selector', 'value'),
+        Input('trait-database-phewas-selector', 'value'),
+        Input('trait-method-phewas-selector', 'value')
+    ]
 )
-def update_phewas_binary_plot(selected_run):
+def update_phewas_binary_plot(
+    selected_run,
+    database,
+    method,
+    debug=False,
+):
+
+    if debug:
+        print(f"Selected run for PheWAS plot: {selected_run}")
+        print(f"Selected database for PheWAS plot: {database}")
+        print(f"Selected method for PheWAS plot: {method}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['trait_enrichments'][selected_run]
+    data_to_plot = results['trait_enrichments'][selected_run]["results"][f"{database}_{method}"]
 
     fig = px.scatter(
         data_to_plot.query("trait_category != 'measurement'"),
@@ -1026,12 +1034,26 @@ def update_phewas_binary_plot(selected_run):
 # Callback for phewas continuous plot
 @callback(
     Output('phewas-continuous-plot', 'figure'),
-    Input('run-selector', 'value')
+    [
+        Input('run-selector', 'value'),
+        Input('trait-database-phewas-selector', 'value'),
+        Input('trait-method-phewas-selector', 'value')
+    ]
 )
-def update_phewas_continuous_plot(selected_run):
+def update_phewas_continuous_plot(
+    selected_run,
+    database,
+    method,
+    debug=False,
+):
+
+    if debug:
+        print(f"Selected run for PheWAS plot: {selected_run}")
+        print(f"Selected database for PheWAS plot: {database}")
+        print(f"Selected method for PheWAS plot: {method}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['trait_enrichments'][selected_run]
+    data_to_plot = results['trait_enrichments'][selected_run]["results"][f"{database}_{method}"]
 
     fig = px.scatter(
         data_to_plot.query("trait_category == 'measurement'"),

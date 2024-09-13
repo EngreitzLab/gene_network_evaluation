@@ -384,7 +384,8 @@ def compute_categorical_association(
         posthoc_df = pd.concat(res, axis=0)
         results_df = mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(store_key), 
                                                  '{}_kruskall_wallis_pval'.format(store_key)]]
-        
+        posthoc_df["program_name"] = mdata[prog_key].var_names
+        results_df["program_name"] = mdata[prog_key].var_names
         return (results_df, posthoc_df)
 
     else:

@@ -261,6 +261,58 @@ def barplot(
     return fig
 
 
+def heatmap(
+    data: pd.DataFrame,
+    title: str,
+    xaxis_title: str,
+    yaxis_title: str,
+    colorbar_title: str,
+    zmin: float = None,
+    zmax: float = None,
+    zmid: float = None,
+    hovertemplate: str = None,
+    x_name: str = "X",
+    y_name: str = "Y",
+    z_name: str = "Z",
+    plot_bgcolor: str = "rgba(0,0,0,0)",
+    font_size: int = 16,
+):
+    if hovertemplate is None:
+        hovertemplate = "<b>%{x_name}: %{x}</b><br><b>%{y_name}: %{y}</b><br><b>%{z_name}: %{z}</b>"
+    
+    if zmin is None:
+        zmin = data.values.min()
+    if zmax is None:
+        zmax = data.values.max()
+    if zmid is None:
+        zmid = 0
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=data.values,
+            x=data.columns.astype(str),
+            y=data.index.astype(str),
+            colorscale="RdBu_r",
+            hoverongaps=False,
+            zmin=zmin,
+            zmax=zmax,
+            zmid=zmid,
+            hovertemplate=hovertemplate,
+            colorbar=dict(title=colorbar_title),
+        )
+    )
+
+    fig.update_layout(
+        title=title,
+        xaxis_title=xaxis_title,
+        yaxis_title=yaxis_title,
+        plot_bgcolor=plot_bgcolor,
+        hoverlabel=dict(bgcolor="white", font_size=font_size),
+    )
+
+    return fig
+    
+
 def lollipop_plot(
     data: pd.DataFrame,
     x_column: str,
