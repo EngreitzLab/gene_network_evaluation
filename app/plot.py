@@ -483,7 +483,8 @@ def volcano_plot(
     effect_size_var: str,
     sig_var: str,
     sig_threshold: float,
-    effect_size_threshold: float,
+    low_effect_size_threshold: float = None,
+    high_effect_size_threshold: float = None,
     hover_data: list = None
 ):
     
@@ -500,11 +501,10 @@ def volcano_plot(
     fig.update_layout(
         xaxis_title=effect_size_var,
         yaxis_title=sig_var,
-        yaxis=dict(tickformat=".1f"),
-        xaxis=dict(tickformat=".1f"),
+        yaxis=dict(tickformat=".3f"),
+        xaxis=dict(tickformat=".3f"),
         width=1000,
         height=800,
-        xaxis_tickfont=dict(size=4),
         plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
     )
 
@@ -513,18 +513,27 @@ def volcano_plot(
         y=sig_threshold,
         line_dash="dash",
         line_color="red",
-        annotation_text=f'Significance Threshold ({sig_threshold})',
+        annotation_text='',
         annotation_position="top right"
     )
 
     # Add vertical dashed lines for effect size threshold
-    fig.add_vline(
-        x=effect_size_threshold,
-        line_dash="dash",
-        line_color="red",
-        annotation_text=f'Effect Size Threshold ({effect_size_threshold})',
-        annotation_position="top right"
-    )
+    if high_effect_size_threshold is not None:
+        fig.add_vline(
+            x=high_effect_size_threshold,
+            line_dash="dash",
+            line_color="red",
+            annotation_text='',
+            annotation_position="top right"
+        )
+    if low_effect_size_threshold is not None:
+        fig.add_vline(
+            x=low_effect_size_threshold,
+            line_dash="dash",
+            line_color="red",
+            annotation_text='',
+            annotation_position="top right"
+        )
 
     return fig
 

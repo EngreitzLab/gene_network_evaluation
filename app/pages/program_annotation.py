@@ -52,6 +52,14 @@ continuous_keys = results["continuous_keys"]
 covariate_keys = categorical_keys + continuous_keys
 default_covariate = categorical_keys[0] if categorical_keys else None
 
+# Grab the groupings
+perturbation_association_stratification_key = results['perturbation_association_stratification_key']
+motif_enrichment_stratification_key = results['motif_enrichment_stratification_key']
+
+# Get all the possible trait_category values for trait enrichment
+trait_categories = results['trait_enrichments'][default_run]['results'][list(results['trait_enrichments'][default_run]['results'].keys())[0]]['trait_category'].unique()
+trait_categories_to_show = [trait_category for trait_category in trait_categories if trait_category not in ["biological process", "disease of ear", "phenotype", "injury, poisoning or other complication"]]
+
 # Create the layout using tabs for each section
 layout = dbc.Container([
     
@@ -123,8 +131,34 @@ layout = dbc.Container([
                    "Use the input box to specify the significance threshold you want to use.", className="mb-4"),
             
             dbc.Row([
+                
+                # Drop down for library
                 dbc.Col([
-                    html.H3("Enriched gene sets"),
+                    html.Label("Select Library"),
+                    dcc.Dropdown(
+                        id='table-genesets-library-selector',
+                        options=[{'label': library, 'value': library} for library in list(set(results['geneset_enrichments'][default_run]['libraries']))],
+                        value=list(set(results['geneset_enrichments'][default_run]['libraries']))[0]
+                    )
+                ], width=6),
+
+                # Drop down for method
+                dbc.Col([
+                    html.Label("Select Method"),
+                    dcc.Dropdown(
+                        id='table-genesets-method-selector',
+                        options=[{'label': method, 'value': method} for method in list(set(results['geneset_enrichments'][default_run]['methods']))],
+                        value=list(set(results['geneset_enrichments'][default_run]['methods']))[0]
+                    )
+                ], width=6),
+
+            ]),
+
+            dbc.Row([
+
+                # Pvalue input
+                dbc.Col([
+                    html.Label("Select Significance Threshold"),
                     dcc.Input(
                         id='enriched-terms-threshold',
                         type='number',
@@ -133,10 +167,25 @@ layout = dbc.Container([
                         max=1,
                         placeholder="Enter significance threshold"
                     ),
-                    html.Div(id='enriched-terms-table', className="mb-4"),
-                ], width=12),
+                ], width=6),
+
+                # Enrichment input
+                dbc.Col([
+                    html.Label("Select Enrichment Threshold"),
+                    dcc.Input(
+                        id='enriched-terms-enrichment-threshold',
+                        type='number',
+                        value=0,
+                        min=0,
+                        max=1e6,
+                        placeholder="Enter enrichment threshold"
+                    ),
+                ], width=6),
+
+                
             ]),
 
+            # Volcano plot of terms
             dbc.Row([
                 dbc.Col([
                     html.H3("Volcano plot of gene set enrichment"),
@@ -148,6 +197,16 @@ layout = dbc.Container([
                     dcc.Graph(id='volcano-plot-terms'),
                 ], width=12),
             ]),
+
+            # Enriched terms table
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Enriched terms"),
+                    html.Div(id='enriched-terms-table', className="mb-4"),
+                ], width=12),
+            ]),
+
+            
         ]),
 
         # Tab 3: Motif Enrichment
@@ -156,9 +215,57 @@ layout = dbc.Container([
             html.P("This tab provides a look at the enriched motifs for the selected program. "
                    "Use the input box to specify the significance threshold you want to use.", className="mb-4"),
 
+            # Threshold input and E/P type dropdown and database dropdown
             dbc.Row([
+
+                # E/P type dropdown
                 dbc.Col([
-                    html.H3("Enriched motifs"),
+                    html.Label("Select E/P type"),
+                    dcc.Dropdown(
+                        id='table-motifs-E_P_type-selector',
+                        options=[{'label': E_P_types, 'value': E_P_types} for E_P_types in list(set(results['motif_enrichments'][default_run]['E_P_types']))],
+                        value=list(set(results['motif_enrichments'][default_run]['E_P_types']))[0]
+                    )
+                ], width=3),
+
+                # Database dropdown
+                dbc.Col([
+                    html.Label("Select Motif Database"),
+                    dcc.Dropdown(
+                        id='table-motifs-database-selector',
+                        options=[{'label': databases, 'value': databases} for databases in list(set(results['motif_enrichments'][default_run]['databases']))],
+                        value=list(set(results['motif_enrichments'][default_run]['databases']))[0]
+                    )
+                ], width=3),
+
+                # Test type dropdown
+                dbc.Col([
+                    html.Label("Select Motif Enrichment Test Type"),
+                    dcc.Dropdown(
+                        id='table-motifs-test_type-selector',
+                        options=[{'label': test_type, 'value': test_type} for test_type in list(set(results['motif_enrichments'][default_run]['test_types']))],
+                        value=list(set(results['motif_enrichments'][default_run]['test_types']))[0]
+                    )
+                ], width=3),
+
+                # Level key dropdown
+                dbc.Col([
+                    html.Label("Select Level Key"),
+                    dcc.Dropdown(
+                        id='table-motifs-level_key-selector',
+                        options=[{'label': level_key, 'value': level_key} for level_key in sorted(list(set(results['motif_enrichments'][default_run]['level_keys'])))],
+                        value=sorted(list(set(results['motif_enrichments'][default_run]['level_keys'])))[0]
+                    )
+                ], width=3),
+
+            ]),
+
+            # Test type and level key dropdowns
+            dbc.Row([
+
+                # Pvalue input
+                dbc.Col([
+                    html.Label("Select adjusted p-value significance threshold"),
                     dcc.Input(
                         id='enriched-motifs-threshold',
                         type='number',
@@ -167,60 +274,162 @@ layout = dbc.Container([
                         max=1,
                         placeholder="Enter significance threshold"
                     ),
-                    html.Div(id='enriched-motifs-table', className="mb-4"),
-                ], width=12),
+                ], width=6),
+
+                # Enrichment value input
+                dbc.Col([
+                    html.Label("Select Enrichment Threshold"),
+                    dcc.Input(
+                        id='enriched-motifs-enrichment-threshold',
+                        type='number',
+                        value=0,
+                        min=0,
+                        max=1e6,
+                        placeholder="Enter enrichment threshold"
+                    ),
+                ], width=6),
+                
             ]),
 
+            # Volcano plot of motifs
             dbc.Row([
                 dbc.Col([
                     html.H3("Volcano Plot of Motifs"),
                     dcc.Graph(id='volcano-plot-motifs'),
                 ], width=12),
             ]),
-            html.H3("Motif Logo for selected motif", className="mt-3 mb-3"),
-            dcc.Graph(id='motif-logo'),
+
+            # Enriched motifs table
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Enriched motifs"),
+                    html.Div(id='enriched-motifs-table', className="mb-4"),
+                ], width=12),
+            ]),
+
+            # Motif logo
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Motif Logo for selected motif", className="mt-3 mb-3"),
+                    dcc.Graph(id='motif-logo'),
+                ], width=12),
+            ]),
         ]),
 
         # Tab 4: Trait Enrichment
         dcc.Tab(label='Trait Enrichment', children=[
-            html.H2("Trait Enrichment Results", className="mt-4 mb-3"),
+            
             dbc.Row([
+                 
+                 # Drop down for library
                 dbc.Col([
-                    html.H3("Table of Enriched Trait Terms"),
+                    html.Label("Select Database"),
+                    dcc.Dropdown(
+                        id='table-traits-library-selector',
+                        options=[{'label': library, 'value': library} for library in list(set(results['trait_enrichments'][default_run]['databases']))],
+                        value=list(set(results['trait_enrichments'][default_run]['databases']))[0]
+                    )
+                ], width=4),
+
+                # drop down for method
+                dbc.Col([
+                    html.Label("Select Method"),
+                    dcc.Dropdown(
+                        id='table-traits-method-selector',
+                        options=[{'label': method, 'value': method} for method in list(set(results['trait_enrichments'][default_run]['methods']))],
+                        value=list(set(results['trait_enrichments'][default_run]['methods']))[0]
+                    )
+                ], width=4),
+
+            ]),
+            
+            # Threshold inputs
+            dbc.Row([
+
+                # Pvalue input
+                dbc.Col([
+                    html.Label("Select Significance Threshold"),
                     dcc.Input(
                         id='enriched-traits-threshold',
                         type='number',
                         value=0.05,
                         min=0,
                         max=1,
-                        step=0.01,
                         placeholder="Enter significance threshold"
                     ),
-                    html.Div(id='enriched-traits-table', className="mb-4"),
-                ], width=12),
+                ], width=6),
+
+                # Enrichment input
+                dbc.Col([
+                    html.Label("Select Enrichment Threshold"),
+                    dcc.Input(
+                        id='enriched-traits-enrichment-threshold',
+                        type='number',
+                        value=0,
+                        min=0,
+                        max=1e6,
+                        placeholder="Enter enrichment threshold"
+                    ),
+                ], width=6),
+
+            ]),
+            
+            # Toggles for trait type and trait categories
+            dbc.Row([
+                
+                # Toggle for binary or continuous
+                dbc.Col([
+                    html.Label("Select Trait Type"),
+                    dcc.RadioItems(
+                        id='trait-type-selector',
+                        options=[
+                            {'label': 'Binary', 'value': 'binary'},
+                            {'label': 'Continuous', 'value': 'continuous'},
+                        ],
+                        value='binary',
+                        inline=True,
+                    ),
+                ], width=2),
+
+                # Checkboxes for all possible trait categories
+                dbc.Col([
+                    html.Label("Select Trait Categories to Display"),
+                    dcc.Checklist(
+                        id='trait-category-selector',
+                        options=[{'label': trait_category, 'value': trait_category} for trait_category in trait_categories],
+                        value=trait_categories_to_show,
+                        inline=True,
+                    ),
+                ], width=10),
+
             ]),
 
-            # Binary trait enrichment PheWAS plot
+            # Binary or continuous trait enrichment PheWAS plot
             dbc.Row([
+                
+                # Plot
                 dbc.Col([
-                    html.H3("Binary trait PheWAS plot for selected program", className="mt-3 mb-3"),
-                    dcc.Graph(id='phewas-binary-program-plot'),
+                    html.H3("PheWAS plot for selected program", className="mb-4"),
+                    dcc.Graph(id='phewas-program-plot'),
                 ], width=12),
-            ], className="mb-4"),
 
-            # Continuous trait enrichment PheWAS plot
+            ]),
+            
+            # Enriched traits table
             dbc.Row([
+                
                 dbc.Col([
-                    html.H3("Continuous trait PheWAS plot for selected program", className="mt-3 mb-3"),
-                    dcc.Graph(id='phewas-continuous-program-plot'),
+                    html.H3("Enriched traits"),
+                    html.Div(id='enriched-traits-table', className="mb-1"),
                 ], width=12),
-            ], className="mb-4"),
+
+            ]),
+
         ]),
 
         # Tab 5: Categorical Association
         dcc.Tab(label='Categorical Association', children=[
             html.H2("Categorical Association Analysis", className="mt-4 mb-3"),
-
 
             # Covariate and obsm dropdowns at the top
             dbc.Row([
@@ -271,7 +480,6 @@ layout = dbc.Container([
 
             dbc.Row([
                 dbc.Col([
-                    html.H3("Table of Associated Perturbations"),
                     dcc.Input(
                         id='perturbation-threshold',
                         type='number',
@@ -281,9 +489,37 @@ layout = dbc.Container([
                         placeholder="Enter significance threshold"
                     ),
                     html.Div(id='perturbation-table', className="mb-4"),
+                ], width=4),
+
+
+                dbc.Col([
+                    html.Label("Select Gene Guide"),
+                    dcc.Dropdown(
+                        id='table-perturbations-gene_guide-selector',
+                        options=[{'label': gene_guide, 'value': gene_guide} for gene_guide in list(set(results['perturbation_associations'][default_run]['gene_guides']))],
+                        value=list(set(results['perturbation_associations'][default_run]['gene_guides']))[0]
+                    )
+                ], width=4),
+
+                dbc.Col([
+                    html.Label("Select Level Key"),
+                    dcc.Dropdown(
+                        id='table-perturbations-level_key-selector',
+                        options=[{'label': level_key, 'value': level_key} for level_key in sorted(list(set(results['perturbation_associations'][default_run]['level_keys'])))],
+                        value=sorted(list(set(results['perturbation_associations'][default_run]['level_keys'])))[0]
+                    )
+                ], width=4),
+            ]),
+
+            # Table of perturbations
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Perturbation Associations"),
+                    html.Div(id='perturbation-table', className="mb-4"),
                 ], width=12),
             ]),
 
+            # Volcano plot of perturbations
             dbc.Row([
                 dbc.Col([
                     html.H3("Volcano Plot of Perturbations"),
@@ -319,7 +555,11 @@ layout = dbc.Container([
 # Callback for gene loadings plot
 @callback(
     Output('gene-loadings-plot', 'figure'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('gene-loadings-n', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'), 
+        Input('gene-loadings-n', 'value')
+    ]
 )
 def update_gene_loadings_plot(
     selected_run, 
@@ -358,7 +598,11 @@ def update_gene_loadings_plot(
 # Callback for gene loadings table
 @callback(
     Output('gene-loadings-table', 'children'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('gene-loadings-n', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'), 
+        Input('gene-loadings-n', 'value')
+    ]
 )
 def update_gene_loadings_table(
     selected_run, 
@@ -400,22 +644,33 @@ def update_gene_loadings_table(
 # Callback for geneset enrichment table
 @callback(
     Output('enriched-terms-table', 'children'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('enriched-terms-threshold', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'), 
+        Input('enriched-terms-threshold', 'value'),
+        Input('enriched-terms-enrichment-threshold', 'value'),
+        Input('table-genesets-library-selector', 'value'),
+        Input('table-genesets-method-selector', 'value')
+    ]
 )
 def update_enriched_terms_table(
     selected_run, 
     selected_program, 
     sig_threshold,
-    debug=False,
+    enrichment_threshold,
+    library,
+    method,
     categorical_var = "program_name",
     sig_var = "adj_pval",
+    debug=False,
 ):  
 
     if debug:
         print(f"Selected run: {selected_run}, program: {selected_program}, sig_threshold: {sig_threshold}")
+        print(f"Library: {library}, Method: {method}")
 
-    # Retrieve the relevant data
-    data_to_plot = results['geneset_enrichments'].get(selected_run, pd.DataFrame())
+    # Assuming we want to plot something from the selected run
+    data_to_plot = results['geneset_enrichments'][selected_run]["results"][f"{library}_{method}"]
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -424,7 +679,7 @@ def update_enriched_terms_table(
     data_to_plot = data_to_plot[data_to_plot[categorical_var] == selected_program]
 
     # Filter data for significant terms
-    data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+    data_to_plot = data_to_plot[(data_to_plot[sig_var] < sig_threshold) & (data_to_plot["enrichment"] > enrichment_threshold)]
 
     # Sort data by adj_pval
     data_to_plot = data_to_plot.sort_values(by=sig_var)
@@ -458,25 +713,35 @@ def update_enriched_terms_table(
 # Callback for volcano plot of terms
 @callback(
     Output('volcano-plot-terms', 'figure'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'),
+        Input('table-genesets-library-selector', 'value'),
+        Input('table-genesets-method-selector', 'value'),
+        Input('enriched-terms-threshold', 'value'),
+        Input('enriched-terms-enrichment-threshold', 'value')
+    ]
 )
 def update_volcano_plot_terms(
     selected_run,
     selected_program,
+    library,
+    method,
+    sig_threshold,
+    enrichment_threshold,
     categorical_var = "term",
     sig_var = "adj_pval",
-    sig_threshold = 0.05,
-    effect_size_var = "effect_size",
-    effect_size_threshold = 1,
+    enrichment_var = "enrichment",
     hover_data=["program_name", "term", "adj_pval"],
     debug=False,
 ):
 
     if debug:
         print(f"Selected run: {selected_run}, program: {selected_program}")
+        print(f"Library: {library}, Method: {method}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['geneset_enrichments'][selected_run]
+    data_to_plot = results['geneset_enrichments'][selected_run]["results"][f"{library}_{method}"]
 
     # Filter data for the selected program
     data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
@@ -494,10 +759,10 @@ def update_volcano_plot_terms(
     # Plot volcano plot
     fig = volcano_plot(
         data=data_to_plot,
-        effect_size_var=effect_size_var,
+        effect_size_var=enrichment_var,
         sig_var=sig_var,
         sig_threshold=sig_threshold,
-        effect_size_threshold=effect_size_threshold,
+        high_effect_size_threshold=enrichment_threshold,
         hover_data=hover_data,
     )
 
@@ -507,22 +772,39 @@ def update_volcano_plot_terms(
 # Callback for motif enrichment table
 @callback(
     Output('enriched-motifs-table', 'children'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('enriched-motifs-threshold', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'), 
+        Input('enriched-motifs-threshold', 'value'),
+        Input('enriched-motifs-enrichment-threshold', 'value'),
+        Input('table-motifs-E_P_type-selector', 'value'),
+        Input('table-motifs-database-selector', 'value'),
+        Input('table-motifs-test_type-selector', 'value'),
+        Input('table-motifs-level_key-selector', 'value')
+    ]
 )
 def update_enriched_motifs_table(
     selected_run, 
     selected_program, 
     sig_threshold,
-    debug=False,
+    enrichment_threshold,
+    e_p_type,
+    database,
+    test_type,
+    level_key,
     categorical_var = "program_name",
-    sig_var = "pval",
+    sig_var = "adj_pval",
+    enrichment_var = "stat",
+    debug=False,
 ):
   
     if debug:
         print(f"Selected run: {selected_run}, program: {selected_program}, sig_threshold: {sig_threshold}")
+        print(f"E/P type: {e_p_type}, Database: {database}, Test type: {test_type}, Level key: {level_key}")
+        print(f"Enrichment threshold: {enrichment_threshold}")
 
     # Retrieve the relevant data
-    data_to_plot = results['motif_enrichments'].get(selected_run, pd.DataFrame())
+    data_to_plot = results['motif_enrichments'][selected_run]["results"][f"{e_p_type}_{database}_{test_type}_{motif_enrichment_stratification_key}_{level_key}"]
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -531,7 +813,7 @@ def update_enriched_motifs_table(
     data_to_plot = data_to_plot[data_to_plot[categorical_var] == selected_program]
 
     # Filter data for significant terms
-    data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+    data_to_plot = data_to_plot[(data_to_plot[sig_var] < sig_threshold) & (data_to_plot[enrichment_var] > enrichment_threshold)]
     
     # Sort data by adj_pval
     data_to_plot = data_to_plot.sort_values(by=sig_var)
@@ -565,25 +847,40 @@ def update_enriched_motifs_table(
 # Callback for volcano plot of motifs
 @callback(
     Output('volcano-plot-motifs', 'figure'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'),
+        Input('table-motifs-E_P_type-selector', 'value'),
+        Input('table-motifs-database-selector', 'value'),
+        Input('table-motifs-test_type-selector', 'value'),
+        Input('table-motifs-level_key-selector', 'value'),
+        Input('enriched-motifs-threshold', 'value'),
+        Input('enriched-motifs-enrichment-threshold', 'value'),
+    ]
 )
 def update_volcano_plot_motifs(
     selected_run,
     selected_program,
+    e_p_type,
+    database,
+    test_type,
+    level_key,
+    sig_threshold,
+    enrichment_threshold,
     categorical_var = "motif",
-    sig_var = "pval",
-    sig_threshold = 0.05,
-    effect_size_var = "stat",
-    effect_size_threshold = 1,
-    hover_data=["program_name", "motif", "pval", "stat"],
+    sig_var = "adj_pval",
+    enrichment_var = "stat",
+    hover_data=["program_name", "motif", "adj_pval", "stat"],
     debug=False,
 ):
 
     if debug:
         print(f"Selected run: {selected_run}, program: {selected_program}")
+        print(f"E/P type: {e_p_type}, Database: {database}, Test type: {test_type}, Level key: {level_key}")
+        print(f"Sig threshold: {sig_threshold}, Enrichment threshold: {enrichment_threshold}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['motif_enrichments'][selected_run]
+    data_to_plot = results['motif_enrichments'][selected_run]["results"][f"{e_p_type}_{database}_{test_type}_{motif_enrichment_stratification_key}_{level_key}"]
 
     # Filter data for the selected program
     data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
@@ -601,10 +898,10 @@ def update_volcano_plot_motifs(
     # Plot volcano plot
     fig = volcano_plot(
         data=data_to_plot,
-        effect_size_var=effect_size_var,
+        effect_size_var=enrichment_var,
         sig_var=sig_var,
         sig_threshold=sig_treshold,
-        effect_size_threshold=effect_size_threshold,
+        high_effect_size_threshold=enrichment_threshold,
         hover_data=hover_data,
     )
 
@@ -614,22 +911,38 @@ def update_volcano_plot_motifs(
 # Callback for trait enrichment table
 @callback(
     Output('enriched-traits-table', 'children'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('enriched-traits-threshold', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'), 
+        Input('enriched-traits-threshold', 'value'),
+        Input('enriched-traits-enrichment-threshold', 'value'),
+        Input('table-traits-library-selector', 'value'),
+        Input('table-traits-method-selector', 'value'),
+        Input('trait-type-selector', 'value'),
+        Input('trait-category-selector', 'value')
+    ]
 )
 def update_enriched_traits_table(
     selected_run, 
     selected_program,
     sig_threshold,
+    enrichment_threshold,
+    library,
+    method,
+    trait_type,
+    trait_categories,
     categorical_var = "program_name",
     sig_var = "adj_pval",
+    enrichment_var = "enrichment",
     debug=False,
 ):
 
     if debug:
-        print(f"Selected run: {selected_run}, program: {selected_program}, sig_threshold: {sig_threshold}")
+        print(f"Selected run: {selected_run}, program: {selected_program}, sig_threshold: {sig_threshold}, enrichment_threshold: {enrichment_threshold}")
+        print(f"Library: {library}, Method: {method}, Trait Type: {trait_type}")
 
     # Retrieve the relevant data
-    data_to_plot = results['trait_enrichments'].get(selected_run, pd.DataFrame())
+    data_to_plot = results['trait_enrichments'][selected_run]["results"][f"{library}_{method}"]
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -638,7 +951,19 @@ def update_enriched_traits_table(
     data_to_plot = data_to_plot[data_to_plot[categorical_var] == selected_program]
 
     # Filter data for significant terms
-    data_to_plot = data_to_plot[data_to_plot[sig_var] < sig_threshold]
+    data_to_plot = data_to_plot[(data_to_plot[sig_var] < sig_threshold) & (data_to_plot[enrichment_var] > enrichment_threshold)]
+
+    # Filter data for binary or continuous traits
+    if trait_type == 'binary':
+        data_to_plot = data_to_plot.query("trait_category != 'measurement'")
+    elif trait_type == 'continuous':
+        data_to_plot = data_to_plot.query("trait_category == 'measurement'")
+    else:
+        print("Invalid trait type.")
+        return html.Div("Invalid trait type.")
+    
+    # Filter data for selected trait categories
+    data_to_plot = data_to_plot[data_to_plot["trait_category"].isin(trait_categories)]
 
     # Sort data by adj_pval
     data_to_plot = data_to_plot.sort_values(by=sig_var)
@@ -671,31 +996,62 @@ def update_enriched_traits_table(
 
 # Callback for phewas binary plot
 @callback(
-    Output('phewas-binary-program-plot', 'figure'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+    Output('phewas-program-plot', 'figure'),
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'),
+        Input('table-traits-library-selector', 'value'),
+        Input('table-traits-method-selector', 'value'),
+        Input('trait-type-selector', 'value'),
+        Input('trait-category-selector', 'value'),
+        Input('enriched-traits-threshold', 'value'),
+        Input('enriched-traits-enrichment-threshold', 'value'),
+    ]
 )
-def update_phewas_binary_plot(
+def update_phewas_plot(
     selected_run,
     selected_program,
+    library,
+    method,
+    trait_type,
+    trait_categories,
+    sig_threshold,
+    enrichment_threshold,
     debug=False,
 ):
+    if debug:
+        print(f"Selected run: {selected_run}, program: {selected_program}, trait_type: {trait_type}")
+        print(f"Library: {library}, Method: {method}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['trait_enrichments'][selected_run]
+    data_to_plot = results['trait_enrichments'][selected_run]["results"][f"{library}_{method}"]
+
+    # Make sure x-axis is string
+    data_to_plot["program_name"] = data_to_plot["program_name"].astype(str)
 
     # Filter data for the selected program
     data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
 
-    # Filter data for binary traits
-    data_to_plot = data_to_plot.query("trait_category != 'measurement'")
-
+    # Filter data for the selected trait type
+    if trait_type == 'binary':
+        data_to_plot = data_to_plot.query("trait_category != 'measurement'")
+    elif trait_type == 'continuous':
+        data_to_plot = data_to_plot.query("trait_category == 'measurement'")
+    else:
+        print("Invalid trait type.")
+        return go.Figure()
+    
+    # Filter data for selected trait categories
+    data_to_plot = data_to_plot[data_to_plot["trait_category"].isin(trait_categories)]
+    
+    # Plot
     fig = px.scatter(
-        data_to_plot.query("trait_category != 'measurement'"),
+        data_to_plot,
         x='trait_reported',
         y='-log10(adj_pval)',
         color='trait_category',
         title="",
-        hover_data=["program_name", "trait_reported", "trait_category", "adj_pval", "genes", "study_id", "pmid"]
+        hover_data=["program_name", "trait_reported", "trait_category", "adj_pval", "study_id", "pmid"]
     )
 
     # Customize layout
@@ -705,70 +1061,19 @@ def update_phewas_binary_plot(
         yaxis=dict(tickformat=".1f"),
         width=1000,
         height=800,
-        xaxis_tickfont=dict(size=4),
+        xaxis=dict(showticklabels=False),
         plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
     )
 
     # Add horizontal dashed line for significance threshold
     fig.add_hline(
-        y=-np.log10(0.05), 
+        y=-np.log10(sig_threshold),
         line_dash="dash",
         annotation_text='Significance Threshold (0.05)', 
         annotation_position="top right"
     )
 
     return fig
-
-
-# Callback for phewas continuous plot
-@callback(
-    Output('phewas-continuous-program-plot', 'figure'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value')]
-)
-def update_phewas_continuous_plot(
-    selected_run,
-    selected_program,
-    debug=False,
-):
-    
-        # Assuming we want to plot something from the selected run
-        data_to_plot = results['trait_enrichments'][selected_run]
-    
-        # Filter data for the selected program
-        data_to_plot = data_to_plot.query(f"program_name == '{selected_program}'")
-    
-        # Filter data for continuous traits
-        data_to_plot = data_to_plot.query("trait_category == 'measurement'")
-    
-        fig = px.scatter(
-            data_to_plot,
-            x='trait_reported',
-            y='-log10(adj_pval)',
-            color='trait_category',
-            title="",
-            hover_data=["program_name", "trait_reported", "trait_category", "adj_pval", "genes", "study_id", "pmid"]
-        )
-    
-        # Customize layout
-        fig.update_layout(
-            xaxis_title='trait_reported',
-            yaxis_title='-log10(adj_pval)',
-            yaxis=dict(tickformat=".1f"),
-            width=1000,
-            height=800,
-            xaxis_tickfont=dict(size=4),
-            plot_bgcolor='rgba(0,0,0,0)',  # Transparent background
-        )
-    
-        # Add horizontal dashed line for significance threshold
-        fig.add_hline(
-            y=-np.log10(0.05), 
-            line_dash="dash",
-            annotation_text='Significance Threshold (0.05)', 
-            annotation_position="top right"
-        )
-    
-        return fig
 
 
 # Callback for covariate association plot
@@ -878,21 +1183,30 @@ def update_program_dim_reduction_plot(
 # Callback for perturbation table
 @callback(
     Output('perturbation-table', 'children'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value'), Input('perturbation-threshold', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'), 
+        Input('perturbation-threshold', 'value'),
+        Input('table-perturbations-gene_guide-selector', 'value'),
+        Input('table-perturbations-level_key-selector', 'value')
+    ]
 )
 def update_perturbation_table(
     selected_run, 
     selected_program, 
     sig_threshold,
-    debug=False,
+    gene_guide,
+    level_key,
     categorical_var = "target_name",
-    sig_var = "pval",
+    sig_var = "adj_pval",
+    debug=False,
 ):
     if debug:
         print(f"Selected run: {selected_run}, program: {selected_program}, sig_threshold: {sig_threshold}")
+        print(f"Gene guide: {gene_guide}, Level key: {level_key}")
 
     # Retrieve the relevant data
-    data_to_plot = results['perturbation_associations'].get(selected_run, pd.DataFrame())
+    data_to_plot = results['perturbation_associations'][selected_run]["results"][f"{gene_guide}_{perturbation_association_stratification_key}_{level_key}"]
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -935,24 +1249,33 @@ def update_perturbation_table(
 # Callback for perturbation association plot
 @callback(
     Output('volcano-plot-perturbations', 'figure'),
-    [Input('run-selector', 'value'), Input('program-selector', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('program-selector', 'value'),
+        Input('table-perturbations-gene_guide-selector', 'value'),
+        Input('table-perturbations-level_key-selector', 'value'),
+    ]
 )
 def update_perturbation_association_plot(
     selected_run, 
     selected_program,
+    selected_gene_guide,
+    selected_level_key,
     categorical_var = "target_name",
-    sig_var = "pval",
+    sig_var = "adj_pval",
     sig_threshold = 0.05,
-    effect_size_var = "stat",
-    effect_size_threshold = 1,
-    debug=True
+    effect_size_var = "log2FC",
+    low_effect_size_threshold = -0.5,
+    high_effect_size_threshold = 0.5,
+    debug=False
 ):
     
     if debug:
         print(f"Selected run: {selected_run}, program: {selected_program} for perturbation association plot")
+        print(f"Gene guide: {selected_gene_guide}, Level key: {selected_level_key}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['perturbation_associations'][selected_run]
+    data_to_plot = results['perturbation_associations'][selected_run]["results"][f"{selected_gene_guide}_{perturbation_association_stratification_key}_{selected_level_key}"]
 
     # Make sure x-axis is string
     data_to_plot["program_name"] = data_to_plot["program_name"].astype(str)
@@ -977,8 +1300,9 @@ def update_perturbation_association_plot(
         effect_size_var=effect_size_var,
         sig_var=f'-log10({sig_var})',
         sig_threshold=sig_threshold,
-        effect_size_threshold=effect_size_threshold,
-        hover_data=["program_name", "target_name", "pval", "stat"],
+        low_effect_size_threshold=low_effect_size_threshold,
+        high_effect_size_threshold=high_effect_size_threshold,
+        hover_data=["program_name", "target_name", "adj_pval", "stat"],
     )
 
     return fig

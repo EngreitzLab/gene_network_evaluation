@@ -241,10 +241,24 @@ def process_enrichment_data(
     return enrich_ps
 
 
-def compute_trait_enrichment(mdata, gwas_data, prog_key='prog', 
-                             prog_nam=None, data_key='rna', library='OT_GWAS', 
-                             n_jobs=1, inplace=False, key_column='trait_efos',
-                             gene_column='gene_name', method='fisher', loading_rank_thresh=500, **kwargs):
+def compute_trait_enrichment(
+    mdata, 
+    gwas_data, 
+    prog_key='prog', 
+    prog_name=None, 
+    data_key='rna', 
+    library='OT_GWAS', 
+    n_jobs=1, 
+    inplace=False, 
+    key_column='trait_efos',
+    gene_column='gene_name', 
+    method='fisher', 
+    min_size=0,
+    max_size=2000,
+    n_top=500, 
+    low_cutoff=-np.inf, 
+    **kwargs
+):
     """Compute Trait enrichment using open-targets GWAS"""
     #read in gwas data
     if isinstance(gwas_data, str):
@@ -256,9 +270,24 @@ def compute_trait_enrichment(mdata, gwas_data, prog_key='prog',
     
     gmt = create_geneset_dict(df, key_column=key_column, gene_column=gene_column)
 
-    return (compute_geneset_enrichment(mdata=mdata, prog_key=prog_key, data_key=data_key, 
-                                       library=library, database=None, n_jobs=n_jobs, inplace=inplace, 
-                                       user_geneset=gmt, prog_nam=prog_nam, method=method, loading_rank_thresh=loading_rank_thresh))
+    return (compute_geneset_enrichment(
+        mdata=mdata, 
+        prog_key=prog_key, 
+        data_key=data_key, 
+        prog_name=prog_name, 
+        method=method, 
+        organism="human",
+        library=library, 
+        database=None, 
+        user_geneset=gmt,
+        min_size=min_size,
+        max_size=max_size,
+        low_cutoff=low_cutoff,
+        n_top=n_top,
+        n_jobs=n_jobs, 
+        inplace=inplace, 
+        **kwargs
+    ))
 
 
 if __name__=='__main__':
