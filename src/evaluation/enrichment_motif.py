@@ -7,6 +7,7 @@ import pandas as pd
 
 from scipy.stats import pearsonr, spearmanr, kendalltau
 from statsmodels.stats.multitest import multipletests
+from statsmodels.stats.multitest import fdrcorrection
 
 from tangermeme.io import read_meme, extract_loci
 from tangermeme.tools.fimo import fimo
@@ -148,9 +149,7 @@ def compute_motif_instances(
     print(f"There are {motif_match_df_.shape[0]} significant motif matches.")
     motif_match_df_ = motif_match_df.value_counts(subset=['gene_name', motif_var]).reset_index()
     motif_match_df_.columns = ['gene_name', motif_var, 'motif_count']
-    print(motif_match_df_)
     motif_match_df_ = motif_match_df_.pivot(index='gene_name', columns=motif_var, values='motif_count')
-    print(motif_match_df_)
     motif_count_df = pd.DataFrame(index=gene_names, columns=motif_match_df_.columns)
     motif_count_df.loc[motif_match_df_.index.values] = motif_match_df_ # Gene names should match as this point
     return motif_count_df
@@ -469,6 +468,7 @@ def compute_motif_enrichment(
         motif_enrichment_df['program_name'] = motif_enrichment_df['index']
         motif_enrichment_df.drop('index', axis=1, inplace=True)
         motif_enrichment_df = motif_enrichment_df.sort_values(['program_name', 'pval'])
+        motif_enrichment_df["adj_pval"] = multipletests(motif_enrichment_df["pval"], method="fdr_bh")[1]
 
         motif_count_df.columns.name=''
 

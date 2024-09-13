@@ -7,7 +7,9 @@ import pandas as pd
 
 from scipy import stats, sparse
 from scikit_posthocs import posthoc_dscf, posthoc_conover, posthoc_dunn
+from statsmodels.stats.multitest import fdrcorrection
 
+from typing import Literal
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
@@ -15,7 +17,7 @@ import logging
 logging.basicConfig(level = logging.INFO)
 
 # Perform non-parametric test (~one way ANOVA) to compare prog scores across categorical levels
-def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,  
+def perform_kruskall_wallis(mdata, prog_key='prog', prog_name=None,  
                             categorical_key='batch', pseudobulk_key='sample'):
     """
     Performs non-parametric one-way ANOVA using specified categorical levels.
@@ -27,8 +29,8 @@ def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,
             mudata object containing anndata of program scores and cell-level metadata.
         prog_key: 
             index for the anndata object (mdata[prog_key]) in the mudata object.
-        prog_nam: str
-            index of the feature (mdata[prog_key][:, prog_nam]) which is the response variable.
+        prog_name: str
+            index of the feature (mdata[prog_key][:, prog_name]) which is the response variable.
         categorical_key: str
             index of the categorical levels (mdata[prog_key].obs[categorical_key]) being tested.
         pseudobulk_key: str (optional)
@@ -39,8 +41,8 @@ def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,
             store_key = categorical_key
         else:
             store_key = '_'.join(categorical_key, pseudobulk_key)
-        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
-        mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
+        mdata[prog_key].var.loc[prog_name, '{}_kruskall_wallis_stat'.format(store_key)]  
+        mdata[prog_key].var.loc[prog_name, '{}_kruskall_wallis_pval'.format(store_key)] 
         mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]
 
     """
@@ -49,17 +51,17 @@ def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,
         # Run with single-cells are individual data points
         for category in mdata[prog_key].obs[categorical_key].astype(str).unique():
             sample_ = mdata[prog_key][mdata[prog_key].obs[categorical_key].astype(str)==category, 
-                                        prog_nam].X[:,0]
+                                        prog_name].X[:,0]
             if sparse.issparse(sample_):
                 sample_ = sample_.toarray().flatten()
             samples.append(sample_)
     else:
         # Pseudobulk the data before performing KW test (ideally these are biological replicates)
-        if sparse.issparse(mdata[prog_key][:, prog_nam].X[:,0]):
-            prog_data = mdata[prog_key][:, prog_nam].X[:,0].toarray()
+        if sparse.issparse(mdata[prog_key][:, prog_name].X[:,0]):
+            prog_data = mdata[prog_key][:, prog_name].X[:,0].toarray()
         else:
-            prog_data = mdata[prog_key][:, prog_nam].X[:,0]
-        prog_data = pd.DataFrame(prog_data, columns=[prog_nam], index=mdata[prog_key].obs.index)
+            prog_data = mdata[prog_key][:, prog_name].X[:,0]
+        prog_data = pd.DataFrame(prog_data, columns=[prog_name], index=mdata[prog_key].obs.index)
         prog_data[categorical_key] = mdata[prog_key].obs[categorical_key]
         prog_data[pseudobulk_key] = mdata[prog_key].obs[pseudobulk_key]
         prog_data = prog_data.groupby([pseudobulk_key, categorical_key]).mean().dropna().reset_index()
@@ -67,7 +69,7 @@ def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,
         for category in mdata[prog_key].obs[categorical_key].astype(str).unique():
             if len(prog_data.loc[prog_data[categorical_key]==category, pseudobulk_key].unique()) < 3:
                 raise ValueError('Cannot use less than 3 replicates per categorical level')
-            sample_ = prog_data.loc[prog_data[categorical_key].astype(str)==category, prog_nam].values.flatten()
+            sample_ = prog_data.loc[prog_data[categorical_key].astype(str)==category, prog_name].values.flatten()
             samples.append(sample_)
 
     stat, pval = stats.kruskal(*samples, nan_policy='propagate')
@@ -78,20 +80,96 @@ def perform_kruskall_wallis(mdata, prog_key='prog', prog_nam=None,
     else:
         store_key = '_'.join((categorical_key, pseudobulk_key))
 
-    mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)] = stat
-    mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] = pval
+    mdata[prog_key].var.loc[prog_name, '{}_kruskall_wallis_stat'.format(store_key)] = stat
+    mdata[prog_key].var.loc[prog_name, '{}_kruskall_wallis_pval'.format(store_key)] = pval
 
     mdata[prog_key].uns['{}_association_categories'.format(categorical_key)] = \
     mdata[prog_key].obs[categorical_key].astype(str).unique()
 
-# Perform post-hoc analysis with correlation tests
-def perform_correlation(prog_df, val_col=None, group_col=None, 
-                        correlation='pearsonr', mode='one_vs_one'):
 
+def perform_correlation(
+    prog_df: pd.DataFrame,
+    group_col: str,
+    val_col: str,
+    low_threshold: float=0.0,
+    correlation: Literal['pearsonr', 'spearmanr', 'kendalltau']='pearsonr',
+    mode: Literal['one_vs_all', 'one_vs_one']='one_vs_all',
+    df = [],
+):
+    """Perform post-hoc analysis with correlation tests
+
+    Parameters
+    ----------
+    prog_df : pd.DataFrame
+        DataFrame containing program scores and categorical information.
+    group_col : str
+        Column name of the categorical information.
+    val_col : str
+        Column name of the program scores.
+    low_threshold : float
+        Threshold to remove cells with low program scores.
+    correlation : str
+        Type of correlation test to perform.
+    mode : str
+        Type of correlation test to perform.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the results of the correlation tests:
+        - program_name
+        - {group_col}_{group_col_category_1}_{correlation}_stat
+        - {group_col}_{group_col_category_1}_{correlation}_pval
+        - {group_col}_{group_col_category_1}_{correlation}_adj_pval
+        - {group_col}_{group_col_category_1}_log2FC
+    """
+
+    # Get unique categories
     categories = prog_df[group_col].unique().tolist()
+
+    # Remove cell memberships that are below the threshold
+    prog_df = prog_df.loc[prog_df[val_col] > low_threshold]
     
+    # Perform correlation tests
     if mode=='one_vs_all':
-        raise NotImplementedError()
+        stats_df = pd.DataFrame(index=categories, columns=['stat', 'pval', 'adj_pval', "log2FC"], dtype=float)
+        for idx in stats_df.index.values:
+            if correlation=='pearsonr':
+                prog_df['binarized'] = prog_df[group_col].apply(lambda x: 1 if x==idx else 0)
+                stat, pval = stats.pearsonr(prog_df[val_col], prog_df['binarized'])
+                _, adj_pval = fdrcorrection([pval])
+                log2FC = np.log2(prog_df.loc[prog_df[group_col]==idx, val_col].mean() / prog_df.loc[prog_df[group_col]!=idx, val_col].mean())
+                stats_df.loc[idx, 'stat'] = stat
+                stats_df.loc[idx, 'pval'] = pval
+                stats_df.loc[idx, 'adj_pval'] = adj_pval
+                stats_df.loc[idx, 'log2FC'] = log2FC
+            elif correlation=='spearmanr':
+                stat, pval = stats.spearmanr(prog_df[val_col], prog_df[group_col].astype('category').cat.codes)
+                _, adj_pval = fdrcorrection([pval])
+                log2FC = np.log2(prog_df.loc[prog_df[group_col]==idx, val_col].mean() / prog_df.loc[prog_df[group_col]!=idx, val_col].mean())
+                stats_df.loc[idx, 'stat'] = stat
+                stats_df.loc[idx, 'pval'] = pval
+                stats_df.loc[idx, 'adj_pval'] = adj_pval
+                stats_df.loc[idx, 'log2FC'] = log2FC
+            elif correlation=='kendalltau':
+                stat, pval = stats.kendalltau(prog_df[val_col], prog_df[group_col].astype('category').cat.codes)
+                _, adj_pval = fdrcorrection([pval])
+                log2FC = np.log2(prog_df.loc[prog_df[group_col]==idx, val_col].mean() / prog_df.loc[prog_df[group_col]!=idx, val_col].mean())
+                stats_df.loc[idx, 'stat'] = stat
+                stats_df.loc[idx, 'pval'] = pval
+                stats_df.loc[idx, 'adj_pval'] = adj_pval
+                stats_df.loc[idx, 'log2FC'] = log2FC
+            
+        # Format
+        wide_df = pd.DataFrame()
+        columns = ['stat', 'pval', 'adj_pval', 'log2FC']
+        for idx, row in stats_df.iterrows():
+            for col in columns:
+                wide_df[f'{group_col}_{idx}_{correlation}_{col}'] = [row[col]]
+        wide_df.index = [val_col]
+        wide_df.index.name = 'program_name'
+        df.append(wide_df)
+    
     elif mode=='one_vs_one':
         pvals = pd.DataFrame(index=categories, columns=categories)
 
@@ -110,12 +188,13 @@ def perform_correlation(prog_df, val_col=None, group_col=None,
                                                       test_df[group_col].astype('category').cat.codes)
                         pvals.loc[idx, col] = pval
 
-    return pvals
+        return pvals
+
 
 # Perfom posthoc test and compute categorical-program score
-def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
+def perform_posthoc(mdata, prog_key='prog', prog_name=None,
                     categorical_key='batch', pseudobulk_key='sample',
-                    test='dunn'):
+                    test='dunn', mode='one_vs_one', df=[]):
 
     """
     Performs post-hoc tests for Kruskall-Wallis test and 
@@ -128,8 +207,8 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
             mudata object containing anndata of program scores and cell-level metadata.
         prog_key: 
             index for the anndata object (mdata[prog_key]) in the mudata object.
-        prog_nam: str
-            index of the feature (mdata[prog_key][:, prog_nam]) which is the response variable.
+        prog_name: str
+            index of the feature (mdata[prog_key][:, prog_name]) which is the response variable.
         categorical_key: str
             index of the categorical levels (mdata[prog_key].obs[categorical_key]) being tested.
         pseudobulk_key: str (optional)
@@ -150,12 +229,12 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
     
     store_key = categorical_key
 
-    prog_data_ = mdata[prog_key][:, prog_nam].X
+    prog_data_ = mdata[prog_key][:, prog_name].X
     if sparse.issparse(prog_data_):
         prog_data_ = prog_data_.toarray()
 
     prog_df = pd.DataFrame(prog_data_, 
-                           columns=[prog_nam], 
+                           columns=[prog_name], 
                            index=mdata[prog_key].obs.index)
     prog_df[categorical_key] = mdata[prog_key].obs[categorical_key].astype(str).values
     if pseudobulk_key is not None:
@@ -165,16 +244,18 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
 
     # Peform post hoc tests
     if test=='dunn':
-        p_vals = posthoc_dunn(prog_df, val_col=prog_nam, group_col=categorical_key)
+        p_vals = posthoc_dunn(prog_df, val_col=prog_name, group_col=categorical_key)
     elif test=='conover':
-        p_vals = posthoc_conover(prog_df, val_col=prog_nam, group_col=categorical_key)
+        p_vals = posthoc_conover(prog_df, val_col=prog_name, group_col=categorical_key)
     elif test=='dscf':
-        p_vals = posthoc_dscf(prog_df, val_col=prog_nam, group_col=categorical_key)
+        p_vals = posthoc_dscf(prog_df, val_col=prog_name, group_col=categorical_key)
     elif test=='pearsonr':
-        p_vals = perform_correlation(prog_df, val_col=prog_nam, group_col=categorical_key,
-                                     correlation='pearsonr')
+        p_vals = perform_correlation(prog_df, val_col=prog_name, group_col=categorical_key,
+                                     correlation='pearsonr', mode=mode, df=df)
+        if mode == 'one_vs_all':
+            return
     elif test=='kendalltau':
-        p_vals = perform_correlation(prog_df, val_col=prog_nam, group_col=categorical_key,
+        p_vals = perform_correlation(prog_df, val_col=prog_name, group_col=categorical_key,
                                      correlation='kendalltau')
 
     # Create combined statistic with p-vals for each categorical level
@@ -182,18 +263,27 @@ def perform_posthoc(mdata, prog_key='prog', prog_nam=None,
         min_pval = np.min(p_vals.loc[p_vals.index!=category, category])
         mean_pval = np.mean(p_vals.loc[p_vals.index!=category, category])
 
-        prog_idx = mdata[prog_key].var.index.get_loc(prog_nam)
+        prog_idx = mdata[prog_key].var.index.get_loc(prog_name)
 
         # Store results
         mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)][prog_idx,i] = min_pval
         mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)][prog_idx,i] = mean_pval
          
-    mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)][prog_nam] = p_vals      
+    mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)][prog_name] = p_vals
+
 
 # TODO: Add one way ANOVA, MANOVA, multi-variate KW, logistic-regression
-def compute_categorical_association(mdata, prog_key='prog', categorical_key='batch', 
-                                    pseudobulk_key=None, test='dunn', n_jobs=1, inplace=True, 
-                                    **kwargs):
+def compute_categorical_association(
+    mdata, 
+    prog_key='prog', 
+    categorical_key='batch', 
+    pseudobulk_key=None, 
+    test='dunn', 
+    mode='one_vs_one',
+    n_jobs=1, 
+    inplace=True, 
+    **kwargs
+):
 
     """
     Compute association of continous features with categorical levels.
@@ -220,8 +310,8 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
        ---
         if inplace:
             UPDATES
-            mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_stat'.format(store_key)]  
-            mdata[prog_key].var.loc[prog_nam, '{}_kruskall_wallis_pval'.format(store_key)] 
+            mdata[prog_key].var.loc[prog_name, '{}_kruskall_wallis_stat'.format(store_key)]  
+            mdata[prog_key].var.loc[prog_name, '{}_kruskall_wallis_pval'.format(store_key)] 
             mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)]
             mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)] 
             mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
@@ -259,10 +349,10 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
     Parallel(n_jobs=n_jobs, 
              backend='threading')(delayed(perform_kruskall_wallis)(mdata, 
                                                                    prog_key=prog_key,
-                                                                   prog_nam=prog_nam, 
+                                                                   prog_name=prog_name, 
                                                                    categorical_key=categorical_key,
                                                                    pseudobulk_key=pseudobulk_key) \
-                                                            for prog_nam in tqdm(mdata[prog_key].var_names,
+                                                            for prog_name in tqdm(mdata[prog_key].var_names,
                                                             desc='Testing {} association'.format(categorical_key), 
                                                             unit='programs'))
 
@@ -271,59 +361,87 @@ def compute_categorical_association(mdata, prog_key='prog', categorical_key='bat
     mdata[prog_key].var['{}_kruskall_wallis_stat'.format(store_key)].astype(float)
     mdata[prog_key].var['{}_kruskall_wallis_pval'.format(store_key)] = \
     mdata[prog_key].var['{}_kruskall_wallis_pval'.format(store_key)].astype(float)
-    
-    mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)] = \
-    np.zeros((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
-    mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)] = \
-    np.ones((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
-    mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)] = {}
-    
-    # Run posthoc-tests
-    Parallel(n_jobs=n_jobs, 
-             backend='threading')(delayed(perform_posthoc)(mdata, 
-                                                           prog_key=prog_key,
-                                                           prog_nam=prog_nam, 
-                                                           categorical_key=categorical_key,
-                                                           pseudobulk_key=pseudobulk_key,
-                                                           test=test) \
-                                                        for prog_nam in tqdm(mdata[prog_key].var_names,
-                                                        desc='Identifying differential {}'.format(categorical_key), 
-                                                        unit='programs'))
-    
-    # Returning test results only
-    if not inplace: 
 
+
+    # If test = 'pearsonr' with mode = 'one_vs_all' we are going to do something special until we can more properly integrate this
+    if test=='pearsonr' and mode=='one_vs_all':
+        logging.info('Running jamboree specific version of posthoc with pearsonr, this is not yet integrated into the main pipeline')
+        res = []        
+        # Run posthoc-tests and append results
+        Parallel(n_jobs=n_jobs,
+                    backend='threading')(delayed(perform_posthoc)(mdata,
+                                                                prog_key=prog_key,
+                                                                prog_name=prog_name, 
+                                                                categorical_key=categorical_key,
+                                                                pseudobulk_key=pseudobulk_key,
+                                                                test=test,
+                                                                mode=mode,
+                                                                df=res) \
+                                                                for prog_name in tqdm(mdata[prog_key].var_names,
+                                                                desc='Identifying differential {}'.format(categorical_key), 
+                                                                unit='programs'))
+        
+        posthoc_df = pd.concat(res, axis=0)
         results_df = mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(store_key), 
                                                  '{}_kruskall_wallis_pval'.format(store_key)]]
-        min_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)],
-                                   index=mdata[prog_key].var.index,
-                                   columns=['{}_{}_association_{}_min_pval'.format(col, store_key, test) \
-                                            for col in mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]]
-                                   )
-        results_df = results_df.merge(min_pval_df, left_index=True, right_index=True)
         
-        mean_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)],
-                                   index=mdata[prog_key].var.index,
-                                   columns=['{}_{}_association_{}_mean_pval'.format(col, store_key, test) \
-                                            for col in mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]]
-                                   )
-        results_df = results_df.merge(mean_pval_df, left_index=True, right_index=True)
-
-        posthoc_df = []
-        dict_ = mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
-        for key, values in dict_.items():
-
-            tmp_df = values.where(np.triu(np.ones(values.shape), k=1).astype(bool))
-            tmp_df = tmp_df.stack().reset_index()
-            tmp_df.columns = ['{}_a'.format(store_key),
-                            '{}_b'.format(store_key),
-                            'p_value']
-            tmp_df['program_name'] = key
-            posthoc_df.append(tmp_df)
-
-        posthoc_df = pd.concat(posthoc_df, ignore_index=True)
-
         return (results_df, posthoc_df)
+
+    else:
+
+        mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)] = \
+        np.zeros((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
+        mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)] = \
+        np.ones((mdata[prog_key].shape[1], mdata[prog_key].obs[categorical_key].unique().shape[0]))
+        mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)] = {}
+        
+        # Run posthoc-tests
+        Parallel(n_jobs=n_jobs, 
+                backend='threading')(delayed(perform_posthoc)(mdata, 
+                                                            prog_key=prog_key,
+                                                            prog_name=prog_name, 
+                                                            categorical_key=categorical_key,
+                                                            pseudobulk_key=pseudobulk_key,
+                                                            test=test) \
+                                                            for prog_name in tqdm(mdata[prog_key].var_names,
+                                                            desc='Identifying differential {}'.format(categorical_key), 
+                                                            unit='programs'))
+        
+        # Returning test results only
+        if not inplace: 
+
+            results_df = mdata[prog_key].var.loc[:, ['{}_kruskall_wallis_stat'.format(store_key), 
+                                                    '{}_kruskall_wallis_pval'.format(store_key)]]
+            min_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_min_pval'.format(store_key, test)],
+                                    index=mdata[prog_key].var.index,
+                                    columns=['{}_{}_association_{}_min_pval'.format(col, store_key, test) \
+                                                for col in mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]]
+                                    )
+            results_df = results_df.merge(min_pval_df, left_index=True, right_index=True)
+            
+            mean_pval_df = pd.DataFrame(mdata[prog_key].varm['{}_association_{}_mean_pval'.format(store_key, test)],
+                                    index=mdata[prog_key].var.index,
+                                    columns=['{}_{}_association_{}_mean_pval'.format(col, store_key, test) \
+                                                for col in mdata[prog_key].uns['{}_association_categories'.format(categorical_key)]]
+                                    )
+            results_df = results_df.merge(mean_pval_df, left_index=True, right_index=True)
+
+            posthoc_df = []
+            dict_ = mdata[prog_key].uns['{}_association_{}_pvals'.format(store_key, test)]
+            for key, values in dict_.items():
+
+                tmp_df = values.where(np.triu(np.ones(values.shape), k=1).astype(bool))
+                tmp_df = tmp_df.stack().reset_index()
+                tmp_df.columns = ['{}_a'.format(store_key),
+                                '{}_b'.format(store_key),
+                                'p_value']
+                tmp_df['program_name'] = key
+                posthoc_df.append(tmp_df)
+
+            posthoc_df = pd.concat(posthoc_df, ignore_index=True)
+
+            return (results_df, posthoc_df)
+        
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()

@@ -19,7 +19,7 @@ logging.basicConfig(level = logging.INFO)
 
 def get_guide_metadata(
     mdata: mudata.MuData,
-    prog_key: str,
+    data_key: str,
     guide_names_key: str = 'guide_names',
     guide_targets_key: str = 'guide_targets'
 ) -> pd.DataFrame:
@@ -30,7 +30,7 @@ def get_guide_metadata(
     ----------
     mdata : mudata.MuData
         The mudata object.
-    prog_key : str
+    data_key : str
         The key of the program in the mudata object.
 
     Returns
@@ -38,8 +38,8 @@ def get_guide_metadata(
     pd.DataFrame
         The guide metadata.
     """
-    guide_metadata = pd.DataFrame(index=mdata[prog_key].uns[guide_names_key], columns=['Target'])
-    guide_metadata['Target'] = mdata[prog_key].uns[guide_targets_key]
+    guide_metadata = pd.DataFrame(index=mdata[data_key].uns[guide_names_key], columns=['Target'])
+    guide_metadata['Target'] = mdata[data_key].uns[guide_targets_key]
 
     return guide_metadata
 
@@ -79,6 +79,7 @@ def compute_perturbation_association_(
 def compute_perturbation_association(
     mdata: Union[os.PathLike, mudata.MuData],
     prog_key: str,
+    data_key: str = 'rna',
     guide_names_key: str = 'guide_names',
     guide_targets_key: str = 'guide_targets',
     guide_assignments_key: str = 'guide_assignment',
@@ -139,12 +140,15 @@ def compute_perturbation_association(
             frompath=True
         else: raise ValueError('Incorrect mudata specification.')
     if not inplace and not frompath:
-        mdata = mudata.MuData({prog_key: mdata[prog_key].copy()})
+        mdata = mudata.MuData({
+            data_key: mdata[data_key].copy(),
+            prog_key: mdata[prog_key].copy()
+        })
 
     # Guide metadata
     guide_metadata = get_guide_metadata(
         mdata, 
-        prog_key, 
+        data_key=data_key,
         guide_names_key=guide_names_key, 
         guide_targets_key=guide_targets_key
     )

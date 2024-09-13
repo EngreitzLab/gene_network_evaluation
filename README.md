@@ -63,7 +63,8 @@ A few examples of such models are [cNMF](https://github.com/dylkot/cNMF), [Topyf
 | Variation across category levels | [Kruskall-Wallis non-parametric ANOVA](https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance) + Dunn's posthoc test | None | If program scores are variable between batch levels then the component likely is modelling technical noise. Alternatively, if program scores are variable between a biological category like cell-type or condition then the program is likely modelling a biological process specific to the category. | If batches are confounded with biological conditions, then the relative contribution of technical and biological variation cannot be decomposed. |
 | Gene-set enrichment | [GSEA](https://gseapy.readthedocs.io/en/latest/introduction.html) using program x feature scores | MsigDB, Enrichr | If a program is significantly associated with a gene-set then it could explain the biological process the program represents | |
 | Motif enrichment | Pearson correlation of motif counts per gene (promoter or enchancer) and program x gene scores | HOCOMOCO v12 | If genes with high contributions to a program are also enriched with same enhancer/promoter motifs they could be co-regulated | A biological pathway could involve genes with different regulation but still contribute to a common function | 
-| Perturbation sensitivity |  | Perturbation data | Cell x programs score distribution shifts greater than expected due to the direct effect of perturbation on genes in the program could indicate hierarchical relationships b/w genes in the program | Expression of genes upstream of the perturbed gene are unlikely to be affected | 
+| Trait enrichment | [Fisher's exact test](https://en.wikipedia.org/wiki/Fisher%27s_exact_test) | OpenTargets database | If a program is significantly associated with a trait then it could explain the biological process the program represents | |
+| Perturbation sensitivity | Mann-Whitney U test of program scores between perturbed cells and non-targeted/reference cells | Perturbation data | Cell x programs score distribution shifts greater than expected due to the direct effect of perturbation on genes in the program could indicate hierarchical relationships b/w genes in the program | Expression of genes upstream of the perturbed gene are unlikely to be affected | 
 
 #### Expected inputs and outputs of evaluation methods:
 The expected inputs to the evaluation pipeline follow the same format as the outputs to the [inference methods](#expected-inputs-and-outputs-of-inference-methods). For certain evaluation methods, however, additional inputs are required:
@@ -86,9 +87,8 @@ chr12   57028808        57030874        promoter|chr12:57028658-57031024        
 For examples of evaluation method inputs see [`src/examples/evaluation`](src/examples/inference).
 For examples of evaluation method outputs and how to run evaluation methods see [`src/evaluation/evaluation`](src/examples/evaluation).
 
-
 #### Selection of the best k:
-TODO
+A crucial step in gene program analysis is the selection of the number of programs (k) to infer. This is a hyperparameter for almost all methods, and is highly dependent on dataset (size, complexity, etc.). Many methods have their own criteria for selecting k, and **we are in the process of determining the best practices for selecting k across methods**. Worked examples (in notebooks) of how we select k for `cNMF` and `Topyfic` can be found in the `examples/evaluation/k_selection` directory.
 
 #### Details on evaluation methods:
 
@@ -96,16 +96,29 @@ TODO
 TODO
 
 ##### Variation across category levels
+To test the association of a program with a categorical covariate, we default to the Kruskal-Wallis test paired with a Dunn's posthoc test. The Kruskal-Wallis test is a non-parametric ANOVA that tests the null hypothesis that the population median of all groups are equal. For example, if we have a program that represents a biological process that is specific to a cell type, we would expect the program scores to be significantly different between cell types.
 
+The Kruskal-Wallis test only tells us if there is a significant difference between groups, but does not tell us which groups are different from each other. By defualt, we use a Dunn's posthoc test to identify which groups are significantly different from each other, although other posthoc methods are available.
+
+The Kruskal-Wallis test is implemented in `scipy.stats.kruskal` and the Dunn's posthoc test is implemented in `scikit-posthocs.posthoc_dunn`.
 
 ##### Gene set enrichment
-TODO
+To tease apart the biological processes that the program represents, we look for enrichment of each program with published gene sets. Here we use two primary methods for gene set enrichment analysis: GSEA and a Fisher's exact test.
+
+In GSEA, we rank the genes in the program by their program loadings and then test for enrichment of gene sets in the ranked list. We use the `gseapy` package to run GSEA.
+
+For the Fisher's exact test, we use a contingency table to test for enrichment of gene sets in the program. We use `gseapy` to run the Fisher's exact test.
 
 ##### Motif enrichment
-TODO
+To identify potential regulators of each program, we look for enrichment of motifs in the enhancers or promoters of genes that are highly weighted in a program. Specifically, we scan the promoters and enhancers of genes of all genes in a program for the presence of motifs from a user provided database using the FIMO algorithm. We then aggregate the number of significant motif hits for each gene and correlate this counts vector with the program scores (by default with Pearson correlation), computing a p-value for the correlation. At both stages (motif scanning and correlation calcualtion) p-values are corrected for multiple testing using the Benjamini-Hochberg procedure.
+
+We use the `tangermeme` implementation of FIMO, which is very fast when running on a GPU, hence we recommend running this evaluation on a GPU when possible.
+
+##### Trait enrichment
+To identify potential associations of each program with traits, we look for enrichment of traits in the genes that are highly weighted in a program. Specifically, we query the OpenTargets database for genes associated with traits. By default, we use a locus2gene (L2G) threshold of 0.2 to determine the set of genes associated with each trait. We then perform a Fisher's exact test to test for enrichment of traits in the program. We use the Benjamini-Hochberg procedure to correct for multiple testing.
 
 ##### Perturbation sensitivity
-TODO
+To test the sensitivity of a program to perturbations, we compare the program scores of cells that were perturbed with cells that were not perturbed. We use a Mann-Whitney U test to test for differences in program scores between the two groups. We use the Benjamini-Hochberg procedure to correct for multiple testing. If a program is sensitive to perturbations, we would expect the program scores to be significantly different between the two groups.
 
 ### Analysis and annotation of gene programs
 
@@ -115,3 +128,6 @@ Once you have run the evaluation pipeline on your set of gene programs, you can 
 python app/app.py --config /path/to/config.yaml
 ```
 
+#### Inputs to the dashboard:
+
+##### Categorical association

@@ -30,6 +30,13 @@ categorical_keys = results["categorical_keys"]
 covariate_keys = categorical_keys
 default_covariate = categorical_keys[0] if categorical_keys else None
 
+# Get obs
+obs = results["obs"]
+
+# Grab the groupings
+perturbation_association_stratification_key = results['perturbation_association_stratification_key']
+motif_enrichment_stratification_key = results['motif_enrichment_stratification_key']
+
 # Create layout
 layout = dbc.Container([
 
@@ -38,10 +45,10 @@ layout = dbc.Container([
     html.P(
         "This page is designed to provide an overview of the evaluations run on a given set of programs. "
         "It is broken up into three main sections: Goodness of Fit, Covariate Association, and Trait Enrichment. "
-        "Goodness of Fit gives an overview of the number of enrichments and associations detected across programs at a user-defined threshold, "
+        "Goodness of Fit gives an overview of the number of enrichments and associations detected across programs at a user-defined significance threshold, "
         "and can be useful for determining if the value of k selected is appropriate for the data. "
         "Looking at covariate associations of programs can help identify if the programs are associated with technical or biological sources of variation. "
-        "Trait enrichment can help identify if the programs are associated with any traits of interest."
+        "Trait enrichment can help identify if programs are associated with any traits of interest."
     ),
            
     # Dropdown to select the run
@@ -62,62 +69,384 @@ layout = dbc.Container([
         # 1. Tab for Goodness of Fit
         dcc.Tab(label='Goodness of Fit', children=[
             html.H2("Goodness of Fit", className="mt-3 mb-3"),
-            html.P("This tab provides an overview the number of enrichments and associations detected across programs at a user define p-value threshold."),
-            
-            # Start with a significance threshold input
-            dbc.Row([
-                dbc.Col([
-                    html.H3("Select threshold"),
-                    html.P("Select the significance threshold to use for filtering enrichments and associations."),
-                    dcc.Input(
-                        id='terms-threshold',
-                        type='number',
-                        value=0.05,
-                        min=0,
-                        max=1,
-                        placeholder="Enter significance threshold"
-                    ),
-                ], width=6),
-            ], className="mb-4"),
-            
-            # Explained Variance Per Program and Number of Genesets Enriched Per Program
-            dbc.Row([
+            html.P("This tab provides an overview of the number of enrichments and associations detected across programs at a user-defined p-value threshold."),
 
-                # Explained Variance Per Program
+            # Explained Variance Per Program
+            dbc.Row([
+                # Title left aligned above both columns
                 dbc.Col([
                     html.H3("Explained Variance Per Program"),
+                ], width=12),
+
+                # Plot on the left
+                dbc.Col([
                     dcc.Graph(id='explained-variance-plot'),
                 ], width=6),
 
-                # Number of Genesets Enriched Per Program
+                # Cumulative toggle and description on the right
                 dbc.Col([
-                    html.H3("Number of Genesets Enriched Per Program"),
-                    dcc.Graph(id='num-enriched-genesets'),
+                    # Toggle for cumulative plot
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Cumulative Plot"),
+                            dcc.RadioItems(
+                                id='explained-variance-cumulative',
+                                options=[
+                                    {'label': 'True', 'value': 'true'},
+                                    {'label': 'False', 'value': 'false'}
+                                ],
+                                value='false',
+                                labelStyle={'display': 'inline-block'}
+                            )
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Placeholder for description
+                    dbc.Row([
+                        dbc.Col([
+                            html.P("The explained variance per program is the proportion of the variance in the original data that "
+                                "is modeled by that program. We calculate this by taking the outer product between "
+                                "each program's score vector and its feature loadings vector. This gives us a cell x feature matrix "
+                                "that can be thought of as a reconstruction of the original data using only that program. Calculating a "
+                                "ratio of the variance in this reconstruction to the variance in the original data gives us the explained variance. "
+                                "This can give a sense of the program's 'importance' in the overall model, however, technical variation might be the "
+                                "highest source of this variance (e.g., batch effects).")
+                        ], width=12),
+                    ], className="mt-4"),
                 ], width=6),
             ], className="mb-4"),
 
-            # Number of Motifs Enriched Per Program and Number of Traits Enriched Per Program
+            # Number of Genesets Enriched Per Program
             dbc.Row([
+                # Title left aligned above both columns
+                dbc.Col([
+                    html.H3("Number of Genesets Enriched Per Program"),
+                ], width=12),
 
-                # Number of Motifs Enriched Per Program
+                # Plot on the left
+                dbc.Col([
+                    dcc.Graph(id='num-enriched-genesets'),
+                ], width=6),
+
+                # Threshold input, selectors, unique toggle, and description on the right
+                dbc.Col([
+                    # Threshold input
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Significance Threshold"),
+                            dcc.Input(
+                                id='genesets-threshold',
+                                type='number',
+                                value=0.05,
+                                min=0,
+                                max=1,
+                                placeholder="Enter significance threshold"
+                            ),
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Dropdowns for library and method (arranged in a 2x1 grid)
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Library"),
+                            dcc.Dropdown(
+                                id='genesets-library-selector',
+                                options=[{'label': library, 'value': library} for library in list(set(results['geneset_enrichments'][default_run]['libraries']))],
+                                value=list(set(results['geneset_enrichments'][default_run]['libraries']))[0]
+                            )
+                        ], width=6),
+
+                        dbc.Col([
+                            html.Label("Select Method"),
+                            dcc.Dropdown(
+                                id='genesets-method-selector',
+                                options=[{'label': method, 'value': method} for method in list(set(results['geneset_enrichments'][default_run]['methods']))],
+                                value=list(set(results['geneset_enrichments'][default_run]['methods']))[0]
+                            )
+                        ], width=6),
+                    ], className="mt-3"),
+
+                    # Unique terms toggle
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Unique Terms"),
+                            dcc.RadioItems(
+                                id='genesets-unique-toggle',
+                                options=[
+                                    {'label': 'True', 'value': 'true'},
+                                    {'label': 'False', 'value': 'false'}
+                                ],
+                                value='true',
+                                labelStyle={'display': 'inline-block'}
+                            )
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Placeholder for description
+                    dbc.Row([
+                        dbc.Col([
+                            html.P("Using each program's loadings across genes, we can use a gene-set enrichment analysis "
+                                "to determine if the program is significantly enriched for genes in a set of input gene-sets. "
+                                "This helps to determine if the program is capturing known biology."),
+                        ], width=12),
+                    ], className="mt-4"),
+                ], width=6),
+            ], className="mb-4"),
+
+            # Number of Motifs Enriched Per Program
+            dbc.Row([
+                # Title left aligned above both columns
                 dbc.Col([
                     html.H3("Number of Motifs Enriched Per Program"),
+                ], width=12),
+
+                # Plot on the left
+                dbc.Col([
                     dcc.Graph(id='num-enriched-motifs'),
                 ], width=6),
 
-                # Number of Traits Enriched Per Program
+                # Threshold input, selectors (2x2 grid), unique toggle, and description on the right
+                dbc.Col([
+                    # Threshold input
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Significance Threshold"),
+                            dcc.Input(
+                                id='motifs-threshold',
+                                type='number',
+                                value=0.05,
+                                min=0,
+                                max=1,
+                                placeholder="Enter significance threshold"
+                            ),
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Dropdowns for E/P type, database, test type, and level key (arranged in a 2x2 grid)
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select E/P type"),
+                            dcc.Dropdown(
+                                id='motifs-E_P_type-selector',
+                                options=[{'label': E_P_types, 'value': E_P_types} for E_P_types in list(set(results['motif_enrichments'][default_run]['E_P_types']))],
+                                value=list(set(results['motif_enrichments'][default_run]['E_P_types']))[0]
+                            )
+                        ], width=6),
+
+                        dbc.Col([
+                            html.Label("Select Motif Database"),
+                            dcc.Dropdown(
+                                id='motifs-database-selector',
+                                options=[{'label': databases, 'value': databases} for databases in list(set(results['motif_enrichments'][default_run]['databases']))],
+                                value=list(set(results['motif_enrichments'][default_run]['databases']))[0]
+                            )
+                        ], width=6),
+                    ], className="mt-3"),
+
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Motif Enrichment Test Type"),
+                            dcc.Dropdown(
+                                id='motifs-test_type-selector',
+                                options=[{'label': test_type, 'value': test_type} for test_type in list(set(results['motif_enrichments'][default_run]['test_types']))],
+                                value=list(set(results['motif_enrichments'][default_run]['test_types']))[0]
+                            )
+                        ], width=6),
+
+                        dbc.Col([
+                            html.Label("Select Level Key"),
+                            dcc.Dropdown(
+                                id='motifs-level_key-selector',
+                                options=[{'label': level_key, 'value': level_key} for level_key in sorted(list(set(results['motif_enrichments'][default_run]['level_keys'])))],
+                                value=sorted(list(set(results['motif_enrichments'][default_run]['level_keys'])))[0]
+                            )
+                        ], width=6),
+                    ], className="mt-3"),
+
+                    # Unique motifs toggle
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Unique Motifs"),
+                            dcc.RadioItems(
+                                id='motifs-unique-toggle',
+                                options=[
+                                    {'label': 'True', 'value': 'true'},
+                                    {'label': 'False', 'value': 'false'}
+                                ],
+                                value='false',
+                                labelStyle={'display': 'inline-block'}
+                            )
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Placeholder for description
+                    dbc.Row([
+                        dbc.Col([
+                            html.P("To identify potential regulators of each program, we look for enrichment of motifs "
+                                "in the enhancers or promoters of genes that are highly weighted in a program. Specifically, "
+                                "we scan the promoters and enhancers of all genes in a program for the presence of motifs "
+                                "from a user-provided database using the FIMO algorithm. We then aggregate the number of significant "
+                                "motif hits for each gene and correlate this count vector with the program scores (by default with Pearson correlation), "
+                                "computing a p-value for the correlation. At both stages (motif scanning and correlation calculation),")
+                        ], width=12),
+                    ], className="mt-4"),
+                ], width=6),
+            ], className="mb-4"),
+
+            # Number of Traits Enriched Per Program
+            dbc.Row([
+                # Title left aligned above both columns
                 dbc.Col([
                     html.H3("Number of Traits Enriched Per Program"),
+                ], width=12),
+
+                # Plot on the left
+                dbc.Col([
                     dcc.Graph(id='num-enriched-traits'),
+                ], width=6),
+
+                # Threshold input, selectors, unique toggle, and description on the right
+                dbc.Col([
+                    # Threshold input
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Significance Threshold"),
+                            dcc.Input(
+                                id='traits-threshold',
+                                type='number',
+                                value=0.05,
+                                min=0,
+                                max=1,
+                                placeholder="Enter significance threshold"
+                            ),
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Dropdowns for trait enrichment (arranged in a 2x2 grid)
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Trait Database"),
+                            dcc.Dropdown(
+                                id='traits-database-selector',
+                                options=[{'label': database, 'value': database} for database in list(set(results['trait_enrichments'][default_run]['databases']))],
+                                value=list(set(results['trait_enrichments'][default_run]['databases']))[0]
+                            )
+                        ], width=6),
+
+                        dbc.Col([
+                            html.Label("Select Trait Enrichment Method"),
+                            dcc.Dropdown(
+                                id='traits-method-selector',
+                                options=[{'label': method, 'value': method} for method in list(set(results['trait_enrichments'][default_run]['methods']))],
+                                value=list(set(results['trait_enrichments'][default_run]['methods']))[0]
+                            )
+                        ], width=6),
+                    ], className="mt-3"),
+
+                    # Unique traits toggle
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Unique Traits"),
+                            dcc.RadioItems(
+                                id='traits-unique-toggle',
+                                options=[
+                                    {'label': 'True', 'value': 'true'},
+                                    {'label': 'False', 'value': 'false'}
+                                ],
+                                value='true',
+                                labelStyle={'display': 'inline-block'}
+                            )
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Placeholder for description
+                    dbc.Row([
+                        dbc.Col([
+                            html.P("To identify potential associations of each program with traits, we look for enrichment of traits "
+                                "in the genes that are highly weighted in a program. Specifically, we query the OpenTargets database "
+                                "for genes associated with traits. By default, we use a locus2gene (L2G) threshold of 0.2 to determine "
+                                "the set of genes associated with each trait. We then perform a Fisher's exact test to test for enrichment "
+                                "of traits in the program. We use the Benjamini-Hochberg procedure to correct for multiple testing."),
+                        ], width=12),
+                    ], className="mt-4"),
                 ], width=6),
             ], className="mb-4"),
 
             # Number of Perturbation Associations Per Program
             dbc.Row([
-                # Number of Perturbation Associations Per Program
+                # Title left aligned above both columns
                 dbc.Col([
-                    html.H3("Number of Perturbation Associations Per Program", className="mt-4"),
+                    html.H3("Number of Perturbation Associations Per Program"),
+                ], width=12),
+
+                # Plot on the left
+                dbc.Col([
                     dcc.Graph(id='num-perturbation-associations'),
+                ], width=6),
+
+                # Threshold input, selectors, unique toggle, and description on the right
+                dbc.Col([
+                    # Threshold input
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Significance Threshold"),
+                            dcc.Input(
+                                id='perturbations-threshold',
+                                type='number',
+                                value=0.05,
+                                min=0,
+                                max=1,
+                                placeholder="Enter significance threshold"
+                            ),
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Dropdowns for perturbation associations (arranged in a 2x1 grid)
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Gene Guide"),
+                            dcc.Dropdown(
+                                id='perturbations-gene_guide-selector',
+                                options=[{'label': gene_guide, 'value': gene_guide} for gene_guide in list(set(results['perturbation_associations'][default_run]['gene_guides']))],
+                                value=list(set(results['perturbation_associations'][default_run]['gene_guides']))[0]
+                            )
+                        ], width=6),
+
+                        dbc.Col([
+                            html.Label("Select Level Key"),
+                            dcc.Dropdown(
+                                id='perturbations-level_key-selector',
+                                options=[{'label': level_key, 'value': level_key} for level_key in sorted(list(set(results['perturbation_associations'][default_run]['level_keys'])))],
+                                value=sorted(list(set(results['perturbation_associations'][default_run]['level_keys'])))[0]
+                            )
+                        ], width=6),
+                    ], className="mt-3"),
+
+                    # Unique targets toggle
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Unique Targets"),
+                            dcc.RadioItems(
+                                id='perturbations-unique-toggle',
+                                options=[
+                                    {'label': 'True', 'value': 'true'},
+                                    {'label': 'False', 'value': 'false'}
+                                ],
+                                value='false',
+                                labelStyle={'display': 'inline-block'}
+                            )
+                        ], width=12),
+                    ], className="mt-3"),
+
+                    # Placeholder for description
+                    dbc.Row([
+                        dbc.Col([
+                            html.P("To test the sensitivity of a program to perturbations, we compare the program scores of cells that were perturbed with "
+                                "cells that were not perturbed. We use a Mann-Whitney U test to test for differences in program scores between the two groups. "
+                                "We use the Benjamini-Hochberg procedure to correct for multiple testing. If a program is sensitive to perturbations, we would expect "
+                                "the program scores to be significantly different between the two groups."),
+                        ], width=12),
+                    ], className="mt-4"),
                 ], width=6),
             ], className="mb-4"),
         ]),
@@ -189,19 +518,20 @@ layout = dbc.Container([
 # Callback for explained variance
 @callback(
     Output('explained-variance-plot', 'figure'),
-    [Input('run-selector', 'value')]
+    [Input('run-selector', 'value'), Input('explained-variance-cumulative', 'value')]
 )
 def update_explained_variance_plot(
     selected_run, 
-    debug=False,
+    cumulative,
     categorical_var = "program_name",
-    ):
+    debug=False,
+):
 
     if debug:
         print(f"Selected run for explained variance plot: {selected_run}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['explained_variance_ratios'][selected_run]  # Adjust to your actual plot logic
+    data_to_plot = results['explained_variance_ratios'][selected_run].copy()  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -216,10 +546,11 @@ def update_explained_variance_plot(
     fig = scatterplot(
         data=data_to_plot,
         x_column='program_name',
-        y_column='explained_variance_ratio',
+        y_column='variance_explained_ratio',
         title='',
         x_axis_title='Component',
         y_axis_title='Variance Explained (R²)',
+        cumulative=(cumulative == 'true'),
         colors=colors,
         size=8
     )
@@ -229,25 +560,36 @@ def update_explained_variance_plot(
 # Callback for number of enriched gene sets
 @callback(
     Output('num-enriched-genesets', 'figure'),
-    [Input('run-selector', 'value'), Input('terms-threshold', 'value')]
+    [
+        Input('run-selector', 'value'), 
+        Input('genesets-threshold', 'value'),
+        Input('genesets-library-selector', 'value'),
+        Input('genesets-method-selector', 'value'),
+        Input('genesets-unique-toggle', 'value')
+    ]
 )
 def update_num_enriched_genesets_plot(
     selected_run, 
     sig_threshold,
-    debug=False,
-    unique=False,
+    library,
+    method,
+    unique,
     categorical_var = "program_name",
     count_var = "term",
     sig_var = "adj_pval",
+    debug=True,
 ):
 
     if debug:
         print(f"Selected run for gene set enrichment plot: {selected_run}")
         print(f"Filtering gene set enrichments with {sig_var} < {sig_threshold}")
         print(f"Counting unique {count_var} enriched for each {categorical_var}")
+        print(f"Selected library: {library}")
+        print(f"Selected method: {method}")
+        print(f"Unique: {unique}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['geneset_enrichments'][selected_run]  # Adjust to your actual plot logic
+    data_to_plot = results['geneset_enrichments'][selected_run]["results"][f"{library}_{method}"]  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -262,6 +604,7 @@ def update_num_enriched_genesets_plot(
     )
 
     # Choose whether to plot all gene sets or only unique gene sets
+    unique = (unique == 'true')
     if unique:
         data_to_plot = unique_df
     else:
@@ -288,25 +631,43 @@ def update_num_enriched_genesets_plot(
 # Callback for number of enriched motifs
 @callback(
     Output('num-enriched-motifs', 'figure'),
-    [Input('run-selector', 'value'), Input('terms-threshold', 'value')]
+    [
+        Input('run-selector', 'value'),
+        Input('motifs-threshold', 'value'),
+        Input('motifs-E_P_type-selector', 'value'),
+        Input('motifs-database-selector', 'value'),
+        Input('motifs-test_type-selector', 'value'),
+        Input('motifs-level_key-selector', 'value'),
+        Input('motifs-unique-toggle', 'value')
+    ]
 )
 def update_num_enriched_motifs_plot(
     selected_run, 
     sig_threshold,
-    debug=False,
-    unique=False,
+    E_P_type,
+    database,
+    test_type,
+    level_key,
+    unique,
     categorical_var = "program_name",
     count_var = "motif",
-    sig_var = "pval",
+    sig_var = "adj_pval",
+    debug=False,
 ):
 
     if debug:
         print(f"Selected run for motif enrichment plot: {selected_run}")
         print(f"Filtering motif enrichments with {sig_var} < {sig_threshold}")
         print(f"Counting unique {count_var} enriched for each {categorical_var}")
+        print(f"Unique: {unique}")
+        print(f"Selected E/P type: {E_P_type}")
+        print(f"Selected database: {database}")
+        print(f"Selected test type: {test_type}")
+        print(f"Selected level key: {level_key}")
+        
     
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['motif_enrichments'][selected_run]  # Adjust to your actual plot logic
+    data_to_plot = results['motif_enrichments'][selected_run]["results"][f"{E_P_type}_{database}_{test_type}_{motif_enrichment_stratification_key}_{level_key}"]  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -321,6 +682,7 @@ def update_num_enriched_motifs_plot(
     )
 
     # Choose whether to plot all gene sets or only unique gene sets
+    unique = (unique == 'true')
     if unique:
         data_to_plot = unique_df
     else:
@@ -347,25 +709,35 @@ def update_num_enriched_motifs_plot(
 # Callback for number of enriched traits
 @callback(
     Output('num-enriched-traits', 'figure'),
-    [Input('run-selector', 'value'), Input('terms-threshold', 'value')]
+    [
+        Input('run-selector', 'value'),
+        Input('traits-threshold', 'value'),
+        Input('traits-database-selector', 'value'),
+        Input('traits-method-selector', 'value'),
+        Input('traits-unique-toggle', 'value')
+    ]
 )
 def update_num_enriched_traits_plot(
     selected_run,
     sig_threshold,
-    debug=False,
-    unique=False,
+    database,
+    method,
+    unique,
     categorical_var = "program_name",
     count_var = "trait_reported",
     sig_var = "adj_pval",
+    debug=False,
 ):
     
     if debug:
         print(f"Selected run for trait enrichment plot: {selected_run}")
         print(f"Filtering trait enrichments with {sig_var} < {sig_threshold}")
         print(f"Counting unique {count_var} enriched for each {categorical_var}")
+        print(f"Selected database: {database}")
+        print(f"Selected method: {method}")
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['trait_enrichments'][selected_run]  # Adjust to your actual plot logic
+    data_to_plot = results['trait_enrichments'][selected_run]["results"][f"{database}_{method}"]  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -380,6 +752,7 @@ def update_num_enriched_traits_plot(
     )
 
     # Choose whether to plot all gene sets or only unique gene sets
+    unique = (unique == 'true')
     if unique:
         data_to_plot = unique_df
     else:
@@ -406,25 +779,36 @@ def update_num_enriched_traits_plot(
 # Callback for number of perturbation associations
 @callback(
     Output('num-perturbation-associations', 'figure'),
-    [Input('run-selector', 'value'), Input('terms-threshold', 'value')]
+    [
+        Input('run-selector', 'value'),
+        Input('perturbations-threshold', 'value'),
+        Input('perturbations-gene_guide-selector', 'value'),
+        Input('perturbations-level_key-selector', 'value'),
+        Input('perturbations-unique-toggle', 'value')
+    ]
 )
 def update_num_perturbation_associations_plot(
     selected_run, 
     sig_threshold,
-    debug=False,
-    unique=False,
+    gene_guide,
+    level_key,
+    unique,
     categorical_var = "program_name",
     count_var = "target_name",
     sig_var = "pval",
+    debug=False,
 ):
         
     if debug:
         print(f"Selected run for perturbation association plot: {selected_run}")
         print(f"Filtering perturbation associations with {sig_var} < {sig_threshold}")
         print(f"Counting unique {count_var} enriched for each {categorical_var}")
+        print(f"Selected gene guide: {gene_guide}")
+        print(f"Selected level key: {level_key}")
+
 
     # Assuming we want to plot something from the selected run
-    data_to_plot = results['perturbation_associations'][selected_run]
+    data_to_plot = results['perturbation_associations'][selected_run]["results"][f"{gene_guide}_{perturbation_association_stratification_key}_{level_key}"]  # Adjust to your actual plot logic
 
     # Make sure x-axis is string
     data_to_plot[categorical_var] = data_to_plot[categorical_var].astype(str)
@@ -439,6 +823,7 @@ def update_num_perturbation_associations_plot(
     )
 
     # Choose whether to plot all gene sets or only unique gene sets
+    unique = (unique == 'true')
     if unique:
         data_to_plot = unique_df
     else:
