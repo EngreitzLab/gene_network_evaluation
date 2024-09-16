@@ -1,0 +1,9 @@
+path_evaluation_outs: ["/cellar/users/aklie/opt/gene_program_evaluation/examples/evaluation/iPSC_EC/cNMF/cNMF_30"]
+path_evaluation_config: "/cellar/users/aklie/opt/gene_program_evaluation/examples/evaluation/iPSC_EC/cNMF/cNMF_30/evaluation_pipeline.yml"
+path_mdata: "/cellar/users/aklie/opt/gene_program_evaluation/examples/evaluation/iPSC_EC/cNMF/cNMF_30/cNMF_30.h5mu"
+path_report_out: "/cellar/users/aklie/opt/gene_program_evaluation/examples/report/iPSC_EC/cNMF/cNMF_30"
+prog_keys: ["cNMF_30"]
+data_key: "rna"
+categorical_keys: ["sample", "leiden"]
+continuous_keys: ["n_counts"]
+annotations_loc: "annotations.csv"  # if none defaults to annotations.csv

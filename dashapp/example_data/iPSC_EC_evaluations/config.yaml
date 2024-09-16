@@ -1,7 +1,0 @@
-output_loc: /cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations/cNMF_60_0.2_gene_names.h5mu
-categorical_keys: ['sample']
-continuous_keys: None
-dim_reduce_keys: None
-workdir: /cellar/users/aklie/opt/gene_program_evaluation/dashapp/example_data/iPSC_EC_evaluations
-data_key: rna
-annotations_loc: "annotations.csv"  # if none defaults to annotations.csv

@@ -1,0 +1,79 @@
+io:
+  path_mdata: '/cellar/users/aklie/opt/gene_program_evaluation/examples/inference/iPSC_EC/cNMF/cNMF_30_0.2_gene_names.h5mu'
+  path_out: '/cellar/users/aklie/opt/gene_program_evaluation/app/examples/evaluation/iPSC_EC/cNMF_30'
+  data_key: 'rna'
+  prog_key: 'cNMF'
+
+categorical_association:
+  categorical_key: 'sample'
+  pseudobulk_key: null
+  test: 'correlation'
+  n_jobs: -1
+  inplace: false
+
+perturbation_association:
+  groupby_key: null
+  collapse_targets: true
+  pseudobulk: false
+  reference_targets:
+    - 'non-targeting'
+  n_jobs: -1
+  inplace: false
+
+gene_set_enrichment:
+  prog_nam: null
+  organism: 'human'
+  libraries:
+    - 'Reactome_2022'
+    - 'GO_Biological_Process_2023'
+  method: 'fisher'
+  database: 'enrichr'
+  n_top: 300
+  n_jobs: -1
+  inplace: false
+  user_geneset: null
+  max_size: 500
+  min_size: 5
+
+trait_enrichment:
+  gwas_data: '/cellar/users/aklie/opt/gene_program_evaluation/smk/resources/OpenTargets_L2G_Filtered.csv.gz'
+  prog_nam: null
+  library: 'OT_GWAS'
+  n_jobs: -1
+  inplace: false
+  key_column: 'trait_efos'
+  gene_column: 'gene_name'
+  method: 'fisher'
+  loading_rank_thresh: 300
+  metadata: '/cellar/users/aklie/opt/gene_program_evaluation/smk/resources/OpenTargets_L2G_Filtered.csv.gz'
+  pval_col: 'adj_pval'
+  enrich_geneset_id_col: 'term'
+  metadata_geneset_id_col: 'trait_efos'
+  color_category_col: 'trait_category'
+  program_name_col: 'program_name'
+  annotation_cols:
+    - 'trait_reported'
+    - 'genes'
+    - 'study_id'
+    - 'pmid'
+  max_size: 1000
+  min_size: 5
+
+motif_enrichment:
+  motif_file: '/cellar/users/aklie/opt/gene_program_evaluation/src/tests/test_data/motifs.meme'
+  seq_file: '/cellar/users/aklie/data/ref/genomes/hg38/hg38.fa'
+  coords_file: '/cellar/users/aklie/opt/gene_program_evaluation/app/examples/datasets/iPSC_EC/EnhancerPredictions_D0_2024_09_02.txt'
+  output_loc: '/cellar/users/aklie/opt/gene_program_evaluation/app/examples/evaluation/iPSC_EC/cNMF_30/motif_counts'
+  use_previous: false
+  window: 1000
+  threshold: 0.05
+  sig: 0.05
+  num_genes: null
+  correlation: 'pearsonr'
+  n_jobs: -1
+  inplace: false
+
+explained_variance:
+  layer: 'X'
+  n_jobs: 1
+  inplace: false

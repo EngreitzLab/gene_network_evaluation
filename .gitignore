@@ -1,10 +1,13 @@
 *.sif
 *.snakemake
-archive/
 
-dashapp/example_data/**/*.h5mu
+# examples
+examples/
 
-archive/
+# app
+app/scratch/
+
+# resources
 **/resources/*
 !/resources/OpenTargets_L2G_noQC.csv.gz
 !/resources/OpenTargets_L2G_Filtered.csv.gz

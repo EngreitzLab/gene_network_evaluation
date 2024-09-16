@@ -3,15 +3,17 @@ import argparse
 
 import mudata
 
+import numpy as np
 import pandas as pd
 from .enrichment_geneset import compute_geneset_enrichment, create_geneset_dict
 
 import logging
 logging.basicConfig(level = logging.INFO)
 
-### Query Open Targets using BigQuery to obtain GWAS to Gene mappings across many traits
+
 def run_opentargets_query(credentials_path, output_file, min_assoc_loci=10, 
                           min_n_cases=1000, min_l2g_score=0.2, study_ids_to_keep=None):
+    """Query Open Targets using BigQuery to obtain GWAS to Gene mappings across many traits"""
 
     from google.cloud import bigquery
     import pandas as pd
@@ -94,10 +96,10 @@ def run_opentargets_query(credentials_path, output_file, min_assoc_loci=10,
         print(f"An error occurred: {str(e)}")
         return None
 
-### Filter Open Targets query results to a set of high-quality GWAS and L2G scores
 
 def process_json_format_l2g_columns(row, column_name):
-    """
+    """Filter Open Targets query results to a set of high-quality GWAS and L2G scores
+    
     Extracts a comma-separated list of IDs from a string representation of a list of dictionaries in a DataFrame row.
 
     Parameters:
@@ -127,6 +129,7 @@ def process_json_format_l2g_columns(row, column_name):
     except Exception as e:
         print(f"Error: {e}, Row: {row}")
         return None
+
 
 def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, remove_mhc_region=True):
     l2g = pd.read_csv(input_file, compression='gzip', low_memory=False)
@@ -189,11 +192,74 @@ def filter_open_targets_gwas_query(input_file, output_file, min_l2g_score=None, 
     # Save the filtered DataFrame to a CSV file
     filtered_l2g.to_csv(output_file, index=False)
     
-# Compute Trait enrichment using open-targets GWAS
-def compute_trait_enrichment(mdata, gwas_data, prog_key='prog', 
-                             prog_nam=None, data_key='rna', library='OT_GWAS', 
-                             n_jobs=1, inplace=False, key_column='trait_efos',
-                             gene_column='gene_name', method='fisher', loading_rank_thresh=500, **kwargs):
+
+def process_enrichment_data(
+    enrich_res,
+    metadata,
+    pval_col="P-value",
+    enrich_geneset_id_col="Term",
+    metadata_geneset_id_col="trait_efos",
+    color_category_col="trait_category",
+    program_name_col="program_name",
+    annotation_cols=["trait_reported", "Genes", "study_id", "pmid"]
+):
+
+    # Read in enrichment results
+    if isinstance(enrich_res, str):
+        enrich_df = pd.read_csv(enrich_res)
+    elif isinstance(enrich_res, pd.DataFrame):
+        enrich_df = enrich_res
+    else:
+        raise ValueError("enrich_res must be either a pandas DataFrame or a file path to a CSV file.")
+
+    if isinstance(metadata, str):
+        metadata_df = pd.read_csv(metadata, compression='gzip', low_memory=False)
+    elif isinstance(metadata, pd.DataFrame):
+        metadata_df = metadata
+    else:
+        raise ValueError("metadata must be either a pandas DataFrame or a file path to a CSV file.")
+
+    # Join the enrichment results and the metadata
+    enrich_ps = enrich_df.merge(metadata_df, left_on=enrich_geneset_id_col, right_on=metadata_geneset_id_col, how="left")
+
+    # Only keep the relevant columns
+    keep_cols = list([enrich_geneset_id_col, pval_col, metadata_geneset_id_col, color_category_col, program_name_col] + annotation_cols)
+    enrich_ps = enrich_ps[keep_cols]
+
+    # Sort by P-value
+    enrich_ps = enrich_ps.drop_duplicates().sort_values(by=[color_category_col, pval_col])
+
+    # If the input P-value == 0, then replace it with the lowest non-zero P-value in the dataframe
+    min_value = enrich_ps.query(f"`{pval_col}` > 0")[pval_col].min()
+
+    # Compute the -log(10) P-value and deal with edge-cases (e.g. P=0, P=1)
+    enrich_ps.loc[enrich_ps[pval_col] == 0, pval_col] = min_value  # Replace P=0 with min non-0 p-value
+    enrich_ps[f'-log10({pval_col})'] = abs(-1 * np.log10(enrich_ps[pval_col]))
+
+    enrich_ps.reset_index(drop=True, inplace=True)
+
+    return enrich_ps
+
+
+def compute_trait_enrichment(
+    mdata, 
+    gwas_data, 
+    prog_key='prog', 
+    prog_name=None, 
+    data_key='rna', 
+    library='OT_GWAS', 
+    n_jobs=1, 
+    inplace=False, 
+    key_column='trait_efos',
+    gene_column='gene_name', 
+    method='fisher', 
+    min_size=0,
+    max_size=2000,
+    n_top=500, 
+    low_cutoff=-np.inf, 
+    **kwargs
+):
+    """Compute Trait enrichment using open-targets GWAS"""
     #read in gwas data
     if isinstance(gwas_data, str):
         df = pd.read_csv(gwas_data, compression='gzip', low_memory=False)
@@ -204,9 +270,26 @@ def compute_trait_enrichment(mdata, gwas_data, prog_key='prog',
     
     gmt = create_geneset_dict(df, key_column=key_column, gene_column=gene_column)
 
-    return (compute_geneset_enrichment(mdata=mdata, prog_key=prog_key, data_key=data_key, 
-                                       library=library, database=None, n_jobs=n_jobs, inplace=inplace, 
-                                       user_geneset=gmt, prog_nam=prog_nam, method=method, loading_rank_thresh=loading_rank_thresh))
+    return (compute_geneset_enrichment(
+        mdata=mdata, 
+        prog_key=prog_key, 
+        data_key=data_key, 
+        prog_name=prog_name, 
+        method=method, 
+        organism="human",
+        library=library, 
+        database=None, 
+        user_geneset=gmt,
+        min_size=min_size,
+        max_size=max_size,
+        low_cutoff=low_cutoff,
+        n_top=n_top,
+        n_jobs=n_jobs, 
+        inplace=inplace, 
+        **kwargs
+    ))
+
+
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
@@ -225,3 +308,4 @@ if __name__=='__main__':
                              data_key=args.data_key, 
                              n_jobs=args.n_jobs, 
                              inplace=args.output)
+    

@@ -1,0 +1,12 @@
+path_evaluation_outs: 
+  - "/path/to/evaluation/output/directory"
+path_evaluation_config: "/path/to/evaluation/config/evaluation.yaml"
+path_mdata: "/path/to/eval.h5mu"
+path_report_out: "/path/to/report/output/directory"
+data_key: "rna"
+categorical_keys: 
+  - "sample"
+  - "leiden"
+continuous_keys: 
+  - "n_counts"
+annotations_loc: "annotations.csv"  # Update this path if necessary, or leave it as the default "annotations.csv"

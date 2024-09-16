@@ -1,0 +1,11 @@
+evaluation_pipeline_versions:
+  gene_program_evaluation: 0.0.1
+  gseapy: 1.1.3
+  mudata: 0.2.3
+  numpy: 1.26.2
+  pandas: 1.5.3
+  scikit-learn: 1.3.2
+  scikit-posthocs: 0.9.0
+  scipy: 1.11.4
+  statsmodels: 0.14.0
+  tangermeme: 0.3.0
