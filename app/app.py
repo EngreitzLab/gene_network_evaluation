@@ -31,6 +31,8 @@ def create_dash_app(config):
         path_mdata,
         path_evaluation_outs,
         data_key="rna",
+        perturbation_association_stratification_key=None,
+        motif_enrichment_stratification_key=None,
     ):
         try:
             # Load mdata
@@ -38,7 +40,13 @@ def create_dash_app(config):
             mdata.mod = collections.OrderedDict(sorted(mdata.mod.items()))
             
             # Parse data
-            results = parse(mdata, path_evaluation_outs, data_key)
+            results = parse(
+                mdata, 
+                path_evaluation_outs, 
+                data_key,
+                perturbation_association_stratification_key=perturbation_association_stratification_key,
+                motif_enrichment_stratification_key=motif_enrichment_stratification_key,
+            )
             
             # Add obs data from data_key
             obs = mdata[data_key].obs.reset_index()
@@ -76,6 +84,8 @@ def create_dash_app(config):
 
     # Load evaluation config
     evaluation_config = load_config(path_evaluation_config)
+    perturbation_association_stratification_key = evaluation_config["perturbation_association"]["groupby_key"]
+    motif_enrichment_stratification_key = evaluation_config["motif_enrichment"]["groupby_key"]
     
     # Set up logging to print to console and also to file in path_out (evaluation_pipeline.log) with overwrite
     log_path = os.path.join(path_report_out, 'reports_pipeline.log')
@@ -95,6 +105,8 @@ def create_dash_app(config):
         path_mdata=path_mdata,
         path_evaluation_outs=path_evaluation_outs,
         data_key=data_key,
+        perturbation_association_stratification_key=perturbation_association_stratification_key,
+        motif_enrichment_stratification_key=motif_enrichment_stratification_key,
     )
     
     # Add in path_report_out to results
@@ -106,6 +118,8 @@ def create_dash_app(config):
     results['categorical_keys'] = categorical_keys
     results['continuous_keys'] = continuous_keys
     results['annotations_loc'] = annotations_loc
+    results['perturbation_association_stratification_key'] = perturbation_association_stratification_key
+    results['motif_enrichment_stratification_key'] = motif_enrichment_stratification_key
 
     # Cache results
     cache.set('results', results)
