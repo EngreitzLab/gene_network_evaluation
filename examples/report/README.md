@@ -26,3 +26,5 @@ continuous_keys:  # List of continuous keys to use for dashboard
   - "n_counts"
 annotations_loc: "annotations.csv"  # Name of file in the report directory to dump annotations
 ```
+
+An example dashboard configuration file can be found here [`examples/report/iPSC_EC/cNMF/cNMF_30/report.yaml`](/examples/report/iPSC_EC/cNMF/cNMF_30/report.yaml).

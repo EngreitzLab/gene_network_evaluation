@@ -27,6 +27,9 @@ Or can be loaded into the `evaluation_pipeline.ipynb` notebook for interactive u
 
 We have included an example SLURM script for running the evaluation pipeline in parallel on a cluster: `evaluation_pipelines.sh`
 
+Example configuration files can be found at:
+-  [`examples/evaluation/Endothelial/cNMF/evaluation_pipeline.yml`](/examples/evaluation/Endothelial/cNMF/evaluation_pipeline.yml)
+-  [`examples/evaluation/iPSC_EC/cNMF/cNMF_30/evaluation_pipeline.yml`](/examples/evaluation/iPSC_EC/cNMF/cNMF_30/evaluation_pipeline.yml)
 ## Selection of k
 Most program inference methods require the prespecification of the number of gene programs prior to inference. This is a key hyperparameter that can have a large impact on the quality of the inferred programs. We currently do not have an automated method for selecting k, but provide several example notebooks for each method in the [`examples/evaluation/k_selection`](/examples/evaluation/k_selection) directory. These notebooks can be used to explore the effect of different k values on the quality of the inferred programs.
 
