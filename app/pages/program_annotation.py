@@ -44,7 +44,15 @@ default_program = programs[0]
 
 # Grab the dimensionality reduction data and categorical keys
 obsms = results["obsms"]
-default_obsm = 'X_umap' if 'X_umap' in obsms else list(obsms.keys())[0]
+if "X_umap" in obsms:
+    default_obsm = 'X_umap'
+elif "X_pca" in obsms:
+    default_obsm = 'X_pca'
+else:
+    if len(obsms) != 0:
+        default_obsm = list(obsms.keys())[0]
+    else:
+        default_obsm = None
 
 # Get the columns that don't have the selected dim reduction prefix
 categorical_keys = results["categorical_keys"]
@@ -54,7 +62,11 @@ default_covariate = categorical_keys[0] if categorical_keys else None
 
 # Grab the groupings
 perturbation_association_stratification_key = results['perturbation_association_stratification_key']
+if perturbation_association_stratification_key is None:
+    perturbation_association_stratification_key = "global"
 motif_enrichment_stratification_key = results['motif_enrichment_stratification_key']
+if motif_enrichment_stratification_key is None:
+    motif_enrichment_stratification_key = "global"
 
 # Get all the possible trait_category values for trait enrichment
 trait_categories = results['trait_enrichments'][default_run]['results'][list(results['trait_enrichments'][default_run]['results'].keys())[0]]['trait_category'].unique()
@@ -480,6 +492,7 @@ layout = dbc.Container([
 
             dbc.Row([
                 dbc.Col([
+                    html.Label("Select Significance Threshold"),
                     dcc.Input(
                         id='perturbation-threshold',
                         type='number',
@@ -511,6 +524,14 @@ layout = dbc.Container([
                 ], width=4),
             ]),
 
+            # Volcano plot of perturbations
+            dbc.Row([
+                dbc.Col([
+                    html.H3("Volcano Plot of Perturbations"),
+                    dcc.Graph(id='volcano-plot-perturbations'),
+                ], width=12),
+            ]),
+
             # Table of perturbations
             dbc.Row([
                 dbc.Col([
@@ -519,13 +540,6 @@ layout = dbc.Container([
                 ], width=12),
             ]),
 
-            # Volcano plot of perturbations
-            dbc.Row([
-                dbc.Col([
-                    html.H3("Volcano Plot of Perturbations"),
-                    dcc.Graph(id='volcano-plot-perturbations'),
-                ], width=12),
-            ]),
         ]),
 
         # Tab 7: Annotations
@@ -1130,7 +1144,12 @@ def update_program_dim_reduction_plot(
         print(f"Static: {static}")
 
     if selected_dim_reduction is None:
-        return go.Figure(), html.Div()  # Return an empty figure and legend placeholder
+        if debug:
+            print("Selected dim reduction or covariate is None")
+        fig = plt.figure()
+        fig.text(0.5, 0.5, "No data to plot", ha='center', va='center', fontsize=20)
+        fig = fig_to_uri(fig)
+        return fig
 
     # Get vector of continuous values for the program membership
     curr_obs = results['obs']

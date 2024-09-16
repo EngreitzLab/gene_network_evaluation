@@ -35,7 +35,12 @@ obs = results["obs"]
 
 # Grab the groupings
 perturbation_association_stratification_key = results['perturbation_association_stratification_key']
+if perturbation_association_stratification_key is None:
+    perturbation_association_stratification_key = "global"
 motif_enrichment_stratification_key = results['motif_enrichment_stratification_key']
+if motif_enrichment_stratification_key is None:
+    motif_enrichment_stratification_key = "global"
+
 
 # Create layout
 layout = dbc.Container([
@@ -673,7 +678,7 @@ def update_num_enriched_motifs_plot(
     categorical_var = "program_name",
     count_var = "motif",
     sig_var = "adj_pval",
-    debug=False,
+    debug=True,
 ):
 
     if debug:

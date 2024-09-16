@@ -17,7 +17,15 @@ results = cache.get("results")
 
 # Grab the dimensionality reduction data and categorical keys
 obsms = results["obsms"]
-default_obsm = 'X_umap' if 'X_umap' in obsms else list(obsms.keys())[0]
+if "X_umap" in obsms:
+    default_obsm = 'X_umap'
+elif "X_pca" in obsms:
+    default_obsm = 'X_pca'
+else:
+    if len(obsms) != 0:
+        default_obsm = list(obsms.keys())[0]
+    else:
+        default_obsm = None
 
 # Get the columns that don't have the selected dim reduction prefix
 categorical_keys = results["categorical_keys"]
@@ -146,9 +154,14 @@ def update_dim_reduction_plot(
         print(f"Selected dim reduction: {selected_dim_reduction}, selected covariate: {selected_covariate}")
         print(f"Static: {static}")
 
-    # Check if the selected dim reduction and covariate are valid
+    # Check if the selected dim reduction and covariate are valid, if not, return an empty matplotlib figure with the text "No data to plot" in big letters in the center
     if selected_dim_reduction is None or selected_covariate is None:
-        return go.Figure(), html.Div()  # Return an empty figure and legend placeholder
+        if debug:
+            print("Selected dim reduction or covariate is None")
+        fig = plt.figure()
+        fig.text(0.5, 0.5, "No data to plot", ha='center', va='center', fontsize=20)
+        fig = fig_to_uri(fig)
+        return fig
 
     # grab cell metadata
     cell_metadata = results["obs"]

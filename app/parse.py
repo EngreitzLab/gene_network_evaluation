@@ -90,14 +90,17 @@ def parse_perturbation_associations(
         for perturbation_association_file in perturbation_association_files:
             gene_guide = perturbation_association_file.split(f"{prog_key}_")[1].split("_")[0]
             if not stratification_key:
-                stratification_key = perturbation_association_file.split(f"{prog_key}_{gene_guide}_")[1].split("_")[0]
-            level_key = perturbation_association_file.split(f"{prog_key}_{gene_guide}_{stratification_key}_")[1].split("_perturbation_association.txt")[0]
-            print(f"Gene/guide: {gene_guide}, Stratification key: {stratification_key}, Level key: {level_key}")
+                curr_stratification_key = "global"
+                curr_level_key = "global"
+            else:
+                curr_stratification_key = stratification_key
+                curr_level_key = perturbation_association_file.split(f"{prog_key}_{gene_guide}_{curr_stratification_key}_")[1].split("_perturbation_association.txt")[0]
+            print(f"Gene/guide: {gene_guide}, Stratification key: {curr_stratification_key}, Level key: {curr_level_key}")
             df = pd.read_csv(perturbation_association_file, sep="\t")
-            perturbation_associations[prog_key]["results"][f"{gene_guide}_{stratification_key}_{level_key}"] = df
+            perturbation_associations[prog_key]["results"][f"{gene_guide}_{curr_stratification_key}_{curr_level_key}"] = df
             perturbation_associations[prog_key]["gene_guides"].append(gene_guide)
-            perturbation_associations[prog_key]["stratification_keys"].append(stratification_key)
-            perturbation_associations[prog_key]["level_keys"].append(level_key)
+            perturbation_associations[prog_key]["stratification_keys"].append(curr_stratification_key)
+            perturbation_associations[prog_key]["level_keys"].append(curr_level_key)
     return perturbation_associations
 
 
@@ -162,16 +165,19 @@ def parse_motif_enrichments(
             database = motif_enrichment_file.split(f"{prog_key}_{E_P_type}_")[1].split("_")[0]
             test_type = motif_enrichment_file.split(f"{prog_key}_{E_P_type}_{database}_")[1].split("_")[0]
             if not stratification_key:
-                stratification_key = motif_enrichment_file.split(f"{prog_key}_{E_P_type}_{database}_{test_type}_")[1].split("_")[0]
-            level_key = motif_enrichment_file.split(f"{prog_key}_{E_P_type}_{database}_{test_type}_{stratification_key}_")[1].split("_motif_enrichment.txt")[0]
-            print(f"E_P_type: {E_P_type}, Database: {database}, Test type: {test_type}, Stratification key: {stratification_key}, Level key: {level_key}")
+                curr_stratification_key = "global"
+                curr_level_key = "global"
+            else:
+                curr_level_key = motif_enrichment_file.split(f"{prog_key}_{E_P_type}_{database}_{test_type}_{curr_stratification_key}_")[1].split("_motif_enrichment.txt")[0]
+                curr_stratification_key = stratification_key
+            print(f"E_P_type: {E_P_type}, Database: {database}, Test type: {test_type}, Stratification key: {curr_stratification_key}, Level key: {curr_level_key}")
             df = pd.read_csv(motif_enrichment_file, sep="\t")
-            motif_enrichments[prog_key]["results"][f"{E_P_type}_{database}_{test_type}_{stratification_key}_{level_key}"] = df
+            motif_enrichments[prog_key]["results"][f"{E_P_type}_{database}_{test_type}_{curr_stratification_key}_{curr_level_key}"] = df
             motif_enrichments[prog_key]["E_P_types"].append(E_P_type)
             motif_enrichments[prog_key]["databases"].append(database)
             motif_enrichments[prog_key]["test_types"].append(test_type)
-            motif_enrichments[prog_key]["stratification_keys"].append(stratification_key)
-            motif_enrichments[prog_key]["level_keys"].append(level_key)
+            motif_enrichments[prog_key]["stratification_keys"].append(curr_stratification_key)
+            motif_enrichments[prog_key]["level_keys"].append(curr_level_key)
     
     return motif_enrichments
 
