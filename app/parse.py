@@ -168,8 +168,8 @@ def parse_motif_enrichments(
                 curr_stratification_key = "global"
                 curr_level_key = "global"
             else:
-                curr_level_key = motif_enrichment_file.split(f"{prog_key}_{E_P_type}_{database}_{test_type}_{curr_stratification_key}_")[1].split("_motif_enrichment.txt")[0]
                 curr_stratification_key = stratification_key
+                curr_level_key = motif_enrichment_file.split(f"{prog_key}_{E_P_type}_{database}_{test_type}_{curr_stratification_key}_")[1].split("_motif_enrichment.txt")[0]
             print(f"E_P_type: {E_P_type}, Database: {database}, Test type: {test_type}, Stratification key: {curr_stratification_key}, Level key: {curr_level_key}")
             df = pd.read_csv(motif_enrichment_file, sep="\t")
             motif_enrichments[prog_key]["results"][f"{E_P_type}_{database}_{test_type}_{curr_stratification_key}_{curr_level_key}"] = df
