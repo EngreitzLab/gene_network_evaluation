@@ -231,3 +231,6 @@ continuous_keys:  # List of continuous keys to use for dashboard
   - "n_counts"
 annotations_loc: "annotations.csv"  # Name of file in the report directory to dump annotations
 ```
+
+See the [app README](app/README.md) for more information on how to generate the dashboard.
+
