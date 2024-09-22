@@ -1,48 +1,118 @@
-# Gene Program Evaluation Dashboard v0.0.1
+# Instructions for running dashboard for the 2024 IGVF Gene Program Jamboree
+This page details how to run the dashboard for the 2024 IGVF Gene Program Jamboree. For more information on gene program inference and evaluation, please see the [main repository README](../README.md).
 
-## Overview
+# Overview
 1. [Installation](#installation)
-2. [Expected input](#expected-input)
-
+2. [Datasets](#datasets)
+3. [Running the dashboard](#running-the-dashboard)
 
 ## Installation
-1. Install dash
+Make sure you have a Python environment manager like [`pyenv`](https://github.com/pyenv/pyenv) or `conda` installed (if you don't have one installed, we recommend [installing miniconda](#install-miniconda)).
+
+Once you are in your Python environment, install the required packages by running the following command:
+
 ```bash
-pip install dash dash-bootstrap-components
+cd gene_network_evaluation/app/
+pip install -r requirements.txt
 ```
 
-2. Run the app
+Let an organizer know if you run into any issues with the installation.
+
+## Datasets
+You will you will need a [Synapse account](https://www.synapse.org/Home:x) to access the large files considered for this jamboree.
+First create an account, then post your username to the IGVF Slack channel #jamboree-gene-programs-2024 to be granted access to these files. If you are interested in more general IGVF Synapse access, message Ben Hitz on slack with your Synapse username.
+
+The dashboard expects that you have run the both gene inference and evaluation pipeline in advance. For the purposes of the jamboree, we have done this for you for 4 datasets (in alphabetical order):
+
+1. `Bridge_Samples` -- IGVF left cerebral cortex brain samples mice. UCI performed snRNA-seq or "Split-seq" using the Parse Biosciences platform
+2. `CharacterizationMcGinnis_Dataset6` -- H1 pancreatic diff, 7 timepoints (n=7; D3/7/11/18/32) [Huangfu]
+3. `Endothelial` -- TeloHAEC (endothelial model cell line) Perturb-seq dataset from [1]
+4. `iPSC_EC` -- induced pluripotent stem cell (iPSC) derived endothelial cells (ECs) over a 3 day differentiation protocol
+
+For each dataset we have run 3 program inference methods (`factor_analysis`, `cNMF`, and `Topyfic`) and several evaluations (see main [`README`](../README.md) for more details). The results are organized on Synapse here: https://www.synapse.org/Synapse:syn63392535:
+
+- `datasets` - Contains the raw data for the datasets that can be input into the gene program inference methods
+- `evaluation` - Contains the scripts and results for running the evaluation pipeline on the gene program inference results
+- `get_data` - Contains scripts for downloading the data from Synapse
+- `inference` - Contains the scripts and results for running the gene program inference methods
+- `report` - Contains the scripts and results for generating the report
+
+Each of these subdirectories contains a `README.md` and is subsequently organized by dataset.
+
+Many of these files are quite large. Single files can be easily downloaded via the browser, but you can also download files programmatically using the [synapse command line client or Python API](https://pypi.org/project/synapseclient/). For example, you can run the following command to download the `Endothelial` evaluation `h5mu` file:
+
 ```bash
-python app.py
+# Synapse may require you to generate a personal access token to authenticate. You can do so in your profile settings on Synapse.
+synapse get syn63392881 --downloadLocation ../examples/evaluation/Endothelial/cNMF
 ```
 
-3. Open the app in your browser: 
-If you are running the app locally, you can open it in your browser by visiting [http://](http://0.0.0.0:8050/)
-If you are running the app on a server, run
+Or you can follow the the `examples/get_data/download_from_synapse.ipynb`[../examples/get_data/download_from_synapse.ipynb] notebook to download files using the Python API. Note that running the full notebook will download files for several datasets, so pick and choose the data you want to download when using this option.
+
+## Running the dashboard
+Running the dashboard requires that you have already run the evaluation pipleine (see [datasets](#datasets)) and that you pass in a `yaml` format config with the following information:
+
+```yaml
+path_evaluation_outs:  # List of paths to the evaluation output directories
+  - "/path/to/evaluation/output/directory_1"
+  - "/path/to/evaluation/output/directory_2"
+path_evaluation_config: "/path/to/evaluation/config/evaluation.yaml"  # Path to the evaluation configuration file
+path_mdata: "/path/to/eval.h5mu"  # Path to the MuData object containing the data_key and program_key
+path_report_out: "/path/to/report/output/directory"  # Path to the directory where the report will be saved
+data_key: "rna"  # Key used to store the original single-cell data in the MuData object
+categorical_keys:   # List of categorical keys to use for dashboard
+  - "sample"
+continuous_keys:  # List of continuous keys to use for dashboard
+  - "n_counts"
+annotations_loc: "annotations.csv"  # Name of file in the report directory to dump annotations
+```
+
+We have provided an example config file for the `Endothelial` dataset.
+
+```yaml
+path_evaluation_outs: ["../examples/evaluation/Endothelial/cNMF"]
+path_evaluation_config: "../examples/evaluation/Endothelial/cNMF/evaluation_pipeline.yml"
+path_mdata: "../examples/evaluation/Endothelial/cNMF/cNMF.h5mu"
+path_report_out: "../examples/report/Endothelial/cNMF"
+prog_keys: ["cNMF"]
+data_key: "rna"
+categorical_keys: ["batch", "sample"]
+continuous_keys: ["n_counts"]
+annotations_loc: "annotations.csv"  # if none defaults to annotations.csv
+To run the dashboard, you will need to run the `app.py` script with the path to the config file as a `--config` argument. For example, to run the dashboard with the `Endothelial.yaml` config file, you would run the following command:
+```
+
+All the files needed to run the dashboard were downloaded to the `../examples/evaluation/Endothelial/cNMF` directory when you cloned the GitHub repository *except* for 1 file that is too large to store on GitHub. That file is available for download from Synapse. You can download it using the following command:
+
+```bash
+# Synapse may require you to generate a personal access token to authenticate. You can do so in your profile settings on Synapse.
+synapse get syn63392881 --downloadLocation ../examples/evaluation/Endothelial/cNMF
+```
+
+Once you have downloaded the file, you can run the dashboard with the following command:
+
+```bash
+python app.py --config Endothelial.yaml
+```
+
+Once the dashboard is running, you can access it via your default web browser by visiting [http://0.0.0.0:8050/](http://0.0.0.0:8050/).
+
+If you are running the app on a server, you will need to open an SSH tunnel to access the dashboard. You can do this by running the following command in a terminal on your local machine:
+
 ```bash
 ssh -L 8050:localhost:8050 <username>@<server>
 ```
 
-## Dashboard
+Once the tunnel is open, you can access the dashboard by visiting [http://localhost:8050/](http://localhost:8050/) in your web browser.
 
-### Overview page
-The overview page will describe both the inputs to the method and...
+# Dashboard features
+We have hosted the Endothelial cell Perturb-seq example at the following link: http://34.169.124.229:8080/
 
+# Installing [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+Start by downloading the appropriate Miniconda installer for your operating system from https://docs.anaconda.com/miniconda/miniconda-other-installer-links/.
 
-
-# 3) Install Miniconda
-
-Installing multiple packages that are all compatible with each other can be a painful process for even seasoned bioinformaticians. Luckily for us, there exist package installation aides called ["package managers"](https://en.wikipedia.org/wiki/Package_manager) that make our lives a whole lot easier. [Many package managers exist](https://en.wikipedia.org/wiki/List_of_software_package_management_systems), but we will be using [Miniconda](https://docs.conda.io/en/latest/miniconda.html) for this bootcamp as its very flexible and lightweight.
-
-Miniconda is pretty easy to install itself. Start by copying the the following file to your home directory:
+Run the installer using the command line. For example, if you downloaded the installer for Linux, you would run the following command:
 
 ```bash
-scp /tscc/nfs/home/hkcarter/Miniconda3-latest-Linux-x86_64.sh ~/.
-```
-
-This file is a bash script (set of code instructions) that will install Miniconda on your account. To run the script, type the following command:
-```bash
-cd ~
 bash Miniconda3-latest-Linux-x86_64.sh
 ```
 
@@ -50,7 +120,7 @@ Press enter when prompted
 
 After hitting enter, you will then be presented with the license/terms and conditions. If you want to skip to the end, hit `q` and then accept the license terms by typing _yes_. 
 
-Miniconda will then present you with an installation location as `/tscc/nfs/home/etrain##/miniconda3`. Press enter to confirm the location (or specify your own if you want to do a bit of organization -- see the pro tip at the end of this doc).
+Miniconda will then present you with an installation location. Press enter to confirm the location (or specify your own if you want to do a bit of organization).
 
 Miniconda is now installing! This may take a bit so don't get frustrated. Leave your terminal open and let this run.
 
@@ -81,132 +151,66 @@ You should also see your prompt change to something like:
 (base) bash-5.1$
 ```
 
-# 4. Setting up your "base" environment
-
-Miniconda works by putting downloaded software into containers known as [environments](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#managing-environments). This allows you to create different containers/environments that have different purposes.
-
-When you first install Miniconda, you are put in a default environment called `base`. This is the environment that you are in now and will be whenever you log in to TSCC.
-
-In base, we will need something called Jupyter notebooks for later in the bootcamp (don't worry if you don't know what those are for now). To install Jupyter, run the following command:
-
+Now create an environment for jamboree by running the following command:
 ```bash
-conda install -c conda-forge jupyter jupyterlab -y
+conda create -n jamboree-gene-programs python=3.10.8 -y
 ```
 
-<div style="border: 2px solid #4CAF50; padding: 15px; border-radius: 10px; background-color: #e8f5e9;">
-  <h2 style="color: #388E3C; font-family: Arial, sans-serif;">
-    &#128218; Pro Tip
-  </h2>
-  <p style="color: #1B5E20; font-family: Arial, sans-serif;">
-    Up until recently, conda performance was painfully slow. This has since been remedied to some extent, but I'm not sure if it's been fixed entirely. A much faster alternative to conda is a package manager called <a href="https://mamba.readthedocs.io/">mamba</a> that is a drop-in replacement for conda.
-    <br><br>
-    <strong>To install mamba on an existing installation of conda, use the following:</strong>
-    <br>
-    <code>conda install -n base --override-channels -c conda-forge mamba 'python_abi=*=*cp*'</code>
-    Once installed you can replace <code>conda</code> with <code>mamba</code> in any future command.
-  </p>
-</div>
-
-# 5. Creating an environment for running an `rna-seq` analysis
-
-During bootcamp, we will be honing our bioinformatic skills using an RNA-seq analysis. We will get more into the details in the first couple days, but for now, we need to install some software.
-
-As a rule of thumb I install very little in my base environment (Jupyter being the exception). This is to avoid a bloated `base` environment that can cause performance issues.
-
-Instead, we will create a new environment specifically for this bootcamp. Run the following command
+Activate (enter) the environment we just created:
 ```bash
-conda create -n 2024-mstp-bootcamp python=3.11 r-base=4.3.1 -y
+conda activate jamboree-gene-programs
 ```
 
-Let's break this down
-- `conda create -n 2024-mstp-bootcamp` - create a new environment called `2024-mstp-bootcamp`
-- `python=3.11` - install python version 3.11 in this environment
-- `r-base=4.3.1` - install R version 4.3.1 in this environment
-- `-y` - automatically say yes to any prompts
+You can now go back to the [Installation](#installation) section to install the required packages.
 
-We can now 'activate' (enter) the environment we just created:
-```bash
-conda activate 2024-mstp-bootcamp
+# References
+[1] Schnitzler, G. R., Kang, H., Fang, S., Angom, R. S., Lee-Kim, V. S., Ma, X. R., ... & Engreitz, J. M. (2024). Convergence of coronary artery disease genes onto endothelial cell programs. Nature, 626(8000), 799-807.
+
+```bibtex
+@ARTICLE{Schnitzler2024-xi,
+  title     = "Convergence of coronary artery disease genes onto endothelial
+               cell programs",
+  author    = "Schnitzler, Gavin R and Kang, Helen and Fang, Shi and Angom,
+               Ramcharan S and Lee-Kim, Vivian S and Ma, X Rosa and Zhou,
+               Ronghao and Zeng, Tony and Guo, Katherine and Taylor, Martin S
+               and Vellarikkal, Shamsudheen K and Barry, Aurelie E and
+               Sias-Garcia, Oscar and Bloemendal, Alex and Munson, Glen and
+               Guckelberger, Philine and Nguyen, Tung H and Bergman, Drew T and
+               Hinshaw, Stephen and Cheng, Nathan and Cleary, Brian and Aragam,
+               Krishna and Lander, Eric S and Finucane, Hilary K and
+               Mukhopadhyay, Debabrata and Gupta, Rajat M and Engreitz, Jesse M",
+  journal   = "Nature",
+  publisher = "Springer Science and Business Media LLC",
+  volume    =  626,
+  number    =  8000,
+  pages     = "799--807",
+  abstract  = "Linking variants from genome-wide association studies (GWAS) to
+               underlying mechanisms of disease remains a challenge1-3. For some
+               diseases, a successful strategy has been to look for cases in
+               which multiple GWAS loci contain genes that act in the same
+               biological pathway1-6. However, our knowledge of which genes act
+               in which pathways is incomplete, particularly for
+               cell-type-specific pathways or understudied genes. Here we
+               introduce a method to connect GWAS variants to functions. This
+               method links variants to genes using epigenomics data, links
+               genes to pathways de novo using Perturb-seq and integrates these
+               data to identify convergence of GWAS loci onto pathways. We apply
+               this approach to study the role of endothelial cells in genetic
+               risk for coronary artery disease (CAD), and discover 43 CAD GWAS
+               signals that converge on the cerebral cavernous malformation
+               (CCM) signalling pathway. Two regulators of this pathway, CCM2
+               and TLNRD1, are each linked to a CAD risk variant, regulate other
+               CAD risk genes and affect atheroprotective processes in
+               endothelial cells. These results suggest a model whereby CAD risk
+               is driven in part by the convergence of causal genes onto a
+               particular transcriptional pathway in endothelial cells. They
+               highlight shared genes between common and rare vascular diseases
+               (CAD and CCM), and identify TLNRD1 as a new, previously
+               uncharacterized member of the CCM signalling pathway. This
+               approach will be widely useful for linking variants to functions
+               for other common polygenic diseases.",
+  month     =  feb,
+  year      =  2024,
+  language  = "en"
+}
 ```
-
-You should see your prompt change to something like:
-```bash
-(2024-mstp-bootcamp) bash-5.1$
-```
-
-This indicates that we are in the bootcamp environment, we can now install *most* of the necessary packages for RNA-seq analysis:
-
-```bash
-conda install -c conda-forge -c bioconda numpy pandas matplotlib seaborn STAR fastqc samtools bzip2 subread -y
-```
-
-Let's break this down
-- `conda install -c conda-forge -c bioconda` - install packages from the conda-forge and bioconda channels
-- `numpy pandas matplotlib seaborn` - install the python packages numpy, pandas, matplotlib, and seaborn
-- `STAR fastqc samtools bzip2 subread` - install the programs STAR, fastqc, samtools, bzip2, and subread
-
-Some packages are not available via conda and instead can be installed via the Python package manager [`pip`](https://pip.pypa.io/en/stable/).
-
-Lucky for us, `pip` comes default when a new Python environment is created in conda, and conda and pip are very compatible. To install the packages we want, all we have to do is:
-```bash
-pip install decoupler pydeseq2 scanpy sanbomics gseapy PyWGCNA
-```
-
-Great! Hopefully these ran successfully for you. We will talk more about the packages and what they are used for in the actual bootcamp.
-
-There is one last thing we need to do. Jupyter notebooks have no way of knowing where these programs are unless we tell them. We need to install something called ipykernel:
-```bash
-conda install -c anaconda ipykernel -y
-```
-
-and then create a "kernel" (Jupyter jargon) that knows where the software we just installed lives:
-    
-```bash
-python -m ipykernel install --user --name 2024-mstp-bootcamp --display-name "Python 3.11 R 4.3.1 2024-mstp-bootcamp"
-```
-
-One last time for this notebook, let's break this down:
-- `python -m ipykernel install` - run the command to install a new kernel
-- `--user` - install the kernel for the current user only, as opposed to system-wide
-- `--name 2024-mstp-bootcamp` - name the kernel `2024-mstp-bootcamp`, this should match the conda environment name
-- `--display-name "Python 3.11 R 4.3.1 2024-mstp-bootcamp"` - display the kernel as "Python 3.11 R 4.3.1 2024-mstp-bootcamp" in Jupyter
-
-You can now exit the interactive session by typing `exit` or `CTRL-D`.
-
-
-
-
-
-# Install pyenv
-
-Pyenv
-brew install pyenv
-brew install pyenv-virtualenv
-pyenv install 3.10.8
-pyenv virtualenv 3.10.8 jamboree-gene-programs
-
-
-
-
-## Expected input
-The dashboard expects that you have run the snakemake evaluation pipeline and that the output is structured as follows:
-    
-```bash
-path_pipeline_outs/
-├── cNMF_60
-├── cNMF_59
-├── cNMF_58
-...
-├── cNMF_1
-└── output.h5mu
-```
-
-where `output.h5mu` contains the MuData object with keys `input` that contains the original input matrix and `cNMF_60`, `cNMF_59`, ..., `cNMF_1` containing the cell and gene loadings for each of the inference runs.
-
-The keys of the MuData and the output subdirectories in `path_pipeline_outs` should be named accordingly to the desired type of analysis:
-1. A **single run of a method** with a fixed number of components. The MuData should have 1 key other than `input` that can be named anything. In this scenario, a cross run analysis (see below) will be omitted.
-2. A **cross k analysis** should share the same base name and be suffixed by an integer that indicates the number of components used in inference. e.g. `cNMF_60`, `cNMF_59`, ..., `cNMF_1`. Here the assumption is that the number of components is varied across the same method.
-3. A **cross method analysis** should have a key for each method. e.g. `cNMF`, `Topyfic`, etc. Here the assumption is that the number of components is fixed and the method is varied.
-4. A **cross k and method** analysis is a combination of 2) and 3). The keys should have the same base name for each method and be suffixed by an integer that indicates the number of components used in inference. e.g. `cNMF_60`, `cNMF_59`, ..., `cNMF_1`, `Topyfic_60`, `Topyfic_59`, ..., `Topyfic_1`.
-
-Note that if you run different methods with different numbers of components and don't suffix the keys with the number of components, the dashboard will not perform any comparisons across values of k.
