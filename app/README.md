@@ -1,5 +1,5 @@
 # Instructions for running dashboard for the 2024 IGVF Gene Program Jamboree
-This page details how to run the dashboard for the 2024 IGVF Gene Program Jamboree. For more information on gene program inference and evaluation, please see the [main repository README](../README.md).
+This page details how to run the gene program interpretation and annotation dashboard for the 2024 IGVF Gene Program Jamboree. For more information on gene program inference and evaluation, please see the [main repository README](../README.md).
 
 # Overview
 1. [Installation](#installation)
@@ -20,16 +20,16 @@ Let an organizer know if you run into any issues with the installation.
 
 ## Datasets
 You will you will need a [Synapse account](https://www.synapse.org/Home:x) to access the large files considered for this jamboree.
-First create an account, then post your username to the IGVF Slack channel #jamboree-gene-programs-2024 to be granted access to these files. If you are interested in more general IGVF Synapse access, message Ben Hitz on slack with your Synapse username.
+First create an account, then post your username to the IGVF Slack channel **#jamboree-gene-programs-2024** to be granted access to these files. If you are interested in more general IGVF Synapse access, message Ben Hitz on slack with your Synapse username.
 
-The dashboard expects that you have run the both gene inference and evaluation pipeline in advance. For the purposes of the jamboree, we have done this for you for 4 datasets (in alphabetical order):
+The dashboard expects that you have run the both gene inference and evaluation pipeline in advance (see main [`README`](../README.md) for more details). For the purposes of the jamboree, we have done this for you for 4 datasets (in alphabetical order):
 
 1. `Bridge_Samples` -- IGVF left cerebral cortex brain samples mice. UCI performed snRNA-seq or "Split-seq" using the Parse Biosciences platform
-2. `CharacterizationMcGinnis_Dataset6` -- H1 pancreatic diff, 7 timepoints (n=7; D3/7/11/18/32) [Huangfu]
+2. `CharacterizationMcGinnis_Dataset6` -- H1 pancreatic diff, 7 timepoints (n=7; D3/7/11/18/32)
 3. `Endothelial` -- TeloHAEC (endothelial model cell line) Perturb-seq dataset from [1]
 4. `iPSC_EC` -- induced pluripotent stem cell (iPSC) derived endothelial cells (ECs) over a 3 day differentiation protocol
 
-For each dataset we have run 3 program inference methods (`factor_analysis`, `cNMF`, and `Topyfic`) and several evaluations (see main [`README`](../README.md) for more details). The results are organized on Synapse here: https://www.synapse.org/Synapse:syn63392535:
+For each dataset we have run 3 program inference methods (`factor_analysis`, `cNMF`, and `Topyfic`, with a few exceptions) and several evaluations. The results are organized [on Synapse](https://www.synapse.org/Synapse:syn63392535) with the following structure:
 
 - `datasets` - Contains the raw data for the datasets that can be input into the gene program inference methods
 - `evaluation` - Contains the scripts and results for running the evaluation pipeline on the gene program inference results
@@ -46,10 +46,10 @@ Many of these files are quite large. Single files can be easily downloaded via t
 synapse get syn63392881 --downloadLocation ../examples/evaluation/Endothelial/cNMF
 ```
 
-Or you can follow the the `examples/get_data/download_from_synapse.ipynb`[../examples/get_data/download_from_synapse.ipynb] notebook to download files using the Python API. Note that running the full notebook will download files for several datasets, so pick and choose the data you want to download when using this option.
+Or you can follow the the [`examples/get_data/download_from_synapse.ipynb`](../examples/get_data/download_from_synapse.ipynb) notebook to download files using the Python API. Note that running the full notebook will download files for several datasets, so pick and choose the data you want to download when using this option.
 
 ## Running the dashboard
-Running the dashboard requires that you have already run the evaluation pipleine (see [datasets](#datasets)) and that you pass in a `yaml` format config with the following information:
+Running the dashboard requires that you have already run the evaluation pipeline (see [datasets](#datasets)) and that you pass in a `yaml` format config with the following information:
 
 ```yaml
 path_evaluation_outs:  # List of paths to the evaluation output directories
@@ -66,7 +66,7 @@ continuous_keys:  # List of continuous keys to use for dashboard
 annotations_loc: "annotations.csv"  # Name of file in the report directory to dump annotations
 ```
 
-We have provided an example config file for the `Endothelial` dataset.
+We have provided an example config file for the [`Endothelial`](Endothelial.yaml) dataset.
 
 ```yaml
 path_evaluation_outs: ["../examples/evaluation/Endothelial/cNMF"]
@@ -78,17 +78,16 @@ data_key: "rna"
 categorical_keys: ["batch", "sample"]
 continuous_keys: ["n_counts"]
 annotations_loc: "annotations.csv"  # if none defaults to annotations.csv
-To run the dashboard, you will need to run the `app.py` script with the path to the config file as a `--config` argument. For example, to run the dashboard with the `Endothelial.yaml` config file, you would run the following command:
 ```
 
-All the files needed to run the dashboard were downloaded to the `../examples/evaluation/Endothelial/cNMF` directory when you cloned the GitHub repository *except* for 1 file that is too large to store on GitHub. That file is available for download from Synapse. You can download it using the following command:
+All the files in the paths specified above were downloaded when you cloned the GitHub repository *except* for 1 file that is too large to store on GitHub. That file is available for [download from Synapse](https://www.synapse.org/Synapse:syn63392881). You can download it using the following command:
 
 ```bash
 # Synapse may require you to generate a personal access token to authenticate. You can do so in your profile settings on Synapse.
 synapse get syn63392881 --downloadLocation ../examples/evaluation/Endothelial/cNMF
 ```
 
-Once you have downloaded the file, you can run the dashboard with the following command:
+We can now pass in `Endothelial.yaml` in as the `--config` argument of the following command:
 
 ```bash
 python app.py --config Endothelial.yaml
@@ -107,7 +106,7 @@ Once the tunnel is open, you can access the dashboard by visiting [http://localh
 # Dashboard features
 We have hosted the Endothelial cell Perturb-seq example at the following link: http://34.169.124.229:8080/
 
-# Installing [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
+# Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html)
 Start by downloading the appropriate Miniconda installer for your operating system from https://docs.anaconda.com/miniconda/miniconda-other-installer-links/.
 
 Run the installer using the command line. For example, if you downloaded the installer for Linux, you would run the following command:
