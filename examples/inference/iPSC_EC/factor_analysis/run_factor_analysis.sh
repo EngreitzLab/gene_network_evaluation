@@ -24,7 +24,7 @@ echo -e "Job ID: $SLURM_JOB_ID\n"
 # Configuring env (choose either singularity or conda)
 source activate /cellar/users/aklie/opt/miniconda3/envs/scverse-lite-py39
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/opt/miniconda3/lib/
-path_script=/cellar/users/aklie/opt/gene_program_evaluation/src/inference/program_models/factor_analysis/factor_analysis.py
+path_script=path_script="../../../../src/inference/factor_analysis/factor_analysis.py"
 
 # Inputs
 path_data=$1
