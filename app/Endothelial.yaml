@@ -1,0 +1,9 @@
+path_evaluation_outs: ["../examples/evaluation/Endothelial/cNMF"]
+path_evaluation_config: "../examples/evaluation/Endothelial/cNMF/evaluation_pipeline.yml"
+path_mdata: "../examples/evaluation/Endothelial/cNMF/cNMF.h5mu"
+path_report_out: "../examples/report/Endothelial/cNMF"
+prog_keys: ["cNMF"]
+data_key: "rna"
+categorical_keys: ["batch", "sample"]
+continuous_keys: ["n_counts"]
+annotations_loc: "annotations.csv"  # if none defaults to annotations.csv

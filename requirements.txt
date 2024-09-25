@@ -9,8 +9,12 @@ scikit-posthocs  # Optional
 seaborn
 gseapy  # Optional
 lxml  # Optional
-pymemesuite  # Optional
 google-cloud-bigquery # Optional
 plotly # Optional -- for interactive plots
 db_dtypes # Optional -- for BigQuery
 ipywidgets
+pyyaml  # Optional -- for Dash app
+dash # Optional -- for Dash app
+dash-bootstrap-components  # Optional -- for Dash app
+tangermeme
+

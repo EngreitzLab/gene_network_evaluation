@@ -48,6 +48,12 @@ dependencies = [
     'seaborn',
     'gseapy', # Optional
     'lxml' # Optional
-    'pymemesuite', # Optional
-    
+    #'tangermeme' # Optional
+    `dash` # Optional
+    `dash-bootstrap-components` # Optional
+    #`google-cloud-bigquery` # Optional
+    `plotly` # Optional -- for interactive plots
+    #`db_dtypes` # Optional -- for BigQuery
+    `ipywidgets`
+    `pyyaml` # Optional -- for Dash app
 ]

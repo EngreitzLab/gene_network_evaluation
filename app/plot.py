@@ -9,7 +9,7 @@ from io import BytesIO
 from scipy import stats
 from statsmodels.stats.multitest import fdrcorrection
 import seaborn as sns
-
+matplotlib.use('agg')
 
 
 def generate_large_colormap(num_colors):

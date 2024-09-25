@@ -6,6 +6,7 @@ examples/
 
 # app
 app/scratch/
+app/doc/
 
 # resources
 **/resources/*
