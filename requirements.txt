@@ -17,4 +17,5 @@ pyyaml  # Optional -- for Dash app
 dash # Optional -- for Dash app
 dash-bootstrap-components  # Optional -- for Dash app
 tangermeme
+gin-config
 
