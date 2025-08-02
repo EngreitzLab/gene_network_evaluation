@@ -9,8 +9,11 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.multitest import fdrcorrection
 
-from tangermeme.io import read_meme, extract_loci
-from tangermeme.tools.fimo import fimo
+from tangermeme.io import extract_loci
+from memelite.io import read_meme
+from memelite import fimo
+
+from .enrichment_geneset import get_idconversion
 
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
@@ -66,7 +69,6 @@ def read_loci(
     except: raise ValueError('Coordinate file contains multiple sequence classes')
 
     return loci
-
 
 def perform_motif_match(
     loci: pd.DataFrame,
@@ -317,6 +319,7 @@ def compute_motif_enrichment(
     mdata: Union[mudata.MuData, os.PathLike],
     prog_key: str='prog',
     data_key: str='data',
+    organism: Literal['human', 'mouse'] = 'human',
     motif_file: Optional[os.PathLike]=None,
     seq_file: Optional[os.PathLike]=None,
     loci_file: Optional[os.PathLike]=None,
@@ -357,6 +360,8 @@ def compute_motif_enrichment(
         Tab delimited file with the following column headers:
         chr, start, end, seq_name, seq_class {promoter, enhancer}, 
         seq_score, gene_name.
+    organism : {'human', 'mouse'} (default: 'human')
+        species to which the sequencing data was aligned to.
     output_loc: str
         path to directory to store motif - gene counts.
     sig: (0,1] (default: 0.05)
@@ -404,15 +409,15 @@ def compute_motif_enrichment(
 
     # Get gene names in MuData
     if 'var_names' in mdata[prog_key].uns.keys():
-        gene_names = mdata[prog_key].uns['var_names']
+        gene_names = get_idconversion(mdata[prog_key].uns['var_names'], organism=organism)
     else:
-        try: assert mdata[prog_key].varm['loadings'].shape[1]==mdata[data_key].var.shape[0]
+        try: assert mdata[prog_key].varm['loadings'].shape[1] == mdata[data_key].var.shape[0]
         except: raise ValueError('Different number of genes present in data and program loadings')
-        gene_names = mdata[data_key].var_names
-    
-    # 
-    if ':ens' in gene_names[0].lower():
-        gene_names = [name.split(':')[0] for name in gene_names]
+        gene_names = get_idconversion(mdata[data_key].var_names, organism=organism)
+
+    # # 
+    # if ':ens' in gene_names[0].lower():
+    #     gene_names = [name.split(':')[0] for name in gene_names]
 
     # Check if output loc exists
     if output_loc is not None:
@@ -426,13 +431,13 @@ def compute_motif_enrichment(
         weighted=False
 
     # Intake motif file path or in memory
-    if isinstance(motif_file, str) and os.path.exists(motif_file):
+    if os.path.exists(motif_file):
         pwms = read_meme(motif_file)
     else:
         raise ValueError('Motif file not found.')
     
     # Intake coord file path or in memory
-    if isinstance(loci_file, str) and os.path.exists(loci_file):
+    if os.path.exists(loci_file):
         loci = read_loci(loci_file)
     else:
         raise ValueError('Coordinate file not found.')
@@ -446,6 +451,7 @@ def compute_motif_enrichment(
     # Compute motif matching
     loci_ = loci[loci['gene_name'].isin(matching_gene_names)]
     print(f'Number of loci: {loci_.shape[0]}')
+
     motif_match_df = perform_motif_match(
         loci=loci_,
         sequences=seq_file,
@@ -515,7 +521,8 @@ if __name__=='__main__':
     parser.add_argument('mudataObj_path')
     parser.add_argument('-mf', '--motif_file', default=None, type=str, required=True) 
     parser.add_argument('-sf', '--seq_file',  default=None, type=str, required=True) 
-    parser.add_argument('-cf', '--coords_file', default=None, type=str, required=True) 
+    parser.add_argument('-lf', '--loci_file', default=None, type=str, required=True) 
+    parser.add_argument('--organism', default='human', type=str, choices=['human', 'mouse']) 
     parser.add_argument('--store_files', default=None, type=str)
     parser.add_argument('--significance', default=0.05, choices=range(0,1), 
                                           metavar="(0,1)", type=float)
@@ -531,10 +538,10 @@ if __name__=='__main__':
     mdata = mudata.read(args.mudataObj_path)
     compute_motif_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, 
                              motif_file=args.motif_file, seq_file=args.seq_file, 
-                             coords_file=args.coords_file, output_loc=args.store_files, 
-                             sig=args.significance, num_genes=args.num_genes, 
-                             n_jobs=args.n_jobs, correlation=args.correlation, 
-                             inplace=args.output)
+                             loci_file=args.loci_file, organism=args.organism,
+                             output_loc=args.store_files, sig=args.significance, 
+                             num_genes=args.num_genes, n_jobs=args.n_jobs, 
+                             correlation=args.correlation, inplace=args.output)
 
 
 
