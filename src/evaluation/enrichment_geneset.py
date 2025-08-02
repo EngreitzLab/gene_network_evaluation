@@ -28,37 +28,48 @@ def create_geneset_dict(
         geneset_dict.setdefault(key, []).append(gene)
     return geneset_dict
 
-
-def get_idconversion(var_names, organism='human'):
-    """Match gene IDs with database"""
+def get_idconversion(var_names, organism='human', chunk_size=100):
+    """Match gene IDs with database, chunking large queries to avoid HTML errors."""
+    # Ensure var_names is a simple list
+    var_names = list(var_names)
 
     bm = Biomart()
-    gene_names = []
-    for i in range(min(10, len(var_names))):
-        if var_names[i].lower().startswith('ens'):
-            queries = {'ensembl_gene_id': list(var_names)}
+    # Default to uppercase fallback
+    gene_names = [v.upper() for v in var_names]
 
-            if organism=='human':
-                id_dataset='hsapiens_gene_ensembl'
-            elif organism=='mouse':
-                id_dataset='mmusculus_gene_ensembl'
+    # Detect Ensembl IDs by looking at the first element safely
+    is_ensembl = (len(var_names) > 0 and var_names[0].lower().startswith('ens'))
+    if is_ensembl:
+        dataset = (
+            'hsapiens_gene_ensembl'
+            if organism=='human'
+            else 'mmusculus_gene_ensembl'
+        )
 
-            results = bm.query(dataset=id_dataset,
-                               attributes=['ensembl_gene_id', 'external_gene_name'],
-                               filters=queries)
+        lookup = {}
+        for i in range(0, len(var_names), chunk_size):
+            chunk = var_names[i:i+chunk_size]
+            try:
+                res = bm.query(
+                    dataset=dataset,
+                    attributes=['ensembl_gene_id', 'external_gene_name'],
+                    filters={'ensembl_gene_id': chunk}
+                )
+                if not hasattr(res, 'columns'):
+                    raise RuntimeError('BioMart returned HTML or invalid format')
+                df = res[['ensembl_gene_id', 'external_gene_name']].astype(str)
+                df['external_gene_name'] = df['external_gene_name'].str.upper()
+                lookup.update(dict(zip(df['ensembl_gene_id'], df['external_gene_name'])))
+            except Exception as e:
+                logging.info(f"BioMart chunk lookup failed for IDs {i}-{i+len(chunk)} ({e}); skipping these.")
 
-            if type(results) is str:
-                raise RuntimeError('Gene name query request did not suceed. Consider converting ENS IDs to gene names manually')
-            gene_names = results['external_gene_name'].apply(lambda x: x.upper()).values
-            break
-        elif ':ens' in var_names[i].lower():
-            gene_names = [name.split(':')[0].upper() for name in var_names]
-            break
-        else:
-            gene_names = [name.upper() for name in var_names]
+        gene_names = [lookup.get(v, v.upper()) for v in var_names]
+
+    elif any(':ens' in v.lower() for v in var_names):
+        gene_names = [v.split(':', 1)[0].upper() for v in var_names]
+
     return gene_names
-
-
+        
 def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='rna', organism='human'):
     """Get gene loadings for each program in the mudata object."""
 
@@ -101,7 +112,7 @@ def perform_prerank(
     geneset: Union[List[str], str, Dict[str, str]],
     n_jobs: int = 1,
     low_cutoff: float = -np.inf,
-    n_top: Optional[int] = None,
+    n_top: int = None,
     **kwargs
 ) -> pd.DataFrame:
     """Run GSEA prerank on each gene program in the loadings matrix.
@@ -304,7 +315,7 @@ def insert_enrichment(
 
 def compute_geneset_enrichment(
     mdata: Union[str, mudata.MuData],
-    prog_key: str = 'program_name',
+    prog_key: str = 'prog',
     data_key: str = 'rna',
     prog_name: Optional[str] = None,
     method: Literal['gsea', 'fisher'] = 'gsea',
@@ -315,7 +326,7 @@ def compute_geneset_enrichment(
     min_size: int = 0,
     max_size: int = 2000,
     low_cutoff: float = -np.inf,
-    n_top: Optional[int] = None,
+    n_top: int = 2000,
     n_jobs: int = 1,
     inplace: bool = True,
     **kwargs
