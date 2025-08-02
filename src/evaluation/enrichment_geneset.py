@@ -87,9 +87,9 @@ def get_program_gene_loadings(mdata, prog_key='prog', prog_nam=None, data_key='r
         loadings["gene_names"] = gene_names
         loadings.set_index("gene_names", inplace=True)
 
-    with open('var_names.txt', 'w') as fil:
-        for nam in mdata[data_key].var_names:
-            fil.write(nam+'\n')
+    # with open('var_names.txt', 'w') as fil:
+    #     for nam in mdata[data_key].var_names:
+    #         fil.write(nam+'\n')
 
     return loadings
 
