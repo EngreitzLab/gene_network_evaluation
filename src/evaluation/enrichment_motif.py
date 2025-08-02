@@ -9,8 +9,11 @@ from scipy.stats import pearsonr, spearmanr, kendalltau
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.multitest import fdrcorrection
 
-from tangermeme.io import read_meme, extract_loci
-from tangermeme.tools.fimo import fimo
+from tangermeme.io import extract_loci
+from memelite.io import read_meme
+from memelite import fimo
+
+from .enrichment_geneset import get_idconversion
 
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
@@ -67,13 +70,12 @@ def read_loci(
 
     return loci
 
-
 def perform_motif_match(
     loci: pd.DataFrame,
     sequences: os.PathLike,
     pwms: Mapping[str, np.ndarray],
     in_window: int=1000,
-    threshold: float=1e-4,
+    sig: float=1e-4,
     eps: float=1e-4,
     reverse_complement: bool=True,
     output_loc: os.PathLike=None
@@ -93,14 +95,14 @@ def perform_motif_match(
             Dictionary of PWMs where keys are motif names and values are PWMs.
         in_window : int
             Window size to extract sequences around center of loci.
-        threshold : float
+        sig : float
             Threshold for motif matching.
         output_loc : os.PathLike
             Path to directory to store motif matches for individual motifs.
         """
         # Perform motif matching
         X = extract_loci(loci, sequences, in_window=in_window).float()
-        hits = fimo(pwms, X, threshold=threshold, eps=eps, reverse_complement=reverse_complement)
+        hits = fimo(pwms, X, threshold=sig, eps=eps, reverse_complement=reverse_complement)
 
         # Create motif match dataframe
         motif_match_df = pd.DataFrame()
@@ -119,8 +121,6 @@ def perform_motif_match(
 def compute_motif_instances(
     motif_match_df: pd.DataFrame,
     motif_var: str = 'motif_name',
-    sig: float=0.05,
-    sig_var: str='adj_pval',
     gene_names: Optional[np.ndarray]=None
 ):
     """Count motif instances per gene (via enahncer/promoter linking)
@@ -131,10 +131,6 @@ def compute_motif_instances(
         DataFrame containing motif matches.
     motif_var : str
         Column name for motif names. Default is 'motif_name'.
-    sig : float
-        Significance threshold for motif matches. Default is 0.05.
-    sig_var : str
-        Column name for significance values. Default is 'adj_pval'.
     gene_names : np.ndarray
         Array of gene names. Default is None.
     
@@ -145,13 +141,13 @@ def compute_motif_instances(
     """
 
     # Count up significant occurences of motif
-    motif_match_df_ = motif_match_df.loc[motif_match_df[sig_var] < sig]
-    print(f"There are {motif_match_df_.shape[0]} significant motif matches.")
     motif_match_df_ = motif_match_df.value_counts(subset=['gene_name', motif_var]).reset_index()
     motif_match_df_.columns = ['gene_name', motif_var, 'motif_count']
     motif_match_df_ = motif_match_df_.pivot(index='gene_name', columns=motif_var, values='motif_count')
+
     motif_count_df = pd.DataFrame(index=gene_names, columns=motif_match_df_.columns)
     motif_count_df.loc[motif_match_df_.index.values] = motif_match_df_ # Gene names should match as this point
+
     return motif_count_df
 
 
@@ -162,7 +158,9 @@ def perform_correlation(
     motif_enrich_pval_df: pd.DataFrame,
     motif_idx: int,
     prog_idx: int,
-    correlation: str='pearsonr'
+    correlation: str='pearsonr',
+    low_cutoff: float = -np.inf,
+    n_top: int = None,
 ):
     """Compute motif enrichment as correlation b/w gene weights/ranks and motif counts
     
@@ -185,10 +183,37 @@ def perform_correlation(
         Index of gene program.
     correlation : {'pearsonr','spearmanr','kendalltau'}
         Type of correlation to perform. Default is 'pearsonr'.
+    low_cutoff : float
+        Remove features with loadings at or below this value.
+    n_top : int
+        Take the top n features with the highest loadings.
     """
 
-    loadings = prog_genes.iloc[prog_idx].values.flatten()
-    counts = motif_count_df.T.iloc[motif_idx].fillna(0).values.flatten()
+    # Make unique index for subsetting
+    prog_genes_ = prog_genes.copy().T
+    prog_genes_['unique_id'] = prog_genes_.index.astype(str) + '_' + \
+                               prog_genes_.groupby(prog_genes_.index).cumcount().astype(str)
+
+    motif_count_df_ = motif_count_df.copy()
+    motif_count_df_.set_index(prog_genes_['unique_id'], inplace=True, drop=True)
+
+    prog_genes_.set_index('unique_id', inplace=True, drop=True)
+
+    loadings = prog_genes_.iloc[:, prog_idx]
+
+    # Filter out low loadings
+    loadings = loadings[(loadings > low_cutoff)]
+
+    # Take top n features if specified
+    if n_top is not None:
+        loadings = loadings.sort_values(ascending=False).head(n_top)
+        if len(loadings) < n_top:
+            logging.warning(f"Program {i} has less than {n_top} features after filtering. Only {len(loadings)} features will be used.")
+
+    counts = motif_count_df_.T.loc[:, loadings.index]
+
+    loadings = loadings.values.flatten()
+    counts = counts.iloc[motif_idx].fillna(0).values.flatten()
     
     if correlation=='pearsonr':
         stat, pval = pearsonr(loadings, counts)
@@ -200,7 +225,6 @@ def perform_correlation(
     motif_enrich_stat_df.iloc[prog_idx, motif_idx]  = stat
     motif_enrich_pval_df.iloc[prog_idx, motif_idx]  = pval
 
-
 def compute_motif_enrichment_(
     mdata: mudata.MuData,
     motif_count_df: pd.DataFrame,
@@ -209,6 +233,8 @@ def compute_motif_enrichment_(
     weighted: bool=True,
     num_genes: Optional[int]=None,
     correlation: str='pearsonr',
+    low_cutoff: float = -np.inf,
+    n_top: int = None,
     n_jobs: int=1
 ):
     """Count up motif ocurrences and perform diff. test
@@ -233,6 +259,10 @@ def compute_motif_enrichment_(
         Number of genes threshold to dichotomize loadings. Default is None.
     correlation : {'pearsonr','spearmanr','kendalltau'}
         Type of correlation to perform. Default is 'pearsonr'.
+    low_cutoff : float
+        Remove features with loadings at or below this value.
+    n_top : int
+        Take the top n features with the highest loadings.
     n_jobs : int
         Number of threads to run processes on. Default is 1.
     """
@@ -240,10 +270,11 @@ def compute_motif_enrichment_(
     # Both weighted and num_genes cannot be set
     if num_genes is not None and weighted:
         raise ValueError('Will not use weighted when num_genes specified.')
-
+    
     loadings = pd.DataFrame(data=mdata[prog_key].varm['loadings'],
                             index=mdata[prog_key].var_names,
                             columns=gene_names)
+
     # FIXME: Causes expansion due to duplications in gene_names
     # Ensure index matches b/w loadings and counts
     # loadings = loadings.loc[:, motif_count_df.index.values]
@@ -288,17 +319,19 @@ def compute_motif_enrichment(
     mdata: Union[mudata.MuData, os.PathLike],
     prog_key: str='prog',
     data_key: str='data',
+    organism: Literal['human', 'mouse'] = 'human',
     motif_file: Optional[os.PathLike]=None,
     seq_file: Optional[os.PathLike]=None,
     loci_file: Optional[os.PathLike]=None,
     output_loc: Optional[os.PathLike]=None,
     window: int=1000,
-    threshold: float=1e-4,
+    sig: float=1e-4,
     eps: float=1e-4,
     reverse_complement: bool=True,
-    sig: float=0.05,
     num_genes: Optional[int]=None,
     correlation: str='pearsonr',
+    low_cutoff: float = -np.inf,
+    n_top: int = 2000,
     n_jobs: int=1,
     inplace: bool=True,
     **kwargs
@@ -327,6 +360,8 @@ def compute_motif_enrichment(
         Tab delimited file with the following column headers:
         chr, start, end, seq_name, seq_class {promoter, enhancer}, 
         seq_score, gene_name.
+    organism : {'human', 'mouse'} (default: 'human')
+        species to which the sequencing data was aligned to.
     output_loc: str
         path to directory to store motif - gene counts.
     sig: (0,1] (default: 0.05)
@@ -336,6 +371,10 @@ def compute_motif_enrichment(
     correlation: {'pearsonr','spearmanr','kendalltau'} (default: 'peasronsr')
         correlation type to use to compute motif enirchments.
         Use kendalltau when expecting enrichment/de-enrichment at both ends.
+    low_cutoff : float
+        Remove features with loadings at or below this value.
+    n_top : int
+        Take the top n features with the highest loadings.
     use_previous: bool (default: True)
         if outplot is provided try to load motif matches from previous run.
     n_jobs: int (default: 1)
@@ -370,15 +409,15 @@ def compute_motif_enrichment(
 
     # Get gene names in MuData
     if 'var_names' in mdata[prog_key].uns.keys():
-        gene_names = mdata[prog_key].uns['var_names']
+        gene_names = get_idconversion(mdata[prog_key].uns['var_names'], organism=organism)
     else:
-        try: assert mdata[prog_key].varm['loadings'].shape[1]==mdata[data_key].var.shape[0]
+        try: assert mdata[prog_key].varm['loadings'].shape[1] == mdata[data_key].var.shape[0]
         except: raise ValueError('Different number of genes present in data and program loadings')
-        gene_names = mdata[data_key].var_names
-    
-    # 
-    if ':ens' in gene_names[0].lower():
-        gene_names = [name.split(':')[0] for name in gene_names]
+        gene_names = get_idconversion(mdata[data_key].var_names, organism=organism)
+
+    # # 
+    # if ':ens' in gene_names[0].lower():
+    #     gene_names = [name.split(':')[0] for name in gene_names]
 
     # Check if output loc exists
     if output_loc is not None:
@@ -392,13 +431,13 @@ def compute_motif_enrichment(
         weighted=False
 
     # Intake motif file path or in memory
-    if isinstance(motif_file, str) and os.path.exists(motif_file):
+    if os.path.exists(motif_file):
         pwms = read_meme(motif_file)
     else:
         raise ValueError('Motif file not found.')
     
     # Intake coord file path or in memory
-    if isinstance(loci_file, str) and os.path.exists(loci_file):
+    if os.path.exists(loci_file):
         loci = read_loci(loci_file)
     else:
         raise ValueError('Coordinate file not found.')
@@ -412,12 +451,13 @@ def compute_motif_enrichment(
     # Compute motif matching
     loci_ = loci[loci['gene_name'].isin(matching_gene_names)]
     print(f'Number of loci: {loci_.shape[0]}')
+
     motif_match_df = perform_motif_match(
         loci=loci_,
         sequences=seq_file,
         pwms=pwms,
         in_window=window,
-        threshold=threshold,
+        sig=sig,
         eps=eps,
         reverse_complement=reverse_complement,
         output_loc=output_loc
@@ -427,8 +467,6 @@ def compute_motif_enrichment(
     motif_count_df = compute_motif_instances(
         motif_match_df,
         motif_var='motif_name',
-        sig=sig,
-        sig_var='adj_pval',
         gene_names=gene_names
     )
     motif_enrich_stat_df, motif_enrich_pval_df = compute_motif_enrichment_(
@@ -483,7 +521,8 @@ if __name__=='__main__':
     parser.add_argument('mudataObj_path')
     parser.add_argument('-mf', '--motif_file', default=None, type=str, required=True) 
     parser.add_argument('-sf', '--seq_file',  default=None, type=str, required=True) 
-    parser.add_argument('-cf', '--coords_file', default=None, type=str, required=True) 
+    parser.add_argument('-lf', '--loci_file', default=None, type=str, required=True) 
+    parser.add_argument('--organism', default='human', type=str, choices=['human', 'mouse']) 
     parser.add_argument('--store_files', default=None, type=str)
     parser.add_argument('--significance', default=0.05, choices=range(0,1), 
                                           metavar="(0,1)", type=float)
@@ -499,10 +538,10 @@ if __name__=='__main__':
     mdata = mudata.read(args.mudataObj_path)
     compute_motif_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, 
                              motif_file=args.motif_file, seq_file=args.seq_file, 
-                             coords_file=args.coords_file, output_loc=args.store_files, 
-                             sig=args.significance, num_genes=args.num_genes, 
-                             n_jobs=args.n_jobs, correlation=args.correlation, 
-                             inplace=args.output)
+                             loci_file=args.loci_file, organism=args.organism,
+                             output_loc=args.store_files, sig=args.significance, 
+                             num_genes=args.num_genes, n_jobs=args.n_jobs, 
+                             correlation=args.correlation, inplace=args.output)
 
 
 

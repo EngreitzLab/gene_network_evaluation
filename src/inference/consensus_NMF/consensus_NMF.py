@@ -21,14 +21,26 @@ def init_cnmf_obj(output_dir=None, name=None):
 def run_cnmf_factorization(output_dir=None, name=None, counts_fn=None,
                            components=[7,8,9,10], n_iter=10, seed=14,
                            total_workers=-1, num_highvar_genes=2000, 
-                           beta_loss='frobenius'):
+                           beta_loss='frobenius', use_gpu=False, 
+                           mode='original'):
 
-    # Compute cNMF and create prog anndata
-    cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
-    cnmf_obj.prepare(counts_fn=counts_fn, components=components, n_iter=n_iter, 
-                     seed=seed, num_highvar_genes=num_highvar_genes, beta_loss=beta_loss)
-    # FIXME: Doesn't seem to work in multithreading
-    cnmf_obj.factorize(total_workers=total_workers)
+    if mode=='torch':
+
+        # Compute cNMF and create prog anndata
+        cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
+        cnmf_obj.prepare(counts_fn=counts_fn, components=components, n_iter=n_iter, 
+                        seed=seed, num_highvar_genes=num_highvar_genes, beta_loss=beta_loss,
+                        total_workers=total_workers, use_gpu=use_gpu)
+        cnmf_obj.factorize()
+    
+    elif mode=='original':
+
+        # Compute cNMF and create prog anndata
+        cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
+        cnmf_obj.prepare(counts_fn=counts_fn, components=components, n_iter=n_iter, 
+                        seed=seed, num_highvar_genes=num_highvar_genes, beta_loss=beta_loss)
+        # FIXME: Doesn't seem to work in multithreading
+        cnmf_obj.factorize(total_workers=total_workers)
 
     return cnmf_obj
 
@@ -49,12 +61,13 @@ def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
                        components=[7,8,9,10], n_iter=10, seed=14,
                        total_workers=-1, density_thresholds=[0.01, 2.0],
                        num_highvar_genes=2000, beta_loss='frobenius',
-                       output_all_k=True, output_all_thresh=True):
+                       output_all_k=True, output_all_thresh=True,
+                       use_gpu=False, mode='original'):
 
     cnmf_obj = run_cnmf_factorization(output_dir=output_dir, name=name, counts_fn=counts_fn,
                                       components=components, n_iter=n_iter, seed=seed,
                                       total_workers=total_workers, num_highvar_genes=num_highvar_genes, 
-                                      beta_loss=beta_loss)
+                                      beta_loss=beta_loss, use_gpu=use_gpu, mode=mode)
     cnmf_obj.combine()
     cnmf_obj.k_selection_plot()
 
@@ -68,7 +81,7 @@ def run_consensus_NMF_(K=10, output_dir=None, name=None, counts_fn=None,
 def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None,  
                       prog_key='consensus_NMF', data_key='rna', 
                       layer='X', config_path=None, n_jobs=1, 
-                      inplace=True):
+                      inplace=True, use_gpu=False, mode='original'):
 
     """
     Perform gene program inference using consensus NMF.
@@ -92,6 +105,10 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None,
             path to gin configurable config file containing method specific parameters.
         n_jobs: int (default: 1)
             number of threads to run processes on.
+        use_gpu: bool (default: False)
+            use GPU if available. Only works with mode='torch'.
+        mode: str (default: 'original')
+            Use cNMF_torch ('torch') or original ('original').
         inplace: Bool (default: True)
             update the mudata object inplace or return a copy
 
@@ -136,7 +153,9 @@ def run_consensus_NMF(mdata, work_dir='./', scratch_dir=None,
     output_all_k, output_all_thresh = \
     run_consensus_NMF_(output_dir=work_dir, 
                        counts_fn=counts_path,
-                       total_workers=n_jobs)
+                       total_workers=n_jobs,
+                       use_gpu=use_gpu,
+                       mode=mode)
 
     # Create new anndata object
     usage, spectra_scores, spectra_tpm, top_genes = \
@@ -184,6 +203,8 @@ if __name__=='__main__':
     parser.add_argument('--layer', default='X', type=str)
     parser.add_argument('--config_path', default='./consensus_NMF_config.gin', type=str)
     parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('--use_gpu', default=False, store_action=True)
+    parser.add_argument('--mode', default='original', type=str, choices=['torch', 'original'])
     parser.add_argument('--output', action='store_false') 
 
     args = parser.parse_args()
@@ -191,4 +212,5 @@ if __name__=='__main__':
     mdata = mudata.read(args.mudataObj_path)
     run_consensus_NMF(mdata, work_dir=args.work_dir, scratch_dir=args.scratch_dir, 
                       prog_key=args.prog_key, data_key=args.data_key, layer=args.layer, 
-                      config_path=args.config_path, n_jobs=args.n_jobs, inplace=args.output)
+                      config_path=args.config_path, n_jobs=args.n_jobs, inplace=args.output,
+                      use_gpu=args.use_gpu, mode=args.mode)
