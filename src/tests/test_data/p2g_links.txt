@@ -1,4 +1,4 @@
-	chr	start	end	seq_name	seq_class	seq_score	gene_name
+	chromosome	start	end	seq_name	seq_class	seq_score	gene_name
 55	chr1	6550039	6552350	promoter|chr1:6549889-6552500	promoter	53.082261	TAS1R1
 56	chr1	6550039	6552350	promoter|chr1:6549889-6552500	promoter	53.082261	PLEKHG5
 57	chr1	6550039	6552350	promoter|chr1:6549889-6552500	promoter	53.082261	NOL9
