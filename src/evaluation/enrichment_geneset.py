@@ -440,4 +440,33 @@ def compute_geneset_enrichment(
         )
     else:
         return(pre_res)
-    
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('mudataObj_path')
+    parser.add_argument('-m', '--method', default='gsea', choices={'gsea', 'fisher'}) 
+    parser.add_argument('-og', '--organism', default='Human', choices={'human', 'mouse'}) 
+    parser.add_argument('-gs', '--library', default='Reactome_2022', type=str) 
+    parser.add_argument('-db', '--database', default='enrichr', choices={'msigdb', 'enrichr'}) 
+    parser.add_argument('-pn', '--prog_name', default=None, type=str) 
+    parser.add_argument('-ng', '--n_top', default=2000, type=int) 
+    parser.add_argument('--max_size', default=2000, type=int) 
+    parser.add_argument('--min_size', default=0, type=int) 
+    parser.add_argument('--low_cutoff', default=-np.inf, type=float) 
+    parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
+    parser.add_argument('-dk', '--data_key', default='rna', type=str)
+    parser.add_argument('-n', '--n_jobs', default=1, type=int)
+    parser.add_argument('--output', action='store_false') 
+
+    args = parser.parse_args()
+
+    mdata = mudata.read(args.mudataObj_path)
+    compute_geneset_enrichment(mdata, prog_key=args.prog_key, data_key=args.data_key, method=args.method,
+                               organism=args.organism, library=args.library, database=arg.database, 
+                               prog_name=args.prog_name, min_size=args.min_size, max_size=args.max_size,
+                               low_cutoff=args.low_cutoff, n_top=args.n_top, n_jobs=args.n_jobs, inplace=args.output)
+
+
+
+
