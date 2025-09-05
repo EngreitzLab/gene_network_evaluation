@@ -21,7 +21,7 @@ def init_cnmf_obj(output_dir=None, name=None):
 def run_cnmf_factorization(output_dir=None, name=None, counts_fn=None,
                            components=[7,8,9,10], n_iter=10, seed=14,
                            total_workers=-1, num_highvar_genes=2000, 
-                           beta_loss='frobenius', use_gpu=False, 
+                           solver='halsvar', beta_loss='frobenius', use_gpu=False, 
                            mode='original'):
 
     if mode=='torch':
@@ -29,7 +29,8 @@ def run_cnmf_factorization(output_dir=None, name=None, counts_fn=None,
         # Compute cNMF and create prog anndata
         cnmf_obj = init_cnmf_obj(output_dir=output_dir, name=name)
         cnmf_obj.prepare(counts_fn=counts_fn, components=components, n_iter=n_iter, 
-                        seed=seed, num_highvar_genes=num_highvar_genes, beta_loss=beta_loss,
+                        seed=seed, num_highvar_genes=num_highvar_genes, 
+                        solver=solver, beta_loss=beta_loss,
                         total_workers=total_workers, use_gpu=use_gpu)
         cnmf_obj.factorize()
     

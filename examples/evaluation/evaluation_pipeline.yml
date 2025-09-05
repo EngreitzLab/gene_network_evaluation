@@ -90,6 +90,7 @@ motif_enrichment:
   inplace: false
 
 explained_variance:
-  layer: X
+  data_layer: X
+  prog_layer: X
   n_jobs: 1
   inplace: false
