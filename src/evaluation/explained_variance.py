@@ -14,24 +14,30 @@ import logging
 logging.basicConfig(level = logging.INFO)
 
 def _compute_explained_variance_ratio(mdata, prog_key=None, data_key=None, 
-                                      prog_nam=None,layer='X', **kwargs):
+                                      prog_nam=None, data_layer='X', prog_layer='X', 
+                                      **kwargs):
 
     # FIXME: This takes a lot of memory (200G single core on TeloHAEC)
     # https://lightning.ai/docs/torchmetrics/stable/regression/explained_variance.html
-    if layer=='X':
+    if prog_layer=='X':
         recons = mdata[prog_key][:,prog_nam].X.dot(\
                 sparse.csr_matrix(mdata[prog_key][:,prog_nam].varm['loadings']))
     else:
-        recons = mdata[prog_key][:,prog_nam].layers[layer].dot(\
+        recons = mdata[prog_key][:,prog_nam].layers[prog_layer].dot(\
                 sparse.csr_matrix(mdata[prog_key][:,prog_nam].varm['loadings']))        
 
-    mdata[prog_key].var.loc[prog_nam, 'explained_variance_ratio_{}'.format(layer)] = \
-    r2_score(mdata[data_key].X.toarray(), recons.toarray(), **kwargs)
+    if data_layer=='X':
+        mdata[prog_key].var.loc[prog_nam, 'explained_variance_ratio_{}_{}'.format(data_layer, prog_layer)] = \
+        explained_variance_score(mdata[data_key].X.toarray(), recons.toarray(), **kwargs)
+    else:
+        mdata[prog_key].var.loc[prog_nam, 'explained_variance_ratio_{}_{}'.format(data_layer, prog_layer)] = \
+        explained_variance_score(mdata[data_key].layers[data_layer].toarray(), recons.toarray(), **kwargs)
+
 
 # For explained variance vs r2_score see
 # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.r2_score.html
 def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna', 
-                                     layer='X', n_jobs=1, inplace=True, **kwargs):
+                                     data_layer='X', prog_layer='X', n_jobs=1, inplace=True, **kwargs):
 
     """
     Computes the proportion of variance in the data explained by each program.
@@ -43,8 +49,10 @@ def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna',
             index for the anndata object (mdata[prog_key]) in the mudata object.
         data_key: str
             index of the genomic data anndata object (mdata[data_key]) in the mudata object.
-        layer: str (default: X)
-            anndata layer (mdata[data_key].layers[layer]) where the data is stored.
+        data_layer: str (default: X)
+            anndata layer (mdata[data_key].layers[data_layer]) where the data is stored.
+        prog_layer: str (default: X)
+            anndata layer (mdata[prog_key].layers[prog_layer]) where the program scores are stored.
         n_jobs: int (default: 1)
             number of threads to run processes on.
         inplace: Bool (default: True)
@@ -52,7 +60,7 @@ def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna',
        
     RETURNS 
         if not inplace:
-            mdata[prog_key].var['explained_variance_ratio_{}'.format(layer)]
+            mdata[prog_key].var['explained_variance_ratio_{}_{}'.format(data_layer, prog_layer)]
             
     """
     # Read in mudata if it is provided as a path
@@ -74,17 +82,17 @@ def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna',
     try: assert mdata[prog_key].varm['loadings'].shape[1]==mdata[data_key].var.shape[0]
     except: raise ValueError('Different number of features present in data and program loadings')
 
-    if layer=='X':
+    if data_layer=='X':
         if not sparse.issparse(mdata[data_key].X):
             mdata[data_key].X = sparse.csr_matrix(mdata[data_key].X)
     else:
-        if not sparse.issparse(mdata[data_key].layers[layer]):
-            mdata[data_key].layers[layer] = sparse.csr_matrix(mdata[data_key].layers[layer])
+        if not sparse.issparse(mdata[data_key].layers[data_layer]):
+            mdata[data_key].layers[data_layer] = sparse.csr_matrix(mdata[data_key].layers[data_layer])
             
     if not sparse.issparse(mdata[prog_key].X):
         mdata[prog_key].X = sparse.csr_matrix(mdata[prog_key].X)
   
-    mdata[prog_key].var['explained_variance_ratio_{}'.format(layer)] = None
+    mdata[prog_key].var['explained_variance_ratio_{}_{}'.format(data_layer, prog_layer)] = None
 
     # Run in parallel (max n_jobs=num_progs)
     Parallel(n_jobs=n_jobs, 
@@ -92,18 +100,20 @@ def compute_explained_variance_ratio(mdata, prog_key='prog', data_key='rna',
                                                                              prog_key=prog_key,
                                                                              data_key=data_key,
                                                                              prog_nam=prog_nam, 
-                                                                             layer=layer
+                                                                             data_layer=data_layer,
+                                                                             prog_layer=prog_layer
                                                        ) \
                                                        for prog_nam in tqdm(mdata[prog_key].var_names,
                                                        desc='Computing explained variance', unit='programs'))
 
-    if not inplace: return (mdata[prog_key].var.loc[:, ['explained_variance_ratio_{}'.format(layer)]])
+    if not inplace: return (mdata[prog_key].var.loc[:, ['explained_variance_ratio_{}_{}'.format(data_layer, prog_layer)]])
 	
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('mudataObj_path')
-    parser.add_argument('--layer', default='X', type=str)
+    parser.add_argument('--data_layer', default='X', type=str)
+    parser.add_argument('--prog_layer', default='X', type=str)
     parser.add_argument('-pk', '--prog_key', default='prog', type=str) 
     parser.add_argument('-dk', '--data_key', default='rna', type=str) 
     parser.add_argument('-n', '--n_jobs', default=1, type=int)
@@ -113,4 +123,5 @@ if __name__=='__main__':
 
     mdata = mudata.read(args.mudataObj_path)
     compute_explained_variance_ratio(mdata, prog_key=args.prog_key, data_key=args.data_key, 
-                                     layer=args.layer, n_jobs=args.n_jobs, inplace=args.output)
+                                     data_layer=args.data_layer, prog_layer=args.prog_layer, 
+                                     n_jobs=args.n_jobs, inplace=args.output)
